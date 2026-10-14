@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LIFF 通信検証</title>
+  <style>
+    body { font-family: -apple-system, "Hiragino Sans", "Meiryo", sans-serif; margin: 16px; font-size: 15px; }
+    h1 { font-size: 18px; }
+    .row { padding: 8px 0; border-bottom: 1px solid #ddd; word-break: break-all; }
+    .ok { color: #0a7a2f; font-weight: bold; }
+    .ng { color: #c62828; font-weight: bold; }
+    .muted { color: #666; font-size: 13px; }
+  </style>
+  <script src="config.js"></script>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+  <h1>LIFF 通信検証（GitHub Pages → GAS）</h1>
+  <div id="out"></div>
+  <p class="muted">この画面のスクリーンショットを送ってください。</p>
+
+  <script>
+    var CFG = window.DISPATCH_CONFIG || {};
+    var out = document.getElementById('out');
+
+    function row(label, value, state) {
+      var d = document.createElement('div');
+      d.className = 'row';
+      var b = document.createElement('b');
+      b.textContent = label + ': ';
+      var s = document.createElement('span');
+      s.className = state === true ? 'ok' : (state === false ? 'ng' : '');
+      s.textContent = String(value);
+      d.appendChild(b);
+      d.appendChild(s);
+      out.appendChild(d);
+    }
+
+    // タイムアウト付きの fetch（LINE の中で通信が止まったままになるのを見分けるため）
+    function fetchWithTimeout(url, options, ms) {
+      var ctrl = new AbortController();
+      var timer = setTimeout(function () { ctrl.abort(); }, ms);
+      options = options || {};
+      options.signal = ctrl.signal;
+      var t0 = Date.now();
+      return fetch(url, options)
+        .then(function (res) {
+          return res.text().then(function (text) {
+            clearTimeout(timer);
+            return { status: res.status, text: text, ms: Date.now() - t0 };
+          });
+        })
+        .catch(function (err) {
+          clearTimeout(timer);
+          throw new Error((err && err.name === 'AbortError') ? ('タイムアウト(' + ms + 'ms)') : String(err));
+        });
+    }
+
+    function parse(text) {
+      try { return JSON.parse(text); } catch (e) { return null; }
+    }
+
+    row('UA', navigator.userAgent);
+    row('location', location.href);
+    row('config.js', CFG.LIFF_ID && CFG.GAS_API_URL ? '読み込みOK' : '読み込めない', !!(CFG.LIFF_ID && CFG.GAS_API_URL));
+
+    // ① 認証なしの疎通確認（GET）。LIFF と関係なく、GAS に届くかだけを見る
+    fetchWithTimeout(CFG.GAS_API_URL + '?api=ping', { method: 'GET' }, 20000)
+      .then(function (r) {
+        var j = parse(r.text);
+        row('① GAS への GET', (j && j.ok ? '成功' : '応答が JSON でない') + ' status=' + r.status + ' ' + r.ms + 'ms', !!(j && j.ok));
+      })
+      .catch(function (err) { row('① GAS への GET', '失敗 ' + err.message, false); });
+
+    // ② LIFF の初期化 → idToken → GAS への POST（本番と同じ形）
+    if (typeof liff === 'undefined') {
+      row('② liff SDK', '読み込めない', false);
+    } else {
+      liff.init({ liffId: CFG.LIFF_ID })
+        .then(function () {
+          row('② liff.init', '成功（isInClient=' + liff.isInClient() + '）', true);
+          if (!liff.isLoggedIn()) {
+            row('② idToken', 'ログインしていない（LINE アプリの中で開いてください）', false);
+            return;
+          }
+          var idToken = liff.getIDToken();
+          row('② idToken', idToken ? ('取得できた（' + idToken.length + '文字）') : '取得できない（LIFF の Scope に openid があるか確認）', !!idToken);
+          if (!idToken) return;
+
+          return fetchWithTimeout(CFG.GAS_API_URL + '?api=1', {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'whoami', idToken: idToken })
+          }, 30000)
+            .then(function (r) {
+              var j = parse(r.text);
+              if (j && j.ok) {
+                row('③ GAS への POST＋idToken 検証', '成功 userId=' + j.userId + ' / ' + j.name + '（' + r.ms + 'ms）', true);
+              } else {
+                row('③ GAS への POST＋idToken 検証', '失敗 status=' + r.status + ' ' + (j ? (j.error + ' ' + (j.detail || '')) : r.text.slice(0, 200)), false);
+              }
+            })
+            .catch(function (err) { row('③ GAS への POST＋idToken 検証', '失敗 ' + err.message, false); });
+        })
+        .catch(function (err) {
+          row('② liff.init', '失敗 ' + (err && (err.code + ' ' + err.message) || err), false);
+        });
+    }
+  </script>
+</body>
+</html>
