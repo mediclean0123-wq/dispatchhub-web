@@ -62,7 +62,8 @@
     }
 
     row('UA', navigator.userAgent);
-    row('location', location.href);
+    // location.href は出さない（LIFF が URL に access_token / id_token を付けるため）
+    row('ページ', location.origin + location.pathname);
     row('config.js', CFG.LIFF_ID && CFG.GAS_API_URL ? '読み込みOK' : '読み込めない', !!(CFG.LIFF_ID && CFG.GAS_API_URL));
 
     // ① 認証なしの疎通確認（GET）。LIFF と関係なく、GAS に届くかだけを見る
