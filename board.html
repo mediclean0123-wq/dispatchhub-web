@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>担当割り＆ボード</title>
+  <script src="config.js"></script>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green:  #00a84f;
+      --bg:     #f4f4f4;
+      --card:   #fff;
+      --border: #e0e0e0;
+      --muted:  #888;
+    }
+    body {
+      font-family: -apple-system, "Hiragino Sans", "Meiryo", sans-serif;
+      background: var(--bg); color: #222; font-size: 15px; min-height: 100vh;
+    }
+
+    /* ── ローディング / エラー ── */
+    .fill {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 100vh;
+      padding: 2rem; text-align: center; gap: 1rem;
+    }
+    #error { color: #c00; }
+    .spin { display: inline-block; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── アプリ ── */
+    #app { display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── セッション期限切れバナー ── */
+    .session-banner {
+      background: #c00; color: #fff; text-align: center;
+      padding: 0.65rem 1rem; font-size: 0.85rem; font-weight: bold;
+    }
+
+    /* ── タブ ── */
+    .tabs {
+      display: flex; background: var(--card);
+      border-bottom: 2px solid var(--border);
+      position: sticky; top: 0; z-index: 20;
+    }
+    .tab-btn {
+      flex: 1; padding: 0.8rem; border: none; background: transparent;
+      font-size: 0.9rem; font-family: inherit; cursor: pointer; color: var(--muted);
+    }
+    .tab-btn.active {
+      color: var(--green); border-bottom: 3px solid var(--green);
+      margin-bottom: -2px; font-weight: bold;
+    }
+
+    /* ── パネル ── */
+    .panel { padding: 0.75rem; }
+    .panel[hidden] { display: none; }
+
+    /* ── 日付行 ── */
+    .date-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .date-row label { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+    .date-row input[type="date"] {
+      flex: 1; padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.92rem; font-family: inherit; background: var(--card);
+    }
+
+    /* ── お知らせ / 警告 ── */
+    .notice {
+      background: #fffde7; border: 1px solid #f9c906; border-radius: 6px;
+      padding: 0.55rem 0.75rem; font-size: 0.82rem; color: #555;
+      margin-bottom: 0.75rem;
+    }
+    .warn {
+      background: #fff3e0; border: 1px solid #f57c00; border-radius: 6px;
+      padding: 0.55rem 0.75rem; font-size: 0.82rem; color: #444;
+      margin-bottom: 0.75rem;
+    }
+
+    /* ── エリア見出し ── */
+    .area-label {
+      font-size: 0.78rem; font-weight: bold; color: var(--muted);
+      padding: 0.35rem 0; margin-top: 0.6rem; border-bottom: 1px solid var(--border);
+    }
+
+    /* ── 物件カード ── */
+    .prop-card {
+      background: var(--card); border-radius: 8px;
+      padding: 0.65rem 0.75rem; margin-top: 0.4rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+    }
+    .prop-name { font-weight: bold; font-size: 0.92rem; margin-bottom: 0.4rem; }
+    .prop-ctrl { display: flex; align-items: center; gap: 0.4rem; }
+    .staff-sel {
+      flex: 1; padding: 0.38rem 0.5rem; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.88rem; font-family: inherit; background: var(--card);
+    }
+    .ord-btn {
+      width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--bg); cursor: pointer; font-size: 0.7rem; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ord-btn:active { background: var(--border); }
+    .ord-badge {
+      min-width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--bg); font-size: 0.78rem; font-weight: bold; color: var(--muted);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+
+    /* ── ボタン ── */
+    .actions { display: flex; gap: 0.6rem; margin-top: 1rem; padding-bottom: 1rem; }
+    .btn {
+      flex: 1; padding: 0.7rem; border-radius: 8px; border: none; cursor: pointer;
+      font-size: 0.92rem; font-weight: bold; font-family: inherit; transition: opacity 0.15s;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn:active:not(:disabled) { opacity: 0.75; }
+    .btn-save   { background: var(--green); color: #fff; }
+    .btn-import { background: var(--card); color: var(--green); border: 1.5px solid var(--green); }
+
+    /* ── ボード ── */
+    .board-stats {
+      display: flex; gap: 0.5rem; background: var(--card); border-radius: 8px;
+      padding: 0.7rem 0.5rem; margin-bottom: 0.75rem;
+    }
+    .bstat { display: flex; flex-direction: column; align-items: center; flex: 1; }
+    .bstat-n { font-size: 1.4rem; font-weight: bold; color: var(--green); }
+    .bstat-l { font-size: 0.72rem; color: var(--muted); margin-top: 0.1rem; }
+    .board-wrap { overflow-x: auto; padding-bottom: 0.75rem; }
+    .board-cols { display: flex; gap: 0.55rem; min-width: min-content; }
+    .bcol {
+      min-width: 130px; max-width: 155px; background: var(--card); border-radius: 8px;
+      padding: 0.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.07); flex-shrink: 0;
+    }
+    .bcol-title {
+      font-size: 0.82rem; font-weight: bold; text-align: center;
+      background: var(--bg); border-radius: 4px; padding: 0.35rem; margin-bottom: 0.4rem;
+    }
+    .bprop {
+      display: flex; align-items: flex-start; gap: 0.35rem;
+      padding: 0.38rem 0; border-bottom: 1px solid var(--bg); font-size: 0.8rem;
+    }
+    .bprop:last-child { border-bottom: none; }
+    .bprop-icon { flex-shrink: 0; font-size: 0.88rem; margin-top: 0.05rem; }
+    .no-report { color: #aaa; font-size: 0.74rem; }
+    .refresh-note { font-size: 0.75rem; color: var(--muted); text-align: center; padding: 0.5rem; }
+
+    /* ── 共通メッセージ ── */
+    .msg { color: var(--muted); text-align: center; padding: 2rem 1rem; font-size: 0.88rem; }
+
+    /* ── 確認モーダル ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center; z-index: 50;
+    }
+    .modal-overlay[hidden] { display: none; }
+    .modal-box {
+      background: var(--card); border-radius: 12px; padding: 1.5rem 1.25rem;
+      max-width: 300px; width: calc(100% - 2rem); text-align: center;
+    }
+    .modal-box p { margin-bottom: 0.5rem; font-size: 0.92rem; }
+    .modal-actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+
+    /* ── トースト ── */
+    #toast {
+      position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.82); color: #fff; padding: 0.65rem 1.1rem;
+      border-radius: 8px; font-size: 0.88rem; z-index: 100; white-space: nowrap;
+      pointer-events: none; transition: opacity 0.25s;
+    }
+    #toast[hidden] { display: none; }
+  </style>
+</head>
+
+<body>
+  <div id="loading" class="fill">
+    <span class="spin" style="font-size:2rem">↻</span>
+    <span>読み込み中…</span>
+  </div>
+  <div id="error" class="fill" hidden></div>
+
+  <div id="app" hidden>
+    <div id="session-banner" class="session-banner" hidden>
+      ログインの有効期限が切れました。画面を開き直してください
+    </div>
+
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="assign">担当割り</button>
+      <button class="tab-btn"        data-tab="board" >ボード</button>
+    </nav>
+
+    <!-- 担当割りタブ -->
+    <div id="panel-assign" class="panel">
+      <div class="date-row">
+        <label for="date-sel">日付</label>
+        <input type="date" id="date-sel">
+      </div>
+      <div id="updating-warn" class="warn" hidden>
+        清掃データ更新中のため保存できません。少し待って再読込してください
+      </div>
+      <div id="assign-notice" class="notice" hidden>
+        この日は画面の担当割りが優先されます（最終保存：<span id="notice-time"></span>）
+      </div>
+      <div id="prop-list"></div>
+      <div class="actions">
+        <button class="btn btn-import" id="btn-import" disabled>スプシを取り込む</button>
+        <button class="btn btn-save"   id="btn-save"   disabled>保存</button>
+      </div>
+    </div>
+
+    <!-- ボードタブ -->
+    <div id="panel-board" class="panel" hidden>
+      <div class="date-row">
+        <label for="board-date-sel">日付</label>
+        <input type="date" id="board-date-sel">
+      </div>
+      <div class="board-stats">
+        <div class="bstat"><span class="bstat-n" id="b-done">-</span><span class="bstat-l">完了</span></div>
+        <div class="bstat"><span class="bstat-n" id="b-total">-</span><span class="bstat-l">全体</span></div>
+        <div class="bstat"><span class="bstat-n" id="b-urgent">-</span><span class="bstat-l">当日IN未完了</span></div>
+      </div>
+      <div class="board-wrap">
+        <div id="board-cols" class="board-cols"></div>
+      </div>
+      <div class="refresh-note" id="refresh-note">30秒ごとに自動更新</div>
+    </div>
+  </div>
+
+  <!-- 競合確認モーダル -->
+  <div id="conflict-modal" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <p>他の人が先に保存しました。</p>
+      <p>再読込すると、入力中の内容は消えます。</p>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn btn-import">キャンセル</button>
+        <button id="modal-reload" class="btn btn-save">再読込</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" hidden></div>
+
+  <script>
+    'use strict';
+
+    var CFG = window.DISPATCH_CONFIG || {};
+
+    // ── 状態 ──────────────────────────────────────────────────────────
+    var S = {
+      idToken:         null,
+      currentDate:     null,   // 担当割りタブの日付（明日を初期値）
+      boardDate:       null,   // ボードタブの日付（今日を初期値）
+      items:           [],     // [{propertyName,uid,date,area,staff,order,csStaff,csOrder}]
+      cleaners:        [],     // [{name,canReport}]
+      latestUpdatedAt: null,
+      busy:            false,
+      updating:        false,  // getSchedule が sr.updating=true のとき保存を禁止
+      sessionExpired:  false,
+      activeTab:       'assign',
+      boardTimer:      null
+    };
+
+    // ── ユーティリティ ─────────────────────────────────────────────────
+    function today() {
+      var d = new Date();
+      return d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+    }
+
+    function tomorrow() {
+      var d = new Date();
+      d.setDate(d.getDate() + 1);
+      return d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+    }
+
+    function fmtTime(iso) {
+      if (!iso) return '';
+      try {
+        var d = new Date(iso);
+        return d.getHours() + '時' + String(d.getMinutes()).padStart(2, '0') + '分';
+      } catch (e) { return ''; }
+    }
+
+    var AREA_RANK = { '①': 1, '②': 2, '③': 3, '④': 4, '⑤': 5 };
+    function areaRank(a) { return AREA_RANK[String(a || '').trim()] || 99; }
+
+    var toastTimer;
+    function toast(msg, ms) {
+      var el = document.getElementById('toast');
+      el.textContent = msg;
+      el.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function() { el.hidden = true; }, ms || 2500);
+    }
+
+    function esc(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // updating または sessionExpired のときも保存ボタンを無効にする
+    function setBusy(v) {
+      S.busy = v;
+      document.getElementById('btn-save').disabled   = v || S.updating || S.sessionExpired;
+      document.getElementById('btn-import').disabled = v || S.sessionExpired;
+    }
+
+    function stopBoardTimer() {
+      clearInterval(S.boardTimer);
+      S.boardTimer = null;
+    }
+
+    function startBoardTimer() {
+      stopBoardTimer();
+      if (!document.hidden && !S.sessionExpired) {
+        S.boardTimer = setInterval(loadBoard, 30000);
+      }
+    }
+
+    function handleUnauthorized() {
+      stopBoardTimer();
+      S.sessionExpired = true;
+      document.getElementById('session-banner').hidden = false;
+      document.getElementById('btn-save').disabled   = true;
+      document.getElementById('btn-import').disabled = true;
+      var msg = '<div class="msg">ログインの有効期限が切れました。画面を開き直してください</div>';
+      document.getElementById('prop-list').innerHTML  = msg;
+      document.getElementById('board-cols').innerHTML = msg;
+    }
+
+    // ── 競合確認モーダル ──────────────────────────────────────────────
+    function showConflictModal(onReload) {
+      var modal = document.getElementById('conflict-modal');
+      modal.hidden = false;
+      document.getElementById('modal-cancel').onclick = function() {
+        modal.hidden = true;
+        setBusy(false);
+      };
+      document.getElementById('modal-reload').onclick = function() {
+        modal.hidden = true;
+        onReload();
+      };
+    }
+
+    // ── API ──────────────────────────────────────────────────────────
+    function callApi(body) {
+      body.idToken = S.idToken;
+      return fetch(CFG.GAS_API_URL + '?api=1', {
+        method:  'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body:    JSON.stringify(body)
+      }).then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(function(data) {
+        if (data && data.error === 'unauthorized') {
+          var err = new Error('unauthorized');
+          err.isUnauthorized = true;
+          throw err;
+        }
+        return data;
+      });
+    }
+
+    // ── スケジュール読み込み ──────────────────────────────────────────
+    function loadSchedule(date) {
+      setBusy(true);
+      document.getElementById('prop-list').innerHTML =
+        '<div class="msg"><span class="spin">↻</span> 読み込み中…</div>';
+
+      var cleanerProm = S.cleaners.length
+        ? Promise.resolve(null)
+        : callApi({ action: 'getCleanerList' });
+
+      return Promise.all([
+        callApi({ action: 'getSchedule', date: date }),
+        cleanerProm
+      ]).then(function(res) {
+        var sr = res[0], cr = res[1];
+        if (!sr.ok) throw new Error('getSchedule: ' + (sr.error || '不明'));
+        if (cr) {
+          if (!cr.ok) throw new Error('getCleanerList: ' + (cr.error || '不明'));
+          S.cleaners = cr.cleaners;
+        }
+
+        // updating フラグ — 清掃データ更新中のとき保存ボタンを無効にする
+        S.updating = !!sr.updating;
+        document.getElementById('updating-warn').hidden = !S.updating;
+
+        // ヘッダー列インデックス
+        var hdr = sr.schedule.header;
+        var H = {
+          pn:   hdr.indexOf('PropertyName'),
+          fd:   hdr.indexOf('Final_CheckoutDate'),
+          fs:   hdr.indexOf('Final_AssignedStaff'),
+          ord:  hdr.indexOf('Order'),
+          area: hdr.indexOf('Area'),
+          uid:  hdr.indexOf('UID')
+        };
+
+        // PropertyName+date で重複除去（同一物件の複数行は1件に）
+        var seen = {}, unique = [];
+        sr.schedule.rows.forEach(function(row) {
+          var k = String(row[H.pn] || '').trim() + '\t' + String(row[H.fd] || '').trim();
+          if (!seen[k]) { seen[k] = true; unique.push(row); }
+        });
+
+        // Assignments をキーマップに（UID 優先、次に PropertyName）
+        var am = {};
+        (sr.assignments || []).forEach(function(a) {
+          var pn = String(a.propertyName || '').trim();
+          am[pn + '\t' + (a.uid || '')] = a;
+          am['pn\t' + pn]               = a;
+        });
+
+        S.items = unique.map(function(row) {
+          var pn  = String(row[H.pn]  || '').trim();
+          var uid = String(row[H.uid] || '').trim();
+          var cs  = String(row[H.fs]  || '').trim();
+          var co  = Number(row[H.ord]) || 0;
+          var ar  = H.area >= 0 ? String(row[H.area] || '').trim() : '';
+          var a   = am[pn + '\t' + uid] || am['pn\t' + pn];
+          return {
+            propertyName: pn, uid: uid, date: date, area: ar,
+            staff:   a ? String(a.staff  || '')  : cs,
+            order:   a ? (Number(a.order) || 0)  : co,
+            csStaff: cs, csOrder: co
+          };
+        });
+
+        S.latestUpdatedAt = sr.latestUpdatedAt || null;
+
+        // お知らせ表示
+        var hasAsgn = (sr.assignments || []).length > 0;
+        document.getElementById('assign-notice').hidden = !hasAsgn;
+        if (hasAsgn && sr.latestUpdatedAt) {
+          document.getElementById('notice-time').textContent = fmtTime(sr.latestUpdatedAt);
+        }
+
+        renderAssign();
+        setBusy(false);
+      });
+    }
+
+    // ── 担当割りタブ描画 ──────────────────────────────────────────────
+    function renderAssign() {
+      var list = document.getElementById('prop-list');
+      if (!S.items.length) {
+        list.innerHTML = '<div class="msg">この日の清掃はありません</div>';
+        return;
+      }
+
+      // area rank → order でソート
+      var sorted = S.items.slice().sort(function(a, b) {
+        var d = areaRank(a.area) - areaRank(b.area);
+        if (d !== 0) return d;
+        return (a.order || 999) - (b.order || 999);
+      });
+
+      // エリアでグループ化
+      var groups = [], curArea = null;
+      sorted.forEach(function(item) {
+        var a = item.area || '';
+        if (a !== curArea) { groups.push({ area: a, items: [] }); curArea = a; }
+        groups[groups.length - 1].items.push(item);
+      });
+
+      var html = '';
+      groups.forEach(function(g) {
+        html += '<div class="area-label">' +
+          esc(g.area ? 'エリア ' + g.area : 'エリア未設定') + '</div>';
+        g.items.forEach(function(item) {
+          var idx  = S.items.indexOf(item);
+          var opts = '<option value=""' + (!item.staff ? ' selected' : '') + '>（未割り当て）</option>';
+          // 現在の担当がリストにない場合も選択肢に残す
+          if (item.staff && !S.cleaners.some(function(c) { return c.name === item.staff; })) {
+            opts += '<option value="' + esc(item.staff) + '" selected>' + esc(item.staff) + '</option>';
+          }
+          S.cleaners.forEach(function(c) {
+            opts += '<option value="' + esc(c.name) + '"' +
+              (c.name === item.staff ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+          });
+          html +=
+            '<div class="prop-card">' +
+              '<div class="prop-name">' + esc(item.propertyName) + '</div>' +
+              '<div class="prop-ctrl">' +
+                '<select class="staff-sel" data-idx="' + idx + '">' + opts + '</select>' +
+                '<button class="ord-btn" data-action="up"   data-idx="' + idx + '">↑</button>' +
+                '<span  class="ord-badge">' + (item.order || '–') + '</span>' +
+                '<button class="ord-btn" data-action="down" data-idx="' + idx + '">↓</button>' +
+              '</div>' +
+            '</div>';
+        });
+      });
+
+      list.innerHTML = html;
+
+      list.querySelectorAll('.ord-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          syncStaff();
+          reorder(parseInt(btn.dataset.idx, 10), btn.dataset.action === 'up' ? -1 : 1);
+        });
+      });
+    }
+
+    // DOM の select 値を state に同期
+    function syncStaff() {
+      document.querySelectorAll('.staff-sel').forEach(function(sel) {
+        var i = parseInt(sel.dataset.idx, 10);
+        if (!isNaN(i)) S.items[i].staff = sel.value;
+      });
+    }
+
+    // 同じ担当の中で順序を入れ替え
+    function reorder(idx, delta) {
+      var item = S.items[idx];
+      var peers = S.items.filter(function(it) { return it.staff === item.staff; })
+        .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
+      if (peers.length < 2) return;
+      peers.forEach(function(it, i) { it.order = i + 1; });
+      var pos = peers.indexOf(item);
+      var np  = pos + delta;
+      if (np < 0 || np >= peers.length) return;
+      var other = peers[np];
+      var tmp = item.order; item.order = other.order; other.order = tmp;
+      renderAssign();
+    }
+
+    // ── ボードタブ描画 ────────────────────────────────────────────────
+    function loadBoard() {
+      if (S.sessionExpired) return;
+
+      var cleanerProm = S.cleaners.length
+        ? Promise.resolve(null)
+        : callApi({ action: 'getCleanerList' });
+
+      return Promise.all([
+        callApi({ action: 'getSchedule', date: S.boardDate }),
+        cleanerProm
+      ]).then(function(res) {
+        var sr = res[0], cr = res[1];
+        if (cr && cr.ok) S.cleaners = cr.cleaners;
+        if (!sr.ok) { toast('ボードの読み込みに失敗しました'); return; }
+
+        var hdr = sr.schedule.header;
+        var H = {
+          pn:  hdr.indexOf('PropertyName'),
+          fd:  hdr.indexOf('Final_CheckoutDate'),
+          fs:  hdr.indexOf('Final_AssignedStaff'),
+          ord: hdr.indexOf('Order'),
+          uid: hdr.indexOf('UID')
+        };
+
+        var seen = {}, unique = [];
+        sr.schedule.rows.forEach(function(row) {
+          var k = String(row[H.pn] || '').trim() + '\t' + String(row[H.fd] || '').trim();
+          if (!seen[k]) { seen[k] = true; unique.push(row); }
+        });
+
+        var am = {};
+        (sr.assignments || []).forEach(function(a) {
+          var pn = String(a.propertyName || '').trim();
+          am[pn + '\t' + (a.uid || '')] = a;
+          am['pn\t' + pn]               = a;
+        });
+
+        var boardItems = unique.map(function(row) {
+          var pn  = String(row[H.pn]  || '').trim();
+          var uid = String(row[H.uid] || '').trim();
+          var a   = am[pn + '\t' + uid] || am['pn\t' + pn];
+          return {
+            propertyName: pn,
+            staff: a ? String(a.staff || '') : String(row[H.fs] || '').trim(),
+            order: a ? (Number(a.order) || 0) : (Number(row[H.ord]) || 0)
+          };
+        });
+
+        // スタッフマップ（cleanerList の順番で列を並べる）
+        var cmap = {};
+        S.cleaners.forEach(function(c) { cmap[c.name] = c; });
+
+        var cols = {}, colNames = [];
+        boardItems.forEach(function(item) {
+          var s = item.staff || '（未割り当て）';
+          if (!cols[s]) { cols[s] = []; colNames.push(s); }
+          cols[s].push(item);
+        });
+        colNames.sort(function(a, b) {
+          var ia = S.cleaners.findIndex(function(c) { return c.name === a; });
+          var ib = S.cleaners.findIndex(function(c) { return c.name === b; });
+          return (ia < 0 ? 9999 : ia) - (ib < 0 ? 9999 : ib);
+        });
+
+        document.getElementById('b-done').textContent   = 0;
+        document.getElementById('b-total').textContent  = boardItems.length;
+        document.getElementById('b-urgent').textContent = '–';
+
+        var html = '';
+        colNames.forEach(function(name) {
+          var info   = cmap[name];
+          var canRep = info ? info.canReport : true;
+          var props  = cols[name].slice().sort(function(a, b) {
+            return (a.order || 999) - (b.order || 999);
+          });
+          html += '<div class="bcol">';
+          html += '<div class="bcol-title">' + esc(name) + '</div>';
+          props.forEach(function(p) {
+            var icon = canRep ? '⚪' : '📵';
+            html += '<div class="bprop">' +
+              '<span class="bprop-icon">' + icon + '</span>' +
+              '<span>' + esc(p.propertyName) +
+                (canRep ? '' : '<br><span class="no-report">報告なし</span>') +
+              '</span></div>';
+          });
+          html += '</div>';
+        });
+        if (!html) html = '<div class="msg">この日の清掃はありません</div>';
+
+        document.getElementById('board-cols').innerHTML = html;
+        var now = new Date();
+        document.getElementById('refresh-note').textContent =
+          '最終更新: ' + now.getHours() + ':' +
+          String(now.getMinutes()).padStart(2, '0') + '  ／  30秒ごとに自動更新';
+      }).catch(function(e) {
+        if (e.isUnauthorized) { handleUnauthorized(); return; }
+        toast('ボード読み込みエラー: ' + e.message);
+      });
+    }
+
+    // ── イベント ──────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+
+      // タブ切り替え
+      document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var tab = btn.dataset.tab;
+          S.activeTab = tab;
+          document.querySelectorAll('.tab-btn').forEach(function(b) {
+            b.classList.toggle('active', b === btn);
+          });
+          document.getElementById('panel-assign').hidden = tab !== 'assign';
+          document.getElementById('panel-board').hidden  = tab !== 'board';
+          stopBoardTimer();
+          if (tab === 'board') {
+            loadBoard();
+            startBoardTimer();
+          }
+        });
+      });
+
+      // 担当割りタブ：日付変更
+      document.getElementById('date-sel').addEventListener('change', function() {
+        S.currentDate = this.value;
+        loadSchedule(S.currentDate).catch(function(e) {
+          if (e.isUnauthorized) { handleUnauthorized(); return; }
+          toast('読み込みエラー: ' + e.message);
+          setBusy(false);
+        });
+      });
+
+      // ボードタブ：日付変更
+      document.getElementById('board-date-sel').addEventListener('change', function() {
+        S.boardDate = this.value;
+        loadBoard();
+      });
+
+      // スプシを取り込む
+      document.getElementById('btn-import').addEventListener('click', function() {
+        syncStaff();
+        S.items.forEach(function(item) {
+          item.staff = item.csStaff;
+          item.order = item.csOrder;
+        });
+        renderAssign();
+        toast('スプシの担当を取り込みました');
+      });
+
+      // 保存
+      document.getElementById('btn-save').addEventListener('click', function() {
+        if (S.busy || S.updating || S.sessionExpired) return;
+        syncStaff();
+        setBusy(true);
+        var rows = S.items.map(function(item) {
+          return {
+            propertyName: item.propertyName,
+            uid:          item.uid,
+            staff:        item.staff,
+            order:        item.order
+          };
+        });
+        callApi({
+          action:         'saveAssignments',
+          date:           S.currentDate,
+          rows:           rows,
+          knownUpdatedAt: S.latestUpdatedAt
+        }).then(function(r) {
+          if (r.ok) {
+            toast('保存しました ✓');
+            return loadSchedule(S.currentDate);
+          }
+          if (r.error === 'conflict') {
+            showConflictModal(function() {
+              loadSchedule(S.currentDate).catch(function(e) {
+                if (e.isUnauthorized) { handleUnauthorized(); return; }
+                toast('読み込みエラー: ' + e.message);
+                setBusy(false);
+              });
+            });
+            return;
+          }
+          toast('保存エラー: ' + (r.error || '不明'));
+          setBusy(false);
+        }).catch(function(e) {
+          if (e.isUnauthorized) { handleUnauthorized(); return; }
+          toast('保存エラー: ' + e.message);
+          setBusy(false);
+        });
+      });
+
+      // 画面が隠れているあいだはボードの自動更新を止める
+      document.addEventListener('visibilitychange', function() {
+        if (S.activeTab !== 'board') return;
+        if (document.hidden) {
+          stopBoardTimer();
+        } else {
+          loadBoard();
+          startBoardTimer();
+        }
+      });
+    });
+
+    // ── LIFF 初期化 ──────────────────────────────────────────────────
+    liff.init({ liffId: CFG.LIFF_ID }).then(function() {
+      if (!liff.isLoggedIn()) { liff.login(); return; }
+      S.idToken     = liff.getIDToken();
+      S.currentDate = tomorrow();   // 担当割りタブは明日
+      S.boardDate   = today();      // ボードタブは今日
+      document.getElementById('date-sel').value       = S.currentDate;
+      document.getElementById('board-date-sel').value = S.boardDate;
+      document.getElementById('loading').hidden = true;
+      document.getElementById('app').hidden     = false;
+
+      loadSchedule(S.currentDate).catch(function(e) {
+        if (e.isUnauthorized) { handleUnauthorized(); return; }
+        toast('読み込みエラー: ' + e.message);
+        setBusy(false);
+      });
+    }).catch(function(e) {
+      document.getElementById('loading').hidden = true;
+      var el = document.getElementById('error');
+      el.hidden = false;
+      el.innerHTML =
+        '<strong>LIFF の初期化に失敗しました</strong><br>' +
+        esc(e.message || '不明なエラー');
+    });
+  </script>
+</body>
+</html>
