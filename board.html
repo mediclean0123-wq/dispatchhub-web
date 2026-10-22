@@ -414,6 +414,87 @@
       color: #555; font-size: 0.85rem; font-family: inherit; cursor: pointer;
     }
     .btn-assign-back:active { background: var(--bg); }
+
+    /* ── 今後の清掃予定タブ：検索 ── */
+    .sched-search {
+      width: 100%; padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.92rem; font-family: inherit; background: var(--card);
+      margin-bottom: 0.65rem; display: block;
+    }
+
+    /* ── 今後の清掃予定タブ：行リスト ── */
+    .sched-list { background: var(--card); border-radius: 8px; overflow: hidden; margin-bottom: 0.75rem; }
+    .sched-row { border-bottom: 1px solid var(--border); }
+    .sched-row:last-child { border-bottom: none; }
+    .sched-row-main {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 0.65rem; min-height: 44px; cursor: pointer;
+    }
+    .sched-row-main:active { background: var(--bg); }
+    .sched-prop-name { flex: 1; font-size: 0.88rem; font-weight: 600; word-break: break-word; }
+    .sched-type-badge-in {
+      font-size: 0.68rem; font-weight: bold; color: #1565c0; background: #e3f2fd;
+      border-radius: 8px; padding: 0.12rem 0.4rem; white-space: nowrap; flex-shrink: 0;
+    }
+    .sched-type-badge-out {
+      font-size: 0.68rem; font-weight: bold; color: var(--muted); background: var(--bg);
+      border: 1px solid var(--border); border-radius: 8px; padding: 0.12rem 0.4rem;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .sched-staff {
+      font-size: 0.75rem; color: var(--muted); white-space: nowrap; flex-shrink: 0; max-width: 80px;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .sched-staff.unassigned { color: #c62828; font-weight: bold; }
+    .sched-task-cnt {
+      font-size: 0.68rem; font-weight: bold; color: #e65100; background: #fff3e0;
+      border: 1px solid #ffcc80; border-radius: 10px; padding: 0.1rem 0.4rem;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .sched-chevron { font-size: 0.65rem; color: var(--muted); flex-shrink: 0; transition: transform 0.15s; }
+    .sched-row.expanded .sched-chevron { transform: rotate(180deg); }
+
+    /* 展開エリア */
+    .sched-expand {
+      padding: 0.6rem 0.65rem 0.65rem; border-top: 1px solid var(--border); background: #fafafa;
+    }
+    .sched-assign-section {
+      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;
+    }
+    .sched-assign-label { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+    .sched-staff-sel {
+      flex: 1; padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 5px;
+      font-size: 0.82rem; font-family: inherit; background: var(--card); color: #333;
+    }
+    .sched-staff-sel:disabled { background: var(--bg); color: var(--muted); }
+    .sched-detail-btn {
+      background: transparent; border: none; color: var(--green); font-size: 0.82rem;
+      font-family: inherit; cursor: pointer; padding: 0.3rem 0; font-weight: bold;
+      display: block; width: 100%; text-align: left;
+    }
+    .sched-detail-btn:active { opacity: 0.7; }
+
+    /* 詳細設定エリア（タスク） */
+    .sched-tasks-section { padding-top: 0.55rem; border-top: 1px solid var(--border); margin-top: 0.4rem; }
+    .sched-task-item {
+      border: 1px solid var(--border); border-radius: 7px;
+      padding: 0.55rem 0.65rem; margin-bottom: 0.45rem; background: var(--card);
+    }
+    .sched-tasks-empty { font-size: 0.82rem; color: var(--muted); padding: 0.4rem 0; }
+    .btn-sched-add-task {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--green); color: #fff; border: none; border-radius: 5px;
+      padding: 0.4rem 0.7rem; font-size: 0.8rem; font-weight: bold;
+      font-family: inherit; cursor: pointer; margin-top: 0.4rem;
+    }
+    .btn-sched-add-task:active { opacity: 0.75; }
+    .btn-sched-resend {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: transparent; color: var(--green); border: 1px solid var(--green);
+      border-radius: 5px; padding: 0.4rem 0.7rem; font-size: 0.8rem; font-weight: bold;
+      font-family: inherit; cursor: pointer; margin-top: 0.4rem; margin-left: 0.4rem;
+    }
+    .btn-sched-resend:active { opacity: 0.75; }
   </style>
 </head>
 
@@ -485,7 +566,7 @@
       <div class="refresh-note" id="progress-refresh-note">30秒ごとに自動更新</div>
     </div>
 
-    <!-- 今後の清掃予定タブ（旧ボードタブ）-->
+    <!-- 今後の清掃予定タブ -->
     <div id="panel-schedule" class="panel" hidden>
       <div class="assign-open-row">
         <button class="btn-assign-open" id="btn-open-assign">担当割りを開く</button>
@@ -494,17 +575,14 @@
         <label for="board-date-sel">日付</label>
         <input type="date" id="board-date-sel">
       </div>
-      <div class="board-add-row">
-        <button class="btn-board-add" id="btn-board-add-task">＋ 物件を選んで対応追加</button>
-      </div>
+      <input type="search" id="sched-search" class="sched-search" placeholder="物件名で絞り込み">
       <div class="board-stats">
-        <div class="bstat"><span class="bstat-n" id="b-done">-</span><span class="bstat-l">完了</span></div>
-        <div class="bstat"><span class="bstat-n" id="b-total">-</span><span class="bstat-l">全体</span></div>
-        <div class="bstat"><span class="bstat-n" id="b-urgent">-</span><span class="bstat-l">当日IN未完了</span></div>
+        <div class="bstat"><span class="bstat-n" id="s-total">-</span><span class="bstat-l">清掃</span></div>
+        <div class="bstat"><span class="bstat-n" id="s-samedayin">-</span><span class="bstat-l">同日イン</span></div>
+        <div class="bstat"><span class="bstat-n" id="s-notin">-</span><span class="bstat-l">インなし</span></div>
+        <div class="bstat"><span class="bstat-n" id="s-tasks">-</span><span class="bstat-l">対応予定</span></div>
       </div>
-      <div class="board-wrap">
-        <div id="board-cols" class="board-cols"></div>
-      </div>
+      <div id="sched-list" class="sched-list"></div>
       <div class="refresh-note" id="refresh-note">30秒ごとに自動更新</div>
     </div>
   </div>
@@ -598,7 +676,15 @@
       progressItems:          [],   // スケジュール行（isSameDayIn / staff / uid / order）
       progressData:           {},   // { propertyName: { status, linen, trash, check, orderIndex, updatedAt } }
       progressDefaults:       {},   // { propertyName: { checkDefault, trashDefault } }
-      progressAssignUpdatedAt: null // 進捗確認タブで担当変更するときの衝突検知用
+      progressAssignUpdatedAt: null, // 進捗確認タブで担当変更するときの衝突検知用
+      // 今後の清掃予定タブ
+      scheduleItems:           [],   // {propertyName, uid, date, staff, order, isSameDayIn, taskCount}
+      scheduleAssignUpdatedAt: null, // saveAssignments の衝突検知
+      scheduleProgressData:    {},   // boardDate===today のときの progressData（DONE チェック用）
+      scheduleExpandedKey:     null, // 展開中の行キー（"propName\tdate"）
+      scheduleDetailKey:       null, // 詳細設定が開いている行キー
+      scheduleTasks:           {},   // {[propName]: tasks[]} lazy キャッシュ
+      scheduleSearchText:      ''    // 検索テキスト
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -660,7 +746,7 @@
     function startBoardTimer() {
       stopBoardTimer();
       if (!document.hidden && !S.sessionExpired) {
-        S.boardTimer = setInterval(loadBoard, 30000);
+        S.boardTimer = setInterval(loadScheduleTab, 30000);
       }
     }
 
@@ -685,7 +771,7 @@
       document.getElementById('btn-import').disabled = true;
       var msg = '<div class="msg">ログインの有効期限が切れました。画面を開き直してください</div>';
       document.getElementById('prop-list').innerHTML           = msg;
-      document.getElementById('board-cols').innerHTML          = msg;
+      document.getElementById('sched-list').innerHTML          = msg;
       document.getElementById('progress-staff-view').innerHTML = msg;
       document.getElementById('progress-board-view').innerHTML = '';
     }
@@ -878,28 +964,44 @@
       renderAssign();
     }
 
-    // ── 今後の清掃予定タブ：描画 ─────────────────────────────────────
-    function loadBoard() {
+    // ── 今後の清掃予定タブ ────────────────────────────────────────────
+    function loadScheduleTab() {
       if (S.sessionExpired) return;
+      document.getElementById('sched-list').innerHTML =
+        '<div class="msg"><span class="spin">↻</span> 読み込み中…</div>';
 
       var cleanerProm = S.cleaners.length
         ? Promise.resolve(null)
         : callApi({ action: 'getCleanerList' });
 
+      var progressProm = (S.boardDate === today())
+        ? callApi({ action: 'getProgress', date: S.boardDate })
+        : Promise.resolve(null);
+
       return Promise.all([
         callApi({ action: 'getSchedule', date: S.boardDate }),
-        cleanerProm
+        cleanerProm,
+        progressProm
       ]).then(function(res) {
-        var sr = res[0], cr = res[1];
+        var sr = res[0], cr = res[1], pr = res[2];
         if (cr && cr.ok) S.cleaners = cr.cleaners;
-        if (!sr.ok) { toast('ボードの読み込みに失敗しました'); return; }
+        if (!sr.ok) { toast('スケジュールの読み込みに失敗しました'); return; }
+
         S.taskCounts = sr.taskCounts || {};
+
+        // 今日の場合は progressData で DONE チェック
+        S.scheduleProgressData = {};
+        if (pr && pr.ok) {
+          (pr.progress || []).forEach(function(p) {
+            S.scheduleProgressData[String(p.property || '').trim()] = p;
+          });
+        }
 
         var hdr = sr.schedule.header;
         var H = {
           pn:  hdr.indexOf('PropertyName'),
           fd:  hdr.indexOf('Final_CheckoutDate'),
-          fs:  hdr.indexOf('Final_AssignedStaff'),
+          sdc: hdr.indexOf('Auto_SameDayCheckout'),
           ord: hdr.indexOf('Order'),
           uid: hdr.indexOf('UID')
         };
@@ -916,82 +1018,215 @@
           am[pn + '\t' + (a.uid || '')] = a;
           am['pn\t' + pn]               = a;
         });
+        S.scheduleAssignUpdatedAt = sr.latestUpdatedAt || null;
 
-        var boardItems = unique.map(function(row) {
+        S.scheduleItems = unique.map(function(row) {
           var pn  = String(row[H.pn]  || '').trim();
           var uid = String(row[H.uid] || '').trim();
+          var sdc = H.sdc >= 0 ? String(row[H.sdc] || '').trim() : '';
           var a   = am[pn + '\t' + uid] || am['pn\t' + pn];
           return {
             propertyName: pn,
-            staff: a ? String(a.staff || '') : String(row[H.fs] || '').trim(),
-            order: a ? (Number(a.order) || 0) : (Number(row[H.ord]) || 0)
+            uid:          uid,
+            date:         String(row[H.fd] || '').trim(),
+            staff:        a ? String(a.staff || '') : '',
+            order:        a ? (Number(a.order) || 0) : (Number(row[H.ord]) || 0),
+            isSameDayIn:  sdc === 'Yes',
+            taskCount:    S.taskCounts[pn] || 0
           };
         });
 
+        // タスクキャッシュをリセット（再読込のたびに）
+        S.scheduleTasks = {};
+
+        // ソート：未担当先頭 → cleaners 順 → order 昇順
         var cmap = {};
-        S.cleaners.forEach(function(c) { cmap[c.name] = c; });
-
-        var cols = {}, colNames = [];
-        boardItems.forEach(function(item) {
-          var s = item.staff || '（未割り当て）';
-          if (!cols[s]) { cols[s] = []; colNames.push(s); }
-          cols[s].push(item);
-        });
-        colNames.sort(function(a, b) {
-          var ia = S.cleaners.findIndex(function(c) { return c.name === a; });
-          var ib = S.cleaners.findIndex(function(c) { return c.name === b; });
-          return (ia < 0 ? 9999 : ia) - (ib < 0 ? 9999 : ib);
+        S.cleaners.forEach(function(c, i) { cmap[c.name] = i; });
+        S.scheduleItems.sort(function(a, b) {
+          var emptyA = !a.staff, emptyB = !b.staff;
+          if (emptyA !== emptyB) return emptyA ? -1 : 1;
+          var ia = cmap[a.staff] !== undefined ? cmap[a.staff] : 9999;
+          var ib = cmap[b.staff] !== undefined ? cmap[b.staff] : 9999;
+          if (ia !== ib) return ia - ib;
+          return (a.order || 999) - (b.order || 999);
         });
 
-        document.getElementById('b-done').textContent   = 0;
-        document.getElementById('b-total').textContent  = boardItems.length;
-        document.getElementById('b-urgent').textContent = '–';
+        var sameDayN  = S.scheduleItems.filter(function(i) { return i.isSameDayIn; }).length;
+        var notInN    = S.scheduleItems.filter(function(i) { return !i.isSameDayIn; }).length;
+        var totalTasks = S.scheduleItems.reduce(function(acc, i) { return acc + i.taskCount; }, 0);
+        document.getElementById('s-total').textContent     = S.scheduleItems.length;
+        document.getElementById('s-samedayin').textContent = sameDayN;
+        document.getElementById('s-notin').textContent     = notInN;
+        document.getElementById('s-tasks').textContent     = totalTasks;
 
-        var html = '';
-        colNames.forEach(function(name) {
-          var info   = cmap[name];
-          var canRep = info ? info.canReport : true;
-          var props  = cols[name].slice().sort(function(a, b) {
-            return (a.order || 999) - (b.order || 999);
-          });
-          html += '<div class="bcol">';
-          html += '<div class="bcol-title">' + esc(name) + '</div>';
-          var showResend = (S.boardDate === today() || S.boardDate === tomorrow());
-          props.forEach(function(p) {
-            var icon  = canRep ? '⚪' : '📵';
-            var cnt   = S.taskCounts[p.propertyName] || 0;
-            var badge = cnt > 0
-              ? '<span class="task-badge" data-prop="' + esc(p.propertyName) + '">対応 ' + cnt + ' 件</span>'
-              : '';
-            var resendBtn = showResend
-              ? '<button class="btn-resend" data-prop="' + esc(p.propertyName) + '">再送</button>'
-              : '';
-            html += '<div class="bprop">' +
-              '<div class="bprop-top">' +
-                '<span class="bprop-icon">' + icon + '</span>' +
-                '<span class="bprop-name">' + esc(p.propertyName) +
-                  (canRep ? '' : '<br><span class="no-report">報告なし</span>') +
-                '</span>' +
-              '</div>' +
-              '<div class="bprop-bottom">' +
-                badge + resendBtn +
-                '<button class="btn-add-task" data-prop="' + esc(p.propertyName) + '">＋対応</button>' +
-              '</div>' +
-            '</div>';
-          });
-          html += '</div>';
-        });
-        if (!html) html = '<div class="msg">この日の清掃はありません</div>';
-
-        document.getElementById('board-cols').innerHTML = html;
         var now = new Date();
         document.getElementById('refresh-note').textContent =
           '最終更新: ' + now.getHours() + ':' +
           String(now.getMinutes()).padStart(2, '0') + '  ／  30秒ごとに自動更新';
+
+        renderScheduleList();
       }).catch(function(e) {
         if (e.isUnauthorized) { handleUnauthorized(); return; }
-        toast('ボード読み込みエラー: ' + e.message);
+        toast('スケジュール読み込みエラー: ' + e.message);
       });
+    }
+
+    function renderScheduleList() {
+      var search = S.scheduleSearchText.trim().toLowerCase();
+      var items  = search
+        ? S.scheduleItems.filter(function(i) {
+            return i.propertyName.toLowerCase().indexOf(search) >= 0;
+          })
+        : S.scheduleItems;
+
+      if (!items.length) {
+        document.getElementById('sched-list').innerHTML =
+          '<div class="msg">この日の清掃はありません</div>';
+        return;
+      }
+
+      var showResend = (S.boardDate === today() || S.boardDate === tomorrow());
+
+      var html = '';
+      items.forEach(function(item) {
+        var pn     = item.propertyName;
+        var key    = pn + '\t' + item.date;
+        var keyEsc = esc(key);
+        var pnEsc  = esc(pn);
+        var isExpanded = (S.scheduleExpandedKey === key);
+        var isDetail   = (S.scheduleDetailKey   === key);
+
+        var typeBadge = item.isSameDayIn
+          ? '<span class="sched-type-badge-in">同日イン</span>'
+          : '<span class="sched-type-badge-out">インなし</span>';
+
+        var staffLabel = item.staff || '';
+        var staffCls   = staffLabel ? 'sched-staff' : 'sched-staff unassigned';
+        var staffText  = staffLabel || '未担当';
+
+        var taskBadge = item.taskCount > 0
+          ? '<span class="sched-task-cnt">対応' + item.taskCount + '件</span>'
+          : '';
+
+        html += '<div class="sched-row' + (isExpanded ? ' expanded' : '') + '" data-sched-key="' + keyEsc + '">';
+        html += '<div class="sched-row-main" data-sched-toggle="' + keyEsc + '">' +
+          '<span class="sched-prop-name">' + pnEsc + '</span>' +
+          typeBadge +
+          '<span class="' + staffCls + '">' + esc(staffText) + '</span>' +
+          taskBadge +
+          '<span class="sched-chevron">▼</span>' +
+        '</div>';
+
+        if (isExpanded) {
+          // 担当変更セレクト
+          var isDone = S.scheduleProgressData[pn] && S.scheduleProgressData[pn].status === 'DONE';
+          var selOpts = '<option value=""' + (!item.staff ? ' selected' : '') + '>未担当</option>';
+          S.cleaners.forEach(function(c) {
+            selOpts += '<option value="' + esc(c.name) + '"' +
+              (item.staff === c.name ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+          });
+
+          html += '<div class="sched-expand">';
+          html += '<div class="sched-assign-section">' +
+            '<span class="sched-assign-label">担当：</span>' +
+            '<select class="sched-staff-sel" data-sched-assign-key="' + keyEsc + '"' +
+              (isDone ? ' disabled' : '') + '>' + selOpts + '</select>' +
+          '</div>';
+          html += '<button class="sched-detail-btn" data-sched-detail-key="' + keyEsc + '">' +
+            (isDetail ? '▲ 詳細設定を閉じる' : '▼ 詳細設定') +
+          '</button>';
+
+          if (isDetail) {
+            html += '<div class="sched-tasks-section">';
+            var tasks = S.scheduleTasks[pn];
+            if (!tasks) {
+              html += '<div class="sched-tasks-empty">読み込み中…</div>';
+            } else if (!tasks.length) {
+              html += '<div class="sched-tasks-empty">OPEN の対応はありません</div>';
+            } else {
+              var todayYmd = today();
+              tasks.forEach(function(t) {
+                var dateLabel = t.targetMode === 'NEXT'
+                  ? '次回清掃' + (t.boundDate ? '（' + t.boundDate + '）' : '')
+                  : (t.targetDate || '');
+                var expired = t.targetMode === 'DATE' && t.targetDate && t.targetDate < todayYmd;
+                html += '<div class="sched-task-item">' +
+                  '<div class="task-item-header">' +
+                    '<span class="task-type-badge">' + esc(t.type) + '</span>' +
+                    '<span class="task-date-label">' + esc(dateLabel) + '</span>' +
+                    (expired ? '<span class="task-expired-label">期限切れ</span>' : '') +
+                  '</div>' +
+                  '<div class="task-content">' + esc(t.content) + '</div>' +
+                  (t.photoRequired ? '<div class="task-photo-tag">📷 写真必要</div>' : '') +
+                  '<div class="task-actions">' +
+                    '<button class="btn-task-done" data-sched-tid="' + esc(t.taskId) + '" data-sched-prop="' + pnEsc + '">完了</button>' +
+                    '<button class="btn-task-cancel" data-sched-tid="' + esc(t.taskId) + '" data-sched-prop="' + pnEsc + '">取消</button>' +
+                  '</div>' +
+                '</div>';
+              });
+            }
+            html += '<button class="btn-sched-add-task" data-sched-add-prop="' + pnEsc + '">＋ 対応追加</button>';
+            if (showResend) {
+              html += '<button class="btn-sched-resend" data-sched-resend-prop="' + pnEsc + '">再送</button>';
+            }
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+      });
+
+      document.getElementById('sched-list').innerHTML = html;
+    }
+
+    function changeScheduleStaff(key, newStaff) {
+      var propName = key.split('\t')[0];
+      var rows = S.scheduleItems.map(function(i) {
+        return {
+          propertyName: i.propertyName,
+          uid:          i.uid   || '',
+          staff:        i.propertyName === propName ? newStaff : (i.staff || ''),
+          order:        i.order || 0
+        };
+      });
+      setBusy(true);
+      callApi({
+        action:         'saveAssignments',
+        date:           S.boardDate,
+        rows:           rows,
+        knownUpdatedAt: S.scheduleAssignUpdatedAt || ''
+      }).then(function(r) {
+        setBusy(false);
+        if (r.ok) {
+          toast('担当を変更しました。反映まで最大5分かかります');
+          loadScheduleTab();
+          return;
+        }
+        if (r.error === 'conflict') {
+          toast('他の人が先に保存しました。再読込します');
+          loadScheduleTab();
+          return;
+        }
+        toast('担当変更エラー: ' + (r.error || '不明'));
+      }).catch(function(e) {
+        setBusy(false);
+        if (e.isUnauthorized) { handleUnauthorized(); return; }
+        toast('担当変更エラー: ' + e.message);
+      });
+    }
+
+    function openScheduleDetail(propName) {
+      if (S.scheduleTasks[propName]) { renderScheduleList(); return; }
+      callApi({ action: 'getCleanTasksForProperty', propertyName: propName })
+        .then(function(r) {
+          S.scheduleTasks[propName] = r.ok ? (r.tasks || []) : [];
+          renderScheduleList();
+        })
+        .catch(function(e) {
+          S.scheduleTasks[propName] = [];
+          if (e.isUnauthorized) { handleUnauthorized(); return; }
+          renderScheduleList();
+        });
     }
 
     // ── 進捗確認タブ ────────────────────────────────────────────────
@@ -1514,7 +1749,11 @@
         setBusy(false);
         if (r.ok) {
           toast('登録しました ✓');
-          loadBoard();
+          if (S.scheduleDetailKey) {
+            delete S.scheduleTasks[S.scheduleDetailKey.split('\t')[0]];
+            openScheduleDetail(S.scheduleDetailKey.split('\t')[0]);
+          }
+          loadScheduleTab();
         } else {
           toast('登録エラー: ' + (r.error || '不明'));
         }
@@ -1588,7 +1827,7 @@
               if (r.ok) {
                 toast(status === 'DONE' ? '完了にしました ✓' : '取り消しました');
                 openTaskDrawer(pn);
-                loadBoard();
+                loadScheduleTab();
               } else {
                 btn.disabled = false;
                 toast('更新エラー: ' + (r.error || '不明'));
@@ -1700,7 +1939,7 @@
             startProgressTimer();
           }
           if (tab === 'schedule') {
-            loadBoard();
+            loadScheduleTab();
             startBoardTimer();
           }
         });
@@ -1824,7 +2063,9 @@
       // 今後の清掃予定タブ：日付変更
       document.getElementById('board-date-sel').addEventListener('change', function() {
         S.boardDate = this.value;
-        loadBoard();
+        S.scheduleExpandedKey = null;
+        S.scheduleDetailKey   = null;
+        loadScheduleTab();
       });
 
       // スプシを取り込む
@@ -1903,17 +2144,82 @@
         if (e.target === this) closeTaskDrawer();
       });
 
-      // 「物件を選んで対応追加」ボタン
-      document.getElementById('btn-board-add-task').addEventListener('click', openBoardAddTask);
+      // 今後の清掃予定タブ：検索
+      document.getElementById('sched-search').addEventListener('input', function() {
+        S.scheduleSearchText = this.value;
+        renderScheduleList();
+      });
 
-      // 今後の清掃予定タブ内のボタン委譲（panel-schedule）
+      // 今後の清掃予定タブ：行の展開・タスク操作（click 委譲）
       document.getElementById('panel-schedule').addEventListener('click', function(e) {
-        var addBtn    = e.target.closest('.btn-add-task');
-        if (addBtn)    { openTaskModal(addBtn.dataset.prop); return; }
-        var badge     = e.target.closest('.task-badge');
-        if (badge)     { openTaskDrawer(badge.dataset.prop); return; }
-        var resendBtn = e.target.closest('.btn-resend');
-        if (resendBtn) { resendBlock(resendBtn.dataset.prop); return; }
+        // 行メインタップ → 展開切替
+        var toggle = e.target.closest('[data-sched-toggle]');
+        if (toggle) {
+          var k = toggle.dataset.schedToggle;
+          if (S.scheduleExpandedKey === k) {
+            S.scheduleExpandedKey = null;
+            S.scheduleDetailKey   = null;
+          } else {
+            S.scheduleExpandedKey = k;
+            S.scheduleDetailKey   = null;
+          }
+          renderScheduleList();
+          return;
+        }
+        // 詳細設定ボタン
+        var detailBtn = e.target.closest('[data-sched-detail-key]');
+        if (detailBtn) {
+          var dk = detailBtn.dataset.schedDetailKey;
+          if (S.scheduleDetailKey === dk) {
+            S.scheduleDetailKey = null;
+            renderScheduleList();
+          } else {
+            S.scheduleDetailKey = dk;
+            openScheduleDetail(dk.split('\t')[0]);
+          }
+          return;
+        }
+        // タスク完了・取消
+        var taskBtn = e.target.closest('[data-sched-tid]');
+        if (taskBtn) {
+          var tid   = taskBtn.dataset.schedTid;
+          var propN = taskBtn.dataset.schedProp;
+          var st    = taskBtn.classList.contains('btn-task-done') ? 'DONE' : 'CANCELLED';
+          taskBtn.disabled = true;
+          callApi({ action: 'updateCleanTaskStatus', taskId: tid, status: st })
+            .then(function(r) {
+              if (r.ok) {
+                toast(st === 'DONE' ? '完了にしました ✓' : '取り消しました');
+                delete S.scheduleTasks[propN];
+                S.taskCounts[propN] = Math.max(0, (S.taskCounts[propN] || 1) - 1);
+                S.scheduleItems.forEach(function(i) {
+                  if (i.propertyName === propN) i.taskCount = S.taskCounts[propN];
+                });
+                openScheduleDetail(propN);
+              } else {
+                taskBtn.disabled = false;
+                toast('更新エラー: ' + (r.error || '不明'));
+              }
+            })
+            .catch(function(e2) {
+              taskBtn.disabled = false;
+              if (e2.isUnauthorized) { handleUnauthorized(); return; }
+              toast('更新エラー: ' + e2.message);
+            });
+          return;
+        }
+        // 対応追加
+        var addBtn = e.target.closest('[data-sched-add-prop]');
+        if (addBtn) { openTaskModal(addBtn.dataset.schedAddProp); return; }
+        // 再送
+        var resendBtn = e.target.closest('[data-sched-resend-prop]');
+        if (resendBtn) { resendBlock(resendBtn.dataset.schedResendProp); return; }
+      });
+
+      // 今後の清掃予定タブ：担当変更セレクト（change 委譲）
+      document.getElementById('panel-schedule').addEventListener('change', function(e) {
+        var sel = e.target.closest('[data-sched-assign-key]');
+        if (sel) { changeScheduleStaff(sel.dataset.schedAssignKey, sel.value); }
       });
 
       // 画面が隠れているあいだは自動更新を止める
@@ -1923,7 +2229,7 @@
           stopProgressTimer();
         } else {
           if (S.activeTab === 'schedule') {
-            loadBoard();
+            loadScheduleTab();
             startBoardTimer();
           }
           if (S.activeTab === 'progress') {
