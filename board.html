@@ -317,16 +317,21 @@
       font-size: 0.8rem; font-weight: bold; color: var(--muted);
       padding: 0.35rem 0; border-bottom: 1px solid var(--border); margin-bottom: 0.4rem;
     }
+
+    /* 進捗カード */
     .prog-card {
       background: var(--card); border-radius: 8px;
       padding: 0.65rem 0.75rem; margin-bottom: 0.4rem;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.07); transition: background 0.2s;
     }
+    .prog-card.doing { background: #e3f2fd; }
+    .prog-card.done  { background: #f0f0f0; }
     .prog-card-top {
       display: flex; align-items: flex-start;
       justify-content: space-between; gap: 0.5rem; margin-bottom: 0.45rem;
     }
     .prog-card-name { font-weight: bold; font-size: 0.92rem; flex: 1; word-break: break-word; }
+    .prog-card-staff { font-size: 0.72rem; color: var(--muted); }
     .prog-label-samedayin {
       font-size: 0.7rem; font-weight: bold; color: #1565c0;
       background: #e3f2fd; border-radius: 10px;
@@ -339,17 +344,53 @@
     }
     .prog-card-bottom { display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.4rem; }
     .prog-task-count { font-size: 0.75rem; color: #e65100; font-weight: bold; }
+
+    /* ステータスボタン */
     .status-row { display: flex; gap: 0.3rem; }
     .status-btn {
       flex: 1; padding: 0.38rem 0.2rem; border-radius: 5px;
       border: 1.5px solid var(--border); background: var(--bg);
-      font-size: 0.78rem; font-family: inherit; cursor: pointer; text-align: center;
-      color: #555;
+      font-size: 0.78rem; font-family: inherit; cursor: pointer; text-align: center; color: #888;
     }
-    .status-btn.todo { border-color: #aaa; font-weight: bold; }
     .status-btn:active { opacity: 0.7; }
+    .status-btn.active-todo  { border-color: #555; background: #fff; color: #333; font-weight: bold; }
+    .status-btn.active-doing { border-color: #1976d2; background: #e3f2fd; color: #1565c0; font-weight: bold; }
+    .status-btn.active-done  { border-color: #888; background: #e0e0e0; color: #555; font-weight: bold; }
+    .prog-card.done .status-btn { color: #aaa; border-color: #ccc; }
+    .prog-card.done .status-btn.active-done { color: #555; border-color: #888; }
 
-    /* ── 担当割りを開くボタン / 戻るボタン ── */
+    /* リネン・ゴミ・チェック インジケーター */
+    .prog-indicators { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.45rem; }
+    .prog-ind-btn {
+      font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 10px;
+      border: 1px solid var(--border); cursor: pointer;
+      font-family: inherit; white-space: nowrap;
+    }
+    .prog-ind-btn:active { opacity: 0.7; }
+    .linen-todo { background: var(--bg); color: var(--muted); border-color: var(--border); }
+    .linen-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
+    .trash-need { background: #ffebee; color: #c62828; border-color: #ef9a9a; }
+    .trash-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; cursor: default; }
+    .check-need { background: #fffde7; color: #f57f17; border-color: #fff176; }
+    .check-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; cursor: default; }
+    .prog-ind-on {
+      font-size: 0.68rem; padding: 0.15rem 0.4rem; border-radius: 8px;
+      border: 1px dashed var(--muted); background: transparent; cursor: pointer;
+      font-family: inherit; color: var(--muted); white-space: nowrap;
+    }
+    .prog-ind-on:active { background: var(--bg); }
+
+    /* スタッフ別ビュー：並べ替えボタン */
+    .prog-reorder-row { display: flex; justify-content: flex-end; gap: 0.3rem; margin-top: 0.35rem; }
+    .prog-reorder-btn {
+      width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--bg); cursor: pointer; font-size: 0.75rem;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .prog-reorder-btn:active { background: var(--border); }
+    .prog-reorder-btn[disabled] { opacity: 0.3; cursor: default; pointer-events: none; }
+
+    /* 担当割りを開くボタン / 戻るボタン */
     .assign-open-row { margin-bottom: 0.6rem; }
     .btn-assign-open {
       width: 100%; padding: 0.55rem; border-radius: 7px;
@@ -488,8 +529,8 @@
       <div class="form-row">
         <label class="form-label">日付</label>
         <div class="toggle-row" id="date-mode-row">
-          <button class="toggle-btn" data-mode="NEXT"     id="mode-next">次回清掃</button>
-          <button class="toggle-btn" data-mode="DATE"     id="mode-tomorrow">明日</button>
+          <button class="toggle-btn" data-mode="NEXT"      id="mode-next">次回清掃</button>
+          <button class="toggle-btn" data-mode="DATE"      id="mode-tomorrow">明日</button>
           <button class="toggle-btn" data-mode="DATE_PICK" id="mode-pick">日付指定</button>
         </div>
         <input type="date" id="task-date-pick" class="form-date-input" style="margin-top:0.4rem" hidden>
@@ -531,21 +572,24 @@
     // ── 状態 ──────────────────────────────────────────────────────────
     var S = {
       idToken:            null,
-      currentDate:        null,   // 担当割りパネルの日付（明日を初期値）
-      boardDate:          null,   // 今後の清掃予定タブの日付（今日を初期値）
-      progressDate:       null,   // 進捗確認タブの日付（今日を初期値）
-      items:              [],     // 担当割り用 [{propertyName,uid,date,area,staff,order,csStaff,csOrder}]
-      cleaners:           [],     // [{name,canReport}]
+      currentDate:        null,
+      boardDate:          null,
+      progressDate:       null,
+      items:              [],
+      cleaners:           [],
       latestUpdatedAt:    null,
       busy:               false,
       updating:           false,
-      taskCounts:         {},     // { propertyName: openCount }
+      taskCounts:         {},
       activeProps:        [],
       sessionExpired:     false,
       activeTab:          'progress',
       boardTimer:         null,
       progressTimer:      null,
-      activeProgressView: 'staff'
+      activeProgressView: 'staff',
+      progressItems:      [],   // スケジュール行（isSameDayIn / staff / orderなど）
+      progressData:       {},   // { propertyName: { status, linen, trash, check, orderIndex, updatedAt } }
+      progressDefaults:   {}    // { propertyName: { checkDefault, trashDefault } }
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -574,6 +618,9 @@
 
     var AREA_RANK = { '①': 1, '②': 2, '③': 3, '④': 4, '⑤': 5 };
     function areaRank(a) { return AREA_RANK[String(a || '').trim()] || 99; }
+
+    var STATUS_RANK = { 'DONE': 0, 'DOING': 1, 'TODO': 2 };
+    function statusRank(s) { return STATUS_RANK[s] !== undefined ? STATUS_RANK[s] : 2; }
 
     var toastTimer;
     function toast(msg, ms) {
@@ -628,8 +675,8 @@
       document.getElementById('btn-save').disabled   = true;
       document.getElementById('btn-import').disabled = true;
       var msg = '<div class="msg">ログインの有効期限が切れました。画面を開き直してください</div>';
-      document.getElementById('prop-list').innerHTML      = msg;
-      document.getElementById('board-cols').innerHTML     = msg;
+      document.getElementById('prop-list').innerHTML           = msg;
+      document.getElementById('board-cols').innerHTML          = msg;
       document.getElementById('progress-staff-view').innerHTML = msg;
       document.getElementById('progress-board-view').innerHTML = '';
     }
@@ -918,8 +965,7 @@
                 '</span>' +
               '</div>' +
               '<div class="bprop-bottom">' +
-                badge +
-                resendBtn +
+                badge + resendBtn +
                 '<button class="btn-add-task" data-prop="' + esc(p.propertyName) + '">＋対応</button>' +
               '</div>' +
             '</div>';
@@ -952,12 +998,30 @@
 
       Promise.all([
         callApi({ action: 'getSchedule', date: S.progressDate }),
+        callApi({ action: 'getProgress',  date: S.progressDate }),
         cleanerProm
       ]).then(function(res) {
-        var sr = res[0], cr = res[1];
+        var sr = res[0], pr = res[1], cr = res[2];
         if (cr && cr.ok) S.cleaners = cr.cleaners;
         if (!sr.ok) { toast('進捗確認の読み込みに失敗しました'); return; }
         S.taskCounts = sr.taskCounts || {};
+
+        // CleanProgress データをキーマップに
+        S.progressData    = {};
+        S.progressDefaults = {};
+        if (pr && pr.ok) {
+          (pr.progress || []).forEach(function(p) {
+            S.progressData[p.property] = {
+              status:     p.status     || 'TODO',
+              linen:      p.linen      || '',
+              trash:      p.trash      || '',
+              check:      p.check      || '',
+              orderIndex: p.orderIndex || 0,
+              updatedAt:  p.updatedAt  || ''
+            };
+          });
+          S.progressDefaults = pr.defaults || {};
+        }
 
         var hdr = sr.schedule.header;
         var H = {
@@ -982,7 +1046,7 @@
           am['pn\t' + pn]               = a;
         });
 
-        var progressItems = unique.map(function(row) {
+        S.progressItems = unique.map(function(row) {
           var pn  = String(row[H.pn]  || '').trim();
           var uid = String(row[H.uid] || '').trim();
           var a   = am[pn + '\t' + uid] || am['pn\t' + pn];
@@ -995,16 +1059,9 @@
           };
         });
 
-        var totalN   = progressItems.length;
-        var sameDayN = progressItems.filter(function(i) { return i.isSameDayIn; }).length;
-        var notInN   = totalN - sameDayN;
-
-        document.getElementById('ps-done').textContent      = '─/' + totalN;
-        document.getElementById('ps-samedayin').textContent = '─/' + sameDayN;
-        document.getElementById('ps-notin').textContent     = '─/' + notInN;
-
-        renderProgressStaff(progressItems);
-        renderProgressBoard(progressItems);
+        updateProgressStats();
+        renderProgressStaff(S.progressItems);
+        renderProgressBoard(S.progressItems);
 
         var now = new Date();
         document.getElementById('progress-refresh-note').textContent =
@@ -1014,6 +1071,45 @@
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('進捗確認読み込みエラー: ' + e.message);
       });
+    }
+
+    function updateProgressStats() {
+      var items = S.progressItems;
+      var totalN   = items.length;
+      var sameDayN = items.filter(function(i) { return i.isSameDayIn; }).length;
+      var notInN   = totalN - sameDayN;
+
+      function isDone(item) {
+        var pd = S.progressData[item.propertyName];
+        return pd && pd.status === 'DONE';
+      }
+      var doneN        = items.filter(isDone).length;
+      var doneSameDayN = items.filter(function(i) { return i.isSameDayIn && isDone(i); }).length;
+      var doneNotInN   = items.filter(function(i) { return !i.isSameDayIn && isDone(i); }).length;
+
+      document.getElementById('ps-done').textContent      = doneN        + '/' + totalN;
+      document.getElementById('ps-samedayin').textContent = doneSameDayN + '/' + sameDayN;
+      document.getElementById('ps-notin').textContent     = doneNotInN   + '/' + notInN;
+    }
+
+    function rerenderProgress() {
+      updateProgressStats();
+      renderProgressStaff(S.progressItems);
+      renderProgressBoard(S.progressItems);
+    }
+
+    function getEffectiveProgress(propertyName) {
+      if (S.progressData[propertyName]) return S.progressData[propertyName];
+      // 行未作成の場合は defaults から初期値を計算
+      var def = S.progressDefaults[propertyName] || {};
+      return {
+        status:     'TODO',
+        linen:      '',
+        trash:      def.trashDefault === 'NEED' ? 'NEED' : '',
+        check:      def.checkDefault === 'NEED' ? 'NEED' : '',
+        orderIndex: 0,
+        updatedAt:  ''
+      };
     }
 
     function renderProgressStaff(items) {
@@ -1029,7 +1125,6 @@
         if (!groups[s]) { groups[s] = []; staffOrder.push(s); }
         groups[s].push(item);
       });
-
       staffOrder.sort(function(a, b) {
         if (a === '') return -1;
         if (b === '') return 1;
@@ -1039,11 +1134,21 @@
       var html = '';
       staffOrder.forEach(function(staffName) {
         var sItems = groups[staffName].slice().sort(function(a, b) {
-          return (a.order || 999) - (b.order || 999);
+          var pd1 = getEffectiveProgress(a.propertyName);
+          var pd2 = getEffectiveProgress(b.propertyName);
+          var sr1 = statusRank(pd1.status);
+          var sr2 = statusRank(pd2.status);
+          if (sr1 !== sr2) return sr1 - sr2;
+          var oi1 = S.progressData[a.propertyName] ? (S.progressData[a.propertyName].orderIndex || 0) : (a.order || 0);
+          var oi2 = S.progressData[b.propertyName] ? (S.progressData[b.propertyName].orderIndex || 0) : (b.order || 0);
+          return oi1 - oi2;
         });
+
         html += '<div class="prog-section">' +
           '<div class="prog-section-title">' + esc(staffName || '未担当') + '</div>';
-        sItems.forEach(function(item) { html += buildProgCard(item); });
+        sItems.forEach(function(item, posInGroup) {
+          html += buildProgCard(item, 'staff', sItems, posInGroup);
+        });
         html += '</div>';
       });
 
@@ -1057,46 +1162,224 @@
         return;
       }
 
-      var sameDayItems = items.filter(function(i) { return i.isSameDayIn; })
-        .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
-      var notInItems = items.filter(function(i) { return !i.isSameDayIn; })
-        .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
+      function sortByStatusOrder(arr) {
+        return arr.slice().sort(function(a, b) {
+          var pd1 = getEffectiveProgress(a.propertyName);
+          var pd2 = getEffectiveProgress(b.propertyName);
+          var sr1 = statusRank(pd1.status);
+          var sr2 = statusRank(pd2.status);
+          if (sr1 !== sr2) return sr1 - sr2;
+          var oi1 = S.progressData[a.propertyName] ? (S.progressData[a.propertyName].orderIndex || 0) : (a.order || 0);
+          var oi2 = S.progressData[b.propertyName] ? (S.progressData[b.propertyName].orderIndex || 0) : (b.order || 0);
+          return oi1 - oi2;
+        });
+      }
+
+      var sameDayItems = sortByStatusOrder(items.filter(function(i) { return i.isSameDayIn; }));
+      var notInItems   = sortByStatusOrder(items.filter(function(i) { return !i.isSameDayIn; }));
 
       var html = '';
       if (sameDayItems.length) {
         html += '<div class="prog-section"><div class="prog-section-title">同日イン</div>';
-        sameDayItems.forEach(function(item) { html += buildProgCard(item); });
+        sameDayItems.forEach(function(item) { html += buildProgCard(item, 'board', null, 0); });
         html += '</div>';
       }
       if (notInItems.length) {
         html += '<div class="prog-section"><div class="prog-section-title">インなし</div>';
-        notInItems.forEach(function(item) { html += buildProgCard(item); });
+        notInItems.forEach(function(item) { html += buildProgCard(item, 'board', null, 0); });
         html += '</div>';
       }
 
       container.innerHTML = html;
     }
 
-    function buildProgCard(item) {
+    function buildProgCard(item, view, groupItems, posInGroup) {
+      var pd    = getEffectiveProgress(item.propertyName);
+      var status = pd.status || 'TODO';
+      var cardClass = 'prog-card' + (status === 'DOING' ? ' doing' : status === 'DONE' ? ' done' : '');
+      var pn = item.propertyName;
+      var pnEsc = esc(pn);
+
       var label = item.isSameDayIn
         ? '<span class="prog-label-samedayin">同日イン</span>'
         : '<span class="prog-label-notin">インなし</span>';
-      var cnt = S.taskCounts[item.propertyName] || 0;
+
+      // 進捗ボードビューでは担当名も表示
+      var staffLabel = (view === 'board' && item.staff)
+        ? '<span class="prog-card-staff">' + esc(item.staff) + '</span>'
+        : '';
+
+      var cnt = S.taskCounts[pn] || 0;
       var taskRow = cnt > 0
         ? '<div class="prog-card-bottom"><span class="prog-task-count">対応 ' + cnt + ' 件</span></div>'
         : '';
-      return '<div class="prog-card">' +
+
+      // ステータスボタン
+      var statusRow = '<div class="status-row">' +
+        '<button class="status-btn' + (status === 'TODO'  ? ' active-todo'  : '') + '" data-status="TODO"  data-prog-prop="' + pnEsc + '">未開始</button>' +
+        '<button class="status-btn' + (status === 'DOING' ? ' active-doing' : '') + '" data-status="DOING" data-prog-prop="' + pnEsc + '">清掃中</button>' +
+        '<button class="status-btn' + (status === 'DONE'  ? ' active-done'  : '') + '" data-status="DONE"  data-prog-prop="' + pnEsc + '">清掃完了</button>' +
+      '</div>';
+
+      // 進捗ボードビュー：リネン・ゴミ・チェック
+      var indicatorsHtml = '';
+      if (view === 'board') {
+        var indicators = '';
+
+        // リネン（常に表示）
+        if (pd.linen === 'DONE') {
+          indicators += '<span class="prog-ind-btn linen-done">リネン済 ✓</span>';
+        } else {
+          indicators += '<button class="prog-ind-btn linen-todo" data-linen-prop="' + pnEsc + '">リネン未</button>';
+        }
+
+        // ゴミ
+        if (pd.trash === 'DONE') {
+          indicators += '<span class="prog-ind-btn trash-done">ゴミ回収済 ✓</span>';
+        } else if (pd.trash === 'NEED') {
+          indicators += '<button class="prog-ind-btn trash-need" data-trash-prop="' + pnEsc + '">ゴミ要回収</button>';
+        } else {
+          indicators += '<button class="prog-ind-on" data-trash-on-prop="' + pnEsc + '">ゴミ+</button>';
+        }
+
+        // チェック
+        if (pd.check === 'DONE') {
+          indicators += '<span class="prog-ind-btn check-done">チェック済 ✓</span>';
+        } else if (pd.check === 'NEED') {
+          indicators += '<button class="prog-ind-btn check-need" data-check-prop="' + pnEsc + '">チェック要</button>';
+        } else {
+          indicators += '<button class="prog-ind-on" data-check-on-prop="' + pnEsc + '">チェック+</button>';
+        }
+
+        indicatorsHtml = '<div class="prog-indicators">' + indicators + '</div>';
+      }
+
+      // スタッフ別ビュー：並べ替えボタン
+      var reorderHtml = '';
+      if (view === 'staff' && groupItems) {
+        var sameStatusPeers = groupItems.filter(function(it) {
+          return getEffectiveProgress(it.propertyName).status === status;
+        });
+        var posInSameStatus = sameStatusPeers.indexOf(item);
+        var canUp   = posInSameStatus > 0;
+        var canDown = posInSameStatus < sameStatusPeers.length - 1;
+        reorderHtml = '<div class="prog-reorder-row">' +
+          '<button class="prog-reorder-btn" data-reorder-up-prop="' + pnEsc + '"' + (canUp ? '' : ' disabled') + '>↑</button>' +
+          '<button class="prog-reorder-btn" data-reorder-dn-prop="' + pnEsc + '"' + (canDown ? '' : ' disabled') + '>↓</button>' +
+        '</div>';
+      }
+
+      return '<div class="' + cardClass + '">' +
         '<div class="prog-card-top">' +
-          '<span class="prog-card-name">' + esc(item.propertyName) + '</span>' +
-          label +
+          '<span class="prog-card-name">' + pnEsc + '</span>' +
+          staffLabel + label +
         '</div>' +
         taskRow +
-        '<div class="status-row">' +
-          '<button class="status-btn todo">未開始</button>' +
-          '<button class="status-btn">清掃中</button>' +
-          '<button class="status-btn">清掃完了</button>' +
-        '</div>' +
+        statusRow +
+        indicatorsHtml +
+        reorderHtml +
       '</div>';
+    }
+
+    // ── 進捗更新 ─────────────────────────────────────────────────────
+    function updateProgressField(propName, fields) {
+      var pd = S.progressData[propName] || {};
+      callApi({
+        action:        'updateProgress',
+        propertyName:  propName,
+        date:          S.progressDate,
+        fields:        fields,
+        knownUpdatedAt: pd.updatedAt || ''
+      }).then(function(r) {
+        if (r.ok) {
+          var updated = pd.updatedAt ? {
+            status:     pd.status     || 'TODO',
+            linen:      pd.linen      || '',
+            trash:      pd.trash      || '',
+            check:      pd.check      || '',
+            orderIndex: pd.orderIndex || 0,
+            updatedAt:  r.updatedAt
+          } : {
+            status:     'TODO',
+            linen:      '',
+            trash:      '',
+            check:      '',
+            orderIndex: 0,
+            updatedAt:  r.updatedAt
+          };
+          if (fields.status     !== undefined) updated.status     = fields.status;
+          if (fields.linen      !== undefined) updated.linen      = fields.linen;
+          if (fields.trash      !== undefined) updated.trash      = fields.trash;
+          if (fields.check      !== undefined) updated.check      = fields.check;
+          if (fields.orderIndex !== undefined) updated.orderIndex = fields.orderIndex;
+          S.progressData[propName] = updated;
+          rerenderProgress();
+        } else if (r.error === 'conflict') {
+          toast('他の人が更新しました。最新情報を再読込します');
+          loadProgress();
+        } else {
+          toast('更新エラー: ' + (r.error || '不明'));
+        }
+      }).catch(function(e) {
+        if (e.isUnauthorized) { handleUnauthorized(); return; }
+        toast('更新エラー: ' + e.message);
+      });
+    }
+
+    function reorderProgressCard(propName, direction) {
+      // 同一スタッフ・同一ステータス内での並べ替え
+      var pd = getEffectiveProgress(propName);
+      var staffName = '';
+      S.progressItems.forEach(function(i) { if (i.propertyName === propName) staffName = i.staff || ''; });
+
+      var peers = S.progressItems.filter(function(i) {
+        return (i.staff || '') === staffName && getEffectiveProgress(i.propertyName).status === pd.status;
+      }).sort(function(a, b) {
+        var oa = S.progressData[a.propertyName] ? (S.progressData[a.propertyName].orderIndex || 0) : (a.order || 0);
+        var ob = S.progressData[b.propertyName] ? (S.progressData[b.propertyName].orderIndex || 0) : (b.order || 0);
+        return oa - ob;
+      });
+
+      var pos = peers.findIndex(function(i) { return i.propertyName === propName; });
+      var neighborPos = direction === 'up' ? pos - 1 : pos + 1;
+      if (neighborPos < 0 || neighborPos >= peers.length) return;
+
+      var neighbor = peers[neighborPos];
+      var curPd   = S.progressData[propName]            || {};
+      var nbrPd   = S.progressData[neighbor.propertyName] || {};
+      var curOI   = curPd.orderIndex || (pos + 1);
+      var nbrOI   = nbrPd.orderIndex || (neighborPos + 1);
+
+      // 自分を neighbor の位置に、neighbor を自分の位置に入れ替え
+      callApi({
+        action: 'updateProgress', propertyName: propName,
+        date: S.progressDate, fields: { orderIndex: nbrOI }, knownUpdatedAt: curPd.updatedAt || ''
+      }).then(function(r1) {
+        if (!r1.ok) {
+          if (r1.error === 'conflict') { toast('他の人が更新しました。再読込します'); loadProgress(); }
+          else toast('並び替えエラー: ' + (r1.error || '不明'));
+          return;
+        }
+        var updatedCur = { status: curPd.status || 'TODO', linen: curPd.linen || '', trash: curPd.trash || '', check: curPd.check || '', orderIndex: nbrOI, updatedAt: r1.updatedAt };
+        S.progressData[propName] = updatedCur;
+        return callApi({
+          action: 'updateProgress', propertyName: neighbor.propertyName,
+          date: S.progressDate, fields: { orderIndex: curOI }, knownUpdatedAt: nbrPd.updatedAt || ''
+        });
+      }).then(function(r2) {
+        if (!r2) return;
+        if (!r2.ok) {
+          if (r2.error === 'conflict') { toast('他の人が更新しました。再読込します'); loadProgress(); }
+          else toast('並び替えエラー: ' + (r2.error || '不明'));
+          return;
+        }
+        var updatedNbr = { status: nbrPd.status || 'TODO', linen: nbrPd.linen || '', trash: nbrPd.trash || '', check: nbrPd.check || '', orderIndex: curOI, updatedAt: r2.updatedAt };
+        S.progressData[neighbor.propertyName] = updatedNbr;
+        rerenderProgress();
+      }).catch(function(e) {
+        if (e.isUnauthorized) { handleUnauthorized(); return; }
+        toast('並び替えエラー: ' + e.message);
+      });
     }
 
     // ── 対応追加モーダル ──────────────────────────────────────────────
@@ -1413,10 +1696,55 @@
         document.getElementById('progress-staff-view').hidden = true;
       });
 
-      // 進捗確認：ステータスボタン（準備中）
+      // 進捗確認パネルのボタン委譲（status・linen・trash・check・reorder）
       document.getElementById('panel-progress').addEventListener('click', function(e) {
-        if (e.target.closest('.status-btn')) {
-          toast('この機能は準備中です');
+        // ステータスボタン
+        var statusBtn = e.target.closest('[data-status]');
+        if (statusBtn && statusBtn.dataset.progProp) {
+          updateProgressField(statusBtn.dataset.progProp, { status: statusBtn.dataset.status });
+          return;
+        }
+        // リネン（未 → 済）
+        var linenBtn = e.target.closest('[data-linen-prop]');
+        if (linenBtn) {
+          updateProgressField(linenBtn.dataset.linenProp, { linen: 'DONE' });
+          return;
+        }
+        // ゴミ（NEED → DONE）
+        var trashBtn = e.target.closest('[data-trash-prop]');
+        if (trashBtn) {
+          updateProgressField(trashBtn.dataset.trashProp, { trash: 'DONE' });
+          return;
+        }
+        // ゴミを NEED にする
+        var trashOnBtn = e.target.closest('[data-trash-on-prop]');
+        if (trashOnBtn) {
+          updateProgressField(trashOnBtn.dataset.trashOnProp, { trash: 'NEED' });
+          return;
+        }
+        // チェック（NEED → DONE）
+        var checkBtn = e.target.closest('[data-check-prop]');
+        if (checkBtn) {
+          updateProgressField(checkBtn.dataset.checkProp, { check: 'DONE' });
+          return;
+        }
+        // チェックを NEED にする
+        var checkOnBtn = e.target.closest('[data-check-on-prop]');
+        if (checkOnBtn) {
+          updateProgressField(checkOnBtn.dataset.checkOnProp, { check: 'NEED' });
+          return;
+        }
+        // 並べ替え（↑）
+        var upBtn = e.target.closest('[data-reorder-up-prop]');
+        if (upBtn) {
+          reorderProgressCard(upBtn.dataset.reorderUpProp, 'up');
+          return;
+        }
+        // 並べ替え（↓）
+        var dnBtn = e.target.closest('[data-reorder-dn-prop]');
+        if (dnBtn) {
+          reorderProgressCard(dnBtn.dataset.reorderDnProp, 'down');
+          return;
         }
       });
 
