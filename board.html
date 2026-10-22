@@ -655,6 +655,12 @@
 
     var CFG = window.DISPATCH_CONFIG || {};
 
+    // ── 楽観的更新の二重送信防止フラグ ────────────────────────────────
+    var _progressPending      = {};   // { [propName]: true } — updateProgressField 中
+    var _reorderPending       = false;  // reorderProgressCard 中
+    var _staffPendingProgress = false;  // changeProgressStaff 中
+    var _staffPendingSchedule = false;  // changeScheduleStaff 中
+
     // ── 状態 ──────────────────────────────────────────────────────────
     var S = {
       idToken:            null,
@@ -1180,36 +1186,53 @@
     }
 
     function changeScheduleStaff(key, newStaff) {
+      if (_staffPendingSchedule) return;
+      _staffPendingSchedule = true;
+
       var propName = key.split('\t')[0];
-      var rows = S.scheduleItems.map(function(i) {
-        return {
-          propertyName: i.propertyName,
-          uid:          i.uid   || '',
-          staff:        i.propertyName === propName ? newStaff : (i.staff || ''),
-          order:        i.order || 0
-        };
+
+      // 楽観的更新：先に scheduleItems の staff を更新して再描画
+      var oldStaff = '';
+      S.scheduleItems.forEach(function(i) {
+        if (i.propertyName === propName) { oldStaff = i.staff || ''; i.staff = newStaff; }
       });
-      setBusy(true);
+      var oldUpdatedAt = S.scheduleAssignUpdatedAt;
+      renderScheduleList();
+
+      var rows = S.scheduleItems.map(function(i) {
+        return { propertyName: i.propertyName, uid: i.uid || '', staff: i.staff || '', order: i.order || 0 };
+      });
       callApi({
         action:         'saveAssignments',
         date:           S.boardDate,
         rows:           rows,
-        knownUpdatedAt: S.scheduleAssignUpdatedAt || ''
+        knownUpdatedAt: oldUpdatedAt || ''
       }).then(function(r) {
-        setBusy(false);
+        _staffPendingSchedule = false;
         if (r.ok) {
+          if (r.latestUpdatedAt) S.scheduleAssignUpdatedAt = r.latestUpdatedAt;
           toast('担当を変更しました。反映まで最大5分かかります');
-          loadScheduleTab();
           return;
         }
+        // ロールバック
+        S.scheduleItems.forEach(function(i) {
+          if (i.propertyName === propName) i.staff = oldStaff;
+        });
+        S.scheduleAssignUpdatedAt = oldUpdatedAt;
+        renderScheduleList();
         if (r.error === 'conflict') {
           toast('他の人が先に保存しました。再読込します');
           loadScheduleTab();
-          return;
+        } else {
+          toast('担当変更エラー: ' + (r.error || '不明'));
         }
-        toast('担当変更エラー: ' + (r.error || '不明'));
       }).catch(function(e) {
-        setBusy(false);
+        _staffPendingSchedule = false;
+        S.scheduleItems.forEach(function(i) {
+          if (i.propertyName === propName) i.staff = oldStaff;
+        });
+        S.scheduleAssignUpdatedAt = oldUpdatedAt;
+        renderScheduleList();
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('担当変更エラー: ' + e.message);
       });
@@ -1547,7 +1570,22 @@
 
     // ── 進捗更新 ─────────────────────────────────────────────────────
     function updateProgressField(propName, fields) {
-      var pd = S.progressData[propName] || {};
+      if (_progressPending[propName]) return;
+      _progressPending[propName] = true;
+
+      var pd    = S.progressData[propName] || {};
+      var oldPd = Object.assign({}, pd);
+
+      // 楽観的更新：即座に画面を変える
+      var newPd = Object.assign({}, pd);
+      if (fields.status     !== undefined) newPd.status     = fields.status;
+      if (fields.linen      !== undefined) newPd.linen      = fields.linen;
+      if (fields.trash      !== undefined) newPd.trash      = fields.trash;
+      if (fields.check      !== undefined) newPd.check      = fields.check;
+      if (fields.orderIndex !== undefined) newPd.orderIndex = fields.orderIndex;
+      S.progressData[propName] = newPd;
+      rerenderProgress();
+
       callApi({
         action:        'updateProgress',
         propertyName:  propName,
@@ -1555,42 +1593,31 @@
         fields:        fields,
         knownUpdatedAt: pd.updatedAt || ''
       }).then(function(r) {
+        _progressPending[propName] = false;
         if (r.ok) {
-          var updated = pd.updatedAt ? {
-            status:     pd.status     || 'TODO',
-            linen:      pd.linen      || '',
-            trash:      pd.trash      || '',
-            check:      pd.check      || '',
-            orderIndex: pd.orderIndex || 0,
-            updatedAt:  r.updatedAt
-          } : {
-            status:     'TODO',
-            linen:      '',
-            trash:      '',
-            check:      '',
-            orderIndex: 0,
-            updatedAt:  r.updatedAt
-          };
-          if (fields.status     !== undefined) updated.status     = fields.status;
-          if (fields.linen      !== undefined) updated.linen      = fields.linen;
-          if (fields.trash      !== undefined) updated.trash      = fields.trash;
-          if (fields.check      !== undefined) updated.check      = fields.check;
-          if (fields.orderIndex !== undefined) updated.orderIndex = fields.orderIndex;
-          S.progressData[propName] = updated;
-          rerenderProgress();
+          S.progressData[propName].updatedAt = r.updatedAt;
         } else if (r.error === 'conflict') {
+          S.progressData[propName] = oldPd;
+          rerenderProgress();
           toast('他の人が更新しました。最新情報を再読込します');
           loadProgress();
         } else {
+          S.progressData[propName] = oldPd;
+          rerenderProgress();
           toast('更新エラー: ' + (r.error || '不明'));
         }
       }).catch(function(e) {
+        _progressPending[propName] = false;
+        S.progressData[propName] = oldPd;
+        rerenderProgress();
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('更新エラー: ' + e.message);
       });
     }
 
     function reorderProgressCard(propName, direction) {
+      if (_reorderPending) return;
+
       var pd = getEffectiveProgress(propName);
       var staffName = '';
       S.progressItems.forEach(function(i) { if (i.propertyName === propName) staffName = i.staff || ''; });
@@ -1613,60 +1640,89 @@
       var tmp = arr[pos]; arr[pos] = arr[neighborPos]; arr[neighborPos] = tmp;
       var updates = arr.map(function(pn, idx) { return { propertyName: pn, orderIndex: idx + 1 }; });
 
+      // 楽観的更新：旧状態を保存してから即座に画面を変える
+      var oldData = {};
+      updates.forEach(function(u) {
+        oldData[u.propertyName] = Object.assign({}, S.progressData[u.propertyName] || {});
+      });
+      _reorderPending = true;
+      updates.forEach(function(u) {
+        var ex = S.progressData[u.propertyName] || {};
+        S.progressData[u.propertyName] = Object.assign({}, ex, { orderIndex: u.orderIndex });
+      });
+      rerenderProgress();
+
       callApi({
         action:  'updateProgressOrder',
         date:    S.progressDate,
         updates: updates
       }).then(function(r) {
-        if (!r.ok) { toast('並び替えエラー: ' + (r.error || '不明')); return; }
-        updates.forEach(function(u) {
-          var ex = S.progressData[u.propertyName] || {};
-          S.progressData[u.propertyName] = {
-            status:     ex.status     || 'TODO',
-            linen:      ex.linen      || '',
-            trash:      ex.trash      || '',
-            check:      ex.check      || '',
-            orderIndex: u.orderIndex,
-            updatedAt:  r.updatedAt
-          };
-        });
-        rerenderProgress();
+        _reorderPending = false;
+        if (r.ok) {
+          updates.forEach(function(u) {
+            if (S.progressData[u.propertyName]) S.progressData[u.propertyName].updatedAt = r.updatedAt;
+          });
+        } else {
+          updates.forEach(function(u) { S.progressData[u.propertyName] = oldData[u.propertyName]; });
+          rerenderProgress();
+          toast('並び替えエラー: ' + (r.error || '不明'));
+        }
       }).catch(function(e) {
+        _reorderPending = false;
+        updates.forEach(function(u) { S.progressData[u.propertyName] = oldData[u.propertyName]; });
+        rerenderProgress();
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('並び替えエラー: ' + e.message);
       });
     }
 
     function changeProgressStaff(propName, newStaff) {
-      var rows = S.progressItems.map(function(i) {
-        return {
-          propertyName: i.propertyName,
-          uid:          i.uid   || '',
-          staff:        i.propertyName === propName ? newStaff : (i.staff || ''),
-          order:        i.order || 0
-        };
+      if (_staffPendingProgress) return;
+      _staffPendingProgress = true;
+
+      // 楽観的更新：先に progressItems の staff を更新して再描画
+      var oldStaff = '';
+      S.progressItems.forEach(function(i) {
+        if (i.propertyName === propName) { oldStaff = i.staff || ''; i.staff = newStaff; }
       });
-      setBusy(true);
+      var oldUpdatedAt = S.progressAssignUpdatedAt;
+      rerenderProgress();
+
+      // rows は更新済み progressItems から構築
+      var rows = S.progressItems.map(function(i) {
+        return { propertyName: i.propertyName, uid: i.uid || '', staff: i.staff || '', order: i.order || 0 };
+      });
       callApi({
         action:         'saveAssignments',
         date:           S.progressDate,
         rows:           rows,
-        knownUpdatedAt: S.progressAssignUpdatedAt || ''
+        knownUpdatedAt: oldUpdatedAt || ''
       }).then(function(r) {
-        setBusy(false);
+        _staffPendingProgress = false;
         if (r.ok) {
+          if (r.latestUpdatedAt) S.progressAssignUpdatedAt = r.latestUpdatedAt;
           toast('担当を変更しました。反映まで最大5分かかります');
-          loadProgress();
           return;
         }
+        // ロールバック
+        S.progressItems.forEach(function(i) {
+          if (i.propertyName === propName) i.staff = oldStaff;
+        });
+        S.progressAssignUpdatedAt = oldUpdatedAt;
+        rerenderProgress();
         if (r.error === 'conflict') {
           toast('他の人が先に保存しました。再読込します');
           loadProgress();
-          return;
+        } else {
+          toast('担当変更エラー: ' + (r.error || '不明'));
         }
-        toast('担当変更エラー: ' + (r.error || '不明'));
       }).catch(function(e) {
-        setBusy(false);
+        _staffPendingProgress = false;
+        S.progressItems.forEach(function(i) {
+          if (i.propertyName === propName) i.staff = oldStaff;
+        });
+        S.progressAssignUpdatedAt = oldUpdatedAt;
+        rerenderProgress();
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('担当変更エラー: ' + e.message);
       });
