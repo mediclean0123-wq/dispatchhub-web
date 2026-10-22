@@ -390,6 +390,14 @@
     .prog-reorder-btn:active { background: var(--border); }
     .prog-reorder-btn[disabled] { opacity: 0.3; cursor: default; pointer-events: none; }
 
+    /* 進捗カードの担当変更セレクト */
+    .prog-staff-row { display: flex; align-items: center; margin-top: 0.45rem; }
+    .prog-staff-sel {
+      flex: 1; padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 5px;
+      font-size: 0.8rem; font-family: inherit; background: var(--card); color: #333;
+    }
+    .prog-card.done .prog-staff-sel { display: none; }
+
     /* 担当割りを開くボタン / 戻るボタン */
     .assign-open-row { margin-bottom: 0.6rem; }
     .btn-assign-open {
@@ -587,9 +595,10 @@
       boardTimer:         null,
       progressTimer:      null,
       activeProgressView: 'staff',
-      progressItems:      [],   // スケジュール行（isSameDayIn / staff / orderなど）
-      progressData:       {},   // { propertyName: { status, linen, trash, check, orderIndex, updatedAt } }
-      progressDefaults:   {}    // { propertyName: { checkDefault, trashDefault } }
+      progressItems:          [],   // スケジュール行（isSameDayIn / staff / uid / order）
+      progressData:           {},   // { propertyName: { status, linen, trash, check, orderIndex, updatedAt } }
+      progressDefaults:       {},   // { propertyName: { checkDefault, trashDefault } }
+      progressAssignUpdatedAt: null // 進捗確認タブで担当変更するときの衝突検知用
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -1046,6 +1055,8 @@
           am['pn\t' + pn]               = a;
         });
 
+        S.progressAssignUpdatedAt = sr.latestUpdatedAt || null;
+
         S.progressItems = unique.map(function(row) {
           var pn  = String(row[H.pn]  || '').trim();
           var uid = String(row[H.uid] || '').trim();
@@ -1053,6 +1064,7 @@
           var sdc = H.sdc >= 0 ? String(row[H.sdc] || '').trim() : '';
           return {
             propertyName: pn,
+            uid:          uid,
             staff:        a ? String(a.staff || '') : String(row[H.fs] || '').trim(),
             order:        a ? (Number(a.order) || 0) : (Number(row[H.ord]) || 0),
             isSameDayIn:  sdc === 'Yes'
@@ -1204,9 +1216,9 @@
         ? '<span class="prog-label-samedayin">同日イン</span>'
         : '<span class="prog-label-notin">インなし</span>';
 
-      // 進捗ボードビューでは担当名も表示
-      var staffLabel = (view === 'board' && item.staff)
-        ? '<span class="prog-card-staff">' + esc(item.staff) + '</span>'
+      // 進捗ボードビューでは担当名も表示（担当なしは「未設定」）
+      var staffLabel = view === 'board'
+        ? '<span class="prog-card-staff">' + esc(item.staff || '未設定') + '</span>'
         : '';
 
       var cnt = S.taskCounts[pn] || 0;
@@ -1254,6 +1266,22 @@
         indicatorsHtml = '<div class="prog-indicators">' + indicators + '</div>';
       }
 
+      // 担当変更セレクト（DONE カードは表示しない）
+      var staffSelHtml = '';
+      if (status !== 'DONE') {
+        var selOpts = '<option value=""' + (!item.staff ? ' selected' : '') + '>未設定</option>';
+        if (item.staff && !S.cleaners.some(function(c) { return c.name === item.staff; })) {
+          selOpts += '<option value="' + esc(item.staff) + '" selected>' + esc(item.staff) + '</option>';
+        }
+        S.cleaners.forEach(function(c) {
+          selOpts += '<option value="' + esc(c.name) + '"' +
+            (c.name === item.staff ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+        });
+        staffSelHtml = '<div class="prog-staff-row">' +
+          '<select class="prog-staff-sel" data-staff-chg-prop="' + pnEsc + '">' + selOpts + '</select>' +
+        '</div>';
+      }
+
       // スタッフ別ビュー：並べ替えボタン
       var reorderHtml = '';
       if (view === 'staff' && groupItems) {
@@ -1277,6 +1305,7 @@
         taskRow +
         statusRow +
         indicatorsHtml +
+        staffSelHtml +
         reorderHtml +
       '</div>';
     }
@@ -1327,11 +1356,11 @@
     }
 
     function reorderProgressCard(propName, direction) {
-      // 同一スタッフ・同一ステータス内での並べ替え
       var pd = getEffectiveProgress(propName);
       var staffName = '';
       S.progressItems.forEach(function(i) { if (i.propertyName === propName) staffName = i.staff || ''; });
 
+      // 同スタッフ・同ステータスのカードを現在の視覚順で取得
       var peers = S.progressItems.filter(function(i) {
         return (i.staff || '') === staffName && getEffectiveProgress(i.propertyName).status === pd.status;
       }).sort(function(a, b) {
@@ -1344,41 +1373,67 @@
       var neighborPos = direction === 'up' ? pos - 1 : pos + 1;
       if (neighborPos < 0 || neighborPos >= peers.length) return;
 
-      var neighbor = peers[neighborPos];
-      var curPd   = S.progressData[propName]            || {};
-      var nbrPd   = S.progressData[neighbor.propertyName] || {};
-      var curOI   = curPd.orderIndex || (pos + 1);
-      var nbrOI   = nbrPd.orderIndex || (neighborPos + 1);
+      // スワップ後の配列を作り、全カードに 1..n を振り直す
+      var arr = peers.map(function(i) { return i.propertyName; });
+      var tmp = arr[pos]; arr[pos] = arr[neighborPos]; arr[neighborPos] = tmp;
+      var updates = arr.map(function(pn, idx) { return { propertyName: pn, orderIndex: idx + 1 }; });
 
-      // 自分を neighbor の位置に、neighbor を自分の位置に入れ替え
       callApi({
-        action: 'updateProgress', propertyName: propName,
-        date: S.progressDate, fields: { orderIndex: nbrOI }, knownUpdatedAt: curPd.updatedAt || ''
-      }).then(function(r1) {
-        if (!r1.ok) {
-          if (r1.error === 'conflict') { toast('他の人が更新しました。再読込します'); loadProgress(); }
-          else toast('並び替えエラー: ' + (r1.error || '不明'));
-          return;
-        }
-        var updatedCur = { status: curPd.status || 'TODO', linen: curPd.linen || '', trash: curPd.trash || '', check: curPd.check || '', orderIndex: nbrOI, updatedAt: r1.updatedAt };
-        S.progressData[propName] = updatedCur;
-        return callApi({
-          action: 'updateProgress', propertyName: neighbor.propertyName,
-          date: S.progressDate, fields: { orderIndex: curOI }, knownUpdatedAt: nbrPd.updatedAt || ''
+        action:  'updateProgressOrder',
+        date:    S.progressDate,
+        updates: updates
+      }).then(function(r) {
+        if (!r.ok) { toast('並び替えエラー: ' + (r.error || '不明')); return; }
+        updates.forEach(function(u) {
+          var ex = S.progressData[u.propertyName] || {};
+          S.progressData[u.propertyName] = {
+            status:     ex.status     || 'TODO',
+            linen:      ex.linen      || '',
+            trash:      ex.trash      || '',
+            check:      ex.check      || '',
+            orderIndex: u.orderIndex,
+            updatedAt:  r.updatedAt
+          };
         });
-      }).then(function(r2) {
-        if (!r2) return;
-        if (!r2.ok) {
-          if (r2.error === 'conflict') { toast('他の人が更新しました。再読込します'); loadProgress(); }
-          else toast('並び替えエラー: ' + (r2.error || '不明'));
-          return;
-        }
-        var updatedNbr = { status: nbrPd.status || 'TODO', linen: nbrPd.linen || '', trash: nbrPd.trash || '', check: nbrPd.check || '', orderIndex: curOI, updatedAt: r2.updatedAt };
-        S.progressData[neighbor.propertyName] = updatedNbr;
         rerenderProgress();
       }).catch(function(e) {
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('並び替えエラー: ' + e.message);
+      });
+    }
+
+    function changeProgressStaff(propName, newStaff) {
+      var rows = S.progressItems.map(function(i) {
+        return {
+          propertyName: i.propertyName,
+          uid:          i.uid   || '',
+          staff:        i.propertyName === propName ? newStaff : (i.staff || ''),
+          order:        i.order || 0
+        };
+      });
+      setBusy(true);
+      callApi({
+        action:         'saveAssignments',
+        date:           S.progressDate,
+        rows:           rows,
+        knownUpdatedAt: S.progressAssignUpdatedAt || ''
+      }).then(function(r) {
+        setBusy(false);
+        if (r.ok) {
+          toast('担当を変更しました。反映まで最大5分かかります');
+          loadProgress();
+          return;
+        }
+        if (r.error === 'conflict') {
+          toast('他の人が先に保存しました。再読込します');
+          loadProgress();
+          return;
+        }
+        toast('担当変更エラー: ' + (r.error || '不明'));
+      }).catch(function(e) {
+        setBusy(false);
+        if (e.isUnauthorized) { handleUnauthorized(); return; }
+        toast('担当変更エラー: ' + e.message);
       });
     }
 
@@ -1745,6 +1800,14 @@
         if (dnBtn) {
           reorderProgressCard(dnBtn.dataset.reorderDnProp, 'down');
           return;
+        }
+      });
+
+      // 進捗確認パネル：担当変更セレクト
+      document.getElementById('panel-progress').addEventListener('change', function(e) {
+        var sel = e.target.closest('[data-staff-chg-prop]');
+        if (sel) {
+          changeProgressStaff(sel.dataset.staffChgProp, sel.value);
         }
       });
 
