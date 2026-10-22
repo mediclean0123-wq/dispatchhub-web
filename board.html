@@ -984,48 +984,52 @@
     // ── 「物件を選んで追加」プロパティ選択 ──────────────────────────
 
     function openBoardAddTask() {
-      // 有効物件リストは getSchedule の taskCounts キー＋ボード表示物件から作る
-      // （全物件リストは readActivePropertyNames API がないため board の items から取る）
-      var props = [];
-      var seen = {};
-      document.querySelectorAll('[data-prop]').forEach(function(el) {
-        var p = el.dataset.prop;
-        if (p && !seen[p]) { seen[p] = true; props.push(p); }
-      });
-      if (!props.length) { toast('ボードに物件が表示されていません'); return; }
-
-      var sel = document.getElementById('board-prop-sel');
-      if (!sel) {
-        sel = document.createElement('select');
-        sel.id = 'board-prop-sel';
-        sel.className = 'drawer-prop-sel';
-        var placeholder = document.createElement('option');
-        placeholder.value = ''; placeholder.textContent = '物件を選んでください';
-        sel.appendChild(placeholder);
-      }
-      // オプションを更新
-      while (sel.options.length > 1) sel.remove(1);
-      props.sort().forEach(function(p) {
-        var opt = document.createElement('option');
-        opt.value = p; opt.textContent = p;
-        sel.appendChild(opt);
-      });
-
-      // ドロワーを物件選択モードで開く
+      // ドロワーを開いて「読み込み中」を表示
       var drawer = document.getElementById('task-drawer');
       document.getElementById('drawer-title').textContent = '物件を選んで対応追加';
-      var body = document.getElementById('drawer-body');
-      body.innerHTML = '';
-      body.appendChild(sel);
-      sel.value = '';
+      document.getElementById('drawer-body').innerHTML = '<div class="drawer-empty">読み込み中…</div>';
       drawer.hidden = false;
 
-      sel.onchange = function() {
-        var p = sel.value;
-        if (!p) return;
-        closeTaskDrawer();
-        openTaskModal(p);
-      };
+      callApi({ action: 'getActiveProperties' })
+        .then(function(r) {
+          if (!r.ok) {
+            closeTaskDrawer();
+            toast('物件一覧の取得に失敗しました: ' + (r.error || '不明'));
+            return;
+          }
+          var props = r.properties || [];
+          if (!props.length) {
+            document.getElementById('drawer-body').innerHTML = '<div class="drawer-empty">有効な物件がありません</div>';
+            return;
+          }
+
+          var sel = document.createElement('select');
+          sel.className = 'drawer-prop-sel';
+          var placeholder = document.createElement('option');
+          placeholder.value = ''; placeholder.textContent = '物件を選んでください';
+          sel.appendChild(placeholder);
+          props.forEach(function(p) {
+            var opt = document.createElement('option');
+            opt.value = p; opt.textContent = p;
+            sel.appendChild(opt);
+          });
+
+          var body = document.getElementById('drawer-body');
+          body.innerHTML = '';
+          body.appendChild(sel);
+
+          sel.onchange = function() {
+            var p = sel.value;
+            if (!p) return;
+            closeTaskDrawer();
+            openTaskModal(p);
+          };
+        })
+        .catch(function(e) {
+          closeTaskDrawer();
+          if (e.isUnauthorized) { handleUnauthorized(); return; }
+          toast('物件一覧の取得エラー: ' + e.message);
+        });
     }
 
     // ── イベント ──────────────────────────────────────────────────────
