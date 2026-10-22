@@ -495,6 +495,14 @@
       font-family: inherit; cursor: pointer; margin-top: 0.4rem; margin-left: 0.4rem;
     }
     .btn-sched-resend:active { opacity: 0.75; }
+
+    /* ── 検索モード：日付ラベル・件数超過 ── */
+    .sched-date-label {
+      font-size: 0.72rem; color: var(--muted); white-space: nowrap; flex-shrink: 0;
+    }
+    .sched-search-more {
+      text-align: center; padding: 0.55rem; font-size: 0.82rem; color: var(--muted);
+    }
   </style>
 </head>
 
@@ -690,7 +698,12 @@
       scheduleExpandedKey:     null, // 展開中の行キー（"propName\tdate"）
       scheduleDetailKey:       null, // 詳細設定が開いている行キー
       scheduleTasks:           {},   // {[propName]: tasks[]} lazy キャッシュ
-      scheduleSearchText:      ''    // 検索テキスト
+      scheduleSearchText:      '',   // 検索テキスト
+      // 複数日検索
+      scheduleSearchFetched:   false, // getScheduleRange フェッチ済みか
+      scheduleSearchItems:     [],    // [{date, propertyName, uid, staff, isSameDayIn, order, taskCount}]
+      scheduleSearchByDate:    {},    // { [date]: { items: [...], latestUpdatedAt } }
+      scheduleSearchLoading:   false  // フェッチ中
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -715,6 +728,12 @@
         var d = new Date(iso);
         return d.getHours() + '時' + String(d.getMinutes()).padStart(2, '0') + '分';
       } catch (e) { return ''; }
+    }
+
+    function fmtDate(ymd) {
+      if (!ymd) return '';
+      var parts = ymd.split('-');
+      return (parts[1] | 0) + '/' + (parts[2] | 0);
     }
 
     var AREA_RANK = { '①': 1, '②': 2, '③': 3, '④': 4, '⑤': 5 };
@@ -970,6 +989,35 @@
       renderAssign();
     }
 
+    // ── 物件名検索：複数日データ取得 ─────────────────────────────────
+    function loadScheduleSearchData() {
+      S.scheduleSearchLoading = true;
+      renderScheduleList();
+
+      var fromDate = today();
+      var d90 = new Date();
+      d90.setDate(d90.getDate() + 90);
+      var toDate = d90.getFullYear() + '-' +
+        String(d90.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d90.getDate()).padStart(2, '0');
+
+      callApi({ action: 'getScheduleRange', fromDate: fromDate, toDate: toDate })
+        .then(function(r) {
+          S.scheduleSearchLoading = false;
+          if (!r.ok) { toast('検索データの取得に失敗しました'); renderScheduleList(); return; }
+          S.scheduleSearchItems   = r.items   || [];
+          S.scheduleSearchByDate  = r.byDate  || {};
+          S.scheduleSearchFetched = true;
+          renderScheduleList();
+        })
+        .catch(function(e) {
+          S.scheduleSearchLoading = false;
+          if (e.isUnauthorized) { handleUnauthorized(); return; }
+          toast('検索データの取得エラー: ' + e.message);
+          renderScheduleList();
+        });
+    }
+
     // ── 今後の清掃予定タブ ────────────────────────────────────────────
     function loadScheduleTab() {
       if (S.sessionExpired) return;
@@ -1077,24 +1125,44 @@
       });
     }
 
+    var SEARCH_MAX = 30;
+
     function renderScheduleList() {
-      var search = S.scheduleSearchText.trim().toLowerCase();
-      var items  = search
-        ? S.scheduleItems.filter(function(i) {
-            return i.propertyName.toLowerCase().indexOf(search) >= 0;
-          })
-        : S.scheduleItems;
+      var search       = S.scheduleSearchText.trim().toLowerCase();
+      var isSearchMode = search.length > 0;
+      var items;
+
+      if (isSearchMode) {
+        if (S.scheduleSearchLoading) {
+          document.getElementById('sched-list').innerHTML =
+            '<div class="msg"><span class="spin">↻</span> 検索中…</div>';
+          return;
+        }
+        if (!S.scheduleSearchFetched) {
+          document.getElementById('sched-list').innerHTML =
+            '<div class="msg"><span class="spin">↻</span> 検索データを読み込み中…</div>';
+          return;
+        }
+        items = S.scheduleSearchItems.filter(function(i) {
+          return i.propertyName.toLowerCase().indexOf(search) >= 0;
+        });
+      } else {
+        items = S.scheduleItems;
+      }
 
       if (!items.length) {
-        document.getElementById('sched-list').innerHTML =
-          '<div class="msg">この日の清掃はありません</div>';
+        document.getElementById('sched-list').innerHTML = isSearchMode
+          ? '<div class="msg">「' + esc(S.scheduleSearchText) + '」に一致する物件はありません</div>'
+          : '<div class="msg">この日の清掃はありません</div>';
         return;
       }
 
-      var showResend = (S.boardDate === today() || S.boardDate === tomorrow());
+      var moreCount   = isSearchMode ? Math.max(0, items.length - SEARCH_MAX) : 0;
+      var displayItems = isSearchMode ? items.slice(0, SEARCH_MAX) : items;
+      var showResend  = isSearchMode ? false : (S.boardDate === today() || S.boardDate === tomorrow());
 
       var html = '';
-      items.forEach(function(item) {
+      displayItems.forEach(function(item) {
         var pn     = item.propertyName;
         var key    = pn + '\t' + item.date;
         var keyEsc = esc(key);
@@ -1114,8 +1182,13 @@
           ? '<span class="sched-task-cnt">対応' + item.taskCount + '件</span>'
           : '';
 
+        var dateLabel = isSearchMode
+          ? '<span class="sched-date-label">' + esc(fmtDate(item.date)) + '</span>'
+          : '';
+
         html += '<div class="sched-row' + (isExpanded ? ' expanded' : '') + '" data-sched-key="' + keyEsc + '">';
         html += '<div class="sched-row-main" data-sched-toggle="' + keyEsc + '">' +
+          dateLabel +
           '<span class="sched-prop-name">' + pnEsc + '</span>' +
           typeBadge +
           '<span class="' + staffCls + '">' + esc(staffText) + '</span>' +
@@ -1182,6 +1255,10 @@
         html += '</div>';
       });
 
+      if (moreCount > 0) {
+        html += '<div class="sched-search-more">他にも ' + moreCount + ' 件あります</div>';
+      }
+
       document.getElementById('sched-list').innerHTML = html;
     }
 
@@ -1189,24 +1266,83 @@
       if (_staffPendingSchedule) return;
       _staffPendingSchedule = true;
 
-      var propName = key.split('\t')[0];
+      var parts    = key.split('\t');
+      var propName = parts[0];
+      var date     = parts[1];
+      var isSearchMode = S.scheduleSearchText.trim().length > 0;
 
-      // 楽観的更新：先に scheduleItems の staff を更新して再描画
-      var oldStaff = '';
+      if (isSearchMode) {
+        // 検索モード：scheduleSearchByDate[date] を使う
+        var dateData = S.scheduleSearchByDate[date];
+        if (!dateData) { _staffPendingSchedule = false; return; }
+
+        var oldStaff = '';
+        S.scheduleSearchItems.forEach(function(i) {
+          if (i.propertyName === propName && i.date === date) { oldStaff = i.staff || ''; i.staff = newStaff; }
+        });
+        dateData.items.forEach(function(i) {
+          if (i.propertyName === propName) i.staff = newStaff;
+        });
+        var oldUpdatedAt = dateData.latestUpdatedAt;
+        renderScheduleList();
+
+        var rows = dateData.items.map(function(i) {
+          return { propertyName: i.propertyName, uid: i.uid || '', staff: i.staff || '', order: i.order || 0 };
+        });
+        callApi({
+          action: 'saveAssignments', date: date, rows: rows, knownUpdatedAt: oldUpdatedAt || ''
+        }).then(function(r) {
+          _staffPendingSchedule = false;
+          if (r.ok) {
+            if (r.latestUpdatedAt) dateData.latestUpdatedAt = r.latestUpdatedAt;
+            toast('担当を変更しました。反映まで最大5分かかります');
+            return;
+          }
+          // ロールバック
+          S.scheduleSearchItems.forEach(function(i) {
+            if (i.propertyName === propName && i.date === date) i.staff = oldStaff;
+          });
+          dateData.items.forEach(function(i) {
+            if (i.propertyName === propName) i.staff = oldStaff;
+          });
+          dateData.latestUpdatedAt = oldUpdatedAt;
+          renderScheduleList();
+          if (r.error === 'conflict') {
+            toast('他の人が先に保存しました。再読込します');
+            S.scheduleSearchFetched = false;
+            loadScheduleSearchData();
+          } else {
+            toast('担当変更エラー: ' + (r.error || '不明'));
+          }
+        }).catch(function(e) {
+          _staffPendingSchedule = false;
+          S.scheduleSearchItems.forEach(function(i) {
+            if (i.propertyName === propName && i.date === date) i.staff = oldStaff;
+          });
+          dateData.items.forEach(function(i) {
+            if (i.propertyName === propName) i.staff = oldStaff;
+          });
+          dateData.latestUpdatedAt = oldUpdatedAt;
+          renderScheduleList();
+          if (e.isUnauthorized) { handleUnauthorized(); return; }
+          toast('担当変更エラー: ' + e.message);
+        });
+        return;
+      }
+
+      // 通常モード：scheduleItems を使う
+      var oldStaff2 = '';
       S.scheduleItems.forEach(function(i) {
-        if (i.propertyName === propName) { oldStaff = i.staff || ''; i.staff = newStaff; }
+        if (i.propertyName === propName) { oldStaff2 = i.staff || ''; i.staff = newStaff; }
       });
-      var oldUpdatedAt = S.scheduleAssignUpdatedAt;
+      var oldUpdatedAt2 = S.scheduleAssignUpdatedAt;
       renderScheduleList();
 
-      var rows = S.scheduleItems.map(function(i) {
+      var rows2 = S.scheduleItems.map(function(i) {
         return { propertyName: i.propertyName, uid: i.uid || '', staff: i.staff || '', order: i.order || 0 };
       });
       callApi({
-        action:         'saveAssignments',
-        date:           S.boardDate,
-        rows:           rows,
-        knownUpdatedAt: oldUpdatedAt || ''
+        action: 'saveAssignments', date: S.boardDate, rows: rows2, knownUpdatedAt: oldUpdatedAt2 || ''
       }).then(function(r) {
         _staffPendingSchedule = false;
         if (r.ok) {
@@ -1216,9 +1352,9 @@
         }
         // ロールバック
         S.scheduleItems.forEach(function(i) {
-          if (i.propertyName === propName) i.staff = oldStaff;
+          if (i.propertyName === propName) i.staff = oldStaff2;
         });
-        S.scheduleAssignUpdatedAt = oldUpdatedAt;
+        S.scheduleAssignUpdatedAt = oldUpdatedAt2;
         renderScheduleList();
         if (r.error === 'conflict') {
           toast('他の人が先に保存しました。再読込します');
@@ -1229,9 +1365,9 @@
       }).catch(function(e) {
         _staffPendingSchedule = false;
         S.scheduleItems.forEach(function(i) {
-          if (i.propertyName === propName) i.staff = oldStaff;
+          if (i.propertyName === propName) i.staff = oldStaff2;
         });
-        S.scheduleAssignUpdatedAt = oldUpdatedAt;
+        S.scheduleAssignUpdatedAt = oldUpdatedAt2;
         renderScheduleList();
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('担当変更エラー: ' + e.message);
@@ -2203,7 +2339,11 @@
       // 今後の清掃予定タブ：検索
       document.getElementById('sched-search').addEventListener('input', function() {
         S.scheduleSearchText = this.value;
-        renderScheduleList();
+        if (S.scheduleSearchText.trim().length > 0 && !S.scheduleSearchFetched && !S.scheduleSearchLoading) {
+          loadScheduleSearchData();
+        } else {
+          renderScheduleList();
+        }
       });
 
       // 今後の清掃予定タブ：行の展開・タスク操作（click 委譲）
