@@ -314,90 +314,102 @@
       background: #e8f5e9; font-weight: bold;
     }
     .prog-section { margin-bottom: 0.75rem; }
-    .prog-section-title {
-      font-size: 0.8rem; font-weight: bold; color: var(--muted);
-      padding: 0.35rem 0; border-bottom: 1px solid var(--border); margin-bottom: 0.4rem;
+    .prog-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.35rem 0; margin-bottom: 0.4rem; border-bottom: 1px solid var(--border);
     }
+    .prog-section-title { font-size: 0.8rem; font-weight: bold; color: var(--muted); }
+    .prog-section-remain { font-size: 0.72rem; color: var(--muted); }
 
-    /* 進捗カード */
-    .prog-card {
-      background: var(--card); border-radius: 8px;
-      padding: 0.65rem 0.75rem; margin-bottom: 0.4rem;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.07); transition: background 0.2s;
+    /* ── タイルグリッド ── */
+    .prog-tiles-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.3rem; }
+    .prog-tiles-staff { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.3rem; }
+    .prog-tile {
+      background: var(--card); border-radius: 6px; padding: 0.4rem 0.45rem;
+      min-height: 56px; cursor: pointer; border: 1px solid var(--border);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+      display: flex; flex-direction: column; gap: 0.1rem;
+      text-align: left; font-family: inherit; width: 100%;
     }
-    .prog-card.doing { background: #e3f2fd; }
-    .prog-card.done  { background: #f0f0f0; }
-    .prog-card-top {
-      display: flex; align-items: flex-start;
-      justify-content: space-between; gap: 0.5rem; margin-bottom: 0.45rem;
+    .prog-tile.doing { background: #e3f2fd; border-color: #90caf9; }
+    .prog-tile.done  { background: #f0f0f0; border-color: #ccc; }
+    .prog-tile:active { opacity: 0.75; }
+    .prog-tile-name {
+      font-size: 0.78rem; font-weight: bold; word-break: break-word;
+      overflow: hidden; display: -webkit-box;
+      -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      flex: 1; line-height: 1.25;
     }
-    .prog-card-name { font-weight: bold; font-size: 0.92rem; flex: 1; word-break: break-word; }
-    .prog-card-staff { font-size: 0.72rem; color: var(--muted); }
-    .prog-label-samedayin {
-      font-size: 0.7rem; font-weight: bold; color: #1565c0;
-      background: #e3f2fd; border-radius: 10px;
-      padding: 0.15rem 0.5rem; white-space: nowrap; flex-shrink: 0;
+    .prog-tile.done .prog-tile-name { color: #777; }
+    .prog-tile-staff {
+      font-size: 0.65rem; color: var(--muted);
+      overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
     }
-    .prog-label-notin {
-      font-size: 0.7rem; font-weight: bold; color: var(--muted);
-      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
-      padding: 0.15rem 0.5rem; white-space: nowrap; flex-shrink: 0;
+    .prog-tile-staff.unset { color: #c62828; font-weight: bold; }
+    .prog-tile-marks { display: flex; gap: 0.2rem; flex-wrap: wrap; margin-top: 0.05rem; }
+    .prog-mark {
+      font-size: 0.6rem; padding: 0.05rem 0.22rem; border-radius: 3px;
+      font-weight: bold; line-height: 1.4; white-space: nowrap;
     }
-    .prog-card-bottom { display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.4rem; }
-    .prog-task-count { font-size: 0.75rem; color: #e65100; font-weight: bold; }
+    .prog-mark-linen      { background: #e0e0e0; color: #666; }
+    .prog-mark-linen-done { background: #c8e6c9; color: #2e7d32; }
+    .prog-mark-trash      { background: #ffcdd2; color: #b71c1c; }
+    .prog-mark-trash-done { background: #c8e6c9; color: #2e7d32; }
+    .prog-mark-check      { background: #fff9c4; color: #f57f17; }
+    .prog-mark-check-done { background: #c8e6c9; color: #2e7d32; }
 
-    /* ステータスボタン */
-    .status-row { display: flex; gap: 0.3rem; }
-    .status-btn {
-      flex: 1; padding: 0.38rem 0.2rem; border-radius: 5px;
+    /* ── 進捗編集ドロワー ── */
+    .ped-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 0.9rem; gap: 0.5rem;
+    }
+    .ped-prop-name { font-size: 0.95rem; font-weight: bold; flex: 1; word-break: break-word; }
+    .ped-close-btn {
+      width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 50%;
+      background: var(--bg); cursor: pointer; font-size: 0.82rem;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .ped-close-btn:active { background: var(--border); }
+    .ped-section { margin-bottom: 0.75rem; }
+    .ped-label { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.35rem; }
+    .ped-status-row { display: flex; gap: 0.4rem; }
+    .ped-status-btn {
+      flex: 1; padding: 0.45rem 0.2rem; border-radius: 6px;
       border: 1.5px solid var(--border); background: var(--bg);
-      font-size: 0.78rem; font-family: inherit; cursor: pointer; text-align: center; color: #888;
+      font-size: 0.82rem; font-family: inherit; cursor: pointer; text-align: center; color: #888;
     }
-    .status-btn:active { opacity: 0.7; }
-    .status-btn.active-todo  { border-color: #555; background: #fff; color: #333; font-weight: bold; }
-    .status-btn.active-doing { border-color: #1976d2; background: #e3f2fd; color: #1565c0; font-weight: bold; }
-    .status-btn.active-done  { border-color: #888; background: #e0e0e0; color: #555; font-weight: bold; }
-    .prog-card.done .status-btn { color: #aaa; border-color: #ccc; }
-    .prog-card.done .status-btn.active-done { color: #555; border-color: #888; }
-
-    /* リネン・ゴミ・チェック インジケーター */
-    .prog-indicators { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.45rem; }
-    .prog-ind-btn {
-      font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 10px;
-      border: 1px solid var(--border); cursor: pointer;
-      font-family: inherit; white-space: nowrap;
+    .ped-status-btn.active-todo  { border-color: #555; background: #fff; color: #333; font-weight: bold; }
+    .ped-status-btn.active-doing { border-color: #1976d2; background: #e3f2fd; color: #1565c0; font-weight: bold; }
+    .ped-status-btn.active-done  { border-color: #888; background: #e0e0e0; color: #555; font-weight: bold; }
+    .ped-ind-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.35rem; }
+    .ped-ind-label { font-size: 0.8rem; width: 3.5em; flex-shrink: 0; color: #555; }
+    .ped-ind-btn {
+      flex: 1; padding: 0.38rem 0.4rem; border-radius: 6px; font-size: 0.8rem;
+      border: 1.5px solid var(--border); background: var(--bg);
+      font-family: inherit; cursor: pointer; text-align: center;
     }
-    .prog-ind-btn:active { opacity: 0.7; }
-    .linen-todo { background: var(--bg); color: var(--muted); border-color: var(--border); }
-    .linen-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
-    .trash-need { background: #ffebee; color: #c62828; border-color: #ef9a9a; }
-    .trash-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; cursor: default; }
-    .check-need { background: #fffde7; color: #f57f17; border-color: #fff176; }
-    .check-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; cursor: default; }
-    .prog-ind-on {
-      font-size: 0.68rem; padding: 0.15rem 0.4rem; border-radius: 8px;
-      border: 1px dashed var(--muted); background: transparent; cursor: pointer;
-      font-family: inherit; color: var(--muted); white-space: nowrap;
+    .ped-ind-btn.linen-todo { background: var(--bg); color: var(--muted); }
+    .ped-ind-btn.linen-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
+    .ped-ind-btn.trash-none { background: var(--bg); color: var(--muted); }
+    .ped-ind-btn.trash-need { background: #ffebee; color: #c62828; border-color: #ef9a9a; }
+    .ped-ind-btn.trash-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; cursor: default; }
+    .ped-ind-btn.check-none { background: var(--bg); color: var(--muted); }
+    .ped-ind-btn.check-need { background: #fffde7; color: #f57f17; border-color: #fff176; }
+    .ped-ind-btn.check-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; cursor: default; }
+    .ped-reorder-row { display: flex; gap: 0.4rem; }
+    .ped-reorder-btn {
+      flex: 1; padding: 0.45rem; border-radius: 6px;
+      border: 1.5px solid var(--border); background: var(--bg);
+      font-size: 0.82rem; font-family: inherit; cursor: pointer; text-align: center;
     }
-    .prog-ind-on:active { background: var(--bg); }
-
-    /* スタッフ別ビュー：並べ替えボタン */
-    .prog-reorder-row { display: flex; justify-content: flex-end; gap: 0.3rem; margin-top: 0.35rem; }
-    .prog-reorder-btn {
-      width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 4px;
-      background: var(--bg); cursor: pointer; font-size: 0.75rem;
-      display: inline-flex; align-items: center; justify-content: center;
+    .ped-reorder-btn:disabled { opacity: 0.35; cursor: default; }
+    .ped-reorder-btn:active:not(:disabled) { background: var(--border); }
+    .btn-ped-tasks {
+      width: 100%; padding: 0.5rem; border-radius: 6px;
+      border: 1.5px solid var(--border); background: var(--bg);
+      font-size: 0.85rem; font-family: inherit; cursor: pointer; text-align: center; color: #555;
     }
-    .prog-reorder-btn:active { background: var(--border); }
-    .prog-reorder-btn[disabled] { opacity: 0.3; cursor: default; pointer-events: none; }
-
-    /* 進捗カードの担当変更セレクト */
-    .prog-staff-row { display: flex; align-items: center; margin-top: 0.45rem; }
-    .prog-staff-sel {
-      flex: 1; padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 5px;
-      font-size: 0.8rem; font-family: inherit; background: var(--card); color: #333;
-    }
-    .prog-card.done .prog-staff-sel { display: none; }
+    .btn-ped-tasks:active { background: var(--border); }
 
     /* 担当割りを開くボタン / 戻るボタン */
     .assign-open-row { margin-bottom: 0.6rem; }
@@ -654,6 +666,53 @@
 
   <div id="toast" hidden></div>
 
+  <!-- 進捗編集ドロワー -->
+  <div id="prog-edit-drawer" class="drawer-overlay" hidden>
+    <div class="drawer-box">
+      <div class="ped-header">
+        <div class="ped-prop-name" id="ped-prop-name">─</div>
+        <button id="ped-close" class="ped-close-btn">✕</button>
+      </div>
+      <div class="ped-section">
+        <div class="ped-label">清掃の状況</div>
+        <div class="ped-status-row">
+          <button class="ped-status-btn" data-ped-status="TODO">未開始</button>
+          <button class="ped-status-btn" data-ped-status="DOING">清掃中</button>
+          <button class="ped-status-btn" data-ped-status="DONE">清掃完了</button>
+        </div>
+      </div>
+      <div id="ped-staff-section" class="ped-section">
+        <div class="ped-label">担当</div>
+        <select id="ped-staff-sel" class="form-sel"></select>
+      </div>
+      <div id="ped-indicators-section" class="ped-section" hidden>
+        <div class="ped-label">リネン・ゴミ・チェック</div>
+        <div class="ped-ind-row">
+          <span class="ped-ind-label">リネン</span>
+          <button id="ped-linen-btn" class="ped-ind-btn linen-todo">リネン未</button>
+        </div>
+        <div class="ped-ind-row">
+          <span class="ped-ind-label">ゴミ</span>
+          <button id="ped-trash-btn" class="ped-ind-btn trash-none">オフ</button>
+        </div>
+        <div class="ped-ind-row">
+          <span class="ped-ind-label">チェック</span>
+          <button id="ped-check-btn" class="ped-ind-btn check-none">オフ</button>
+        </div>
+      </div>
+      <div id="ped-reorder-section" class="ped-section" hidden>
+        <div class="ped-label">並べ替え（同じ状況の中で）</div>
+        <div class="ped-reorder-row">
+          <button id="ped-up-btn" class="ped-reorder-btn">↑ 前へ</button>
+          <button id="ped-dn-btn" class="ped-reorder-btn">↓ 後ろへ</button>
+        </div>
+      </div>
+      <div class="ped-section">
+        <button id="ped-tasks-btn" class="btn-ped-tasks">対応を見る</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     'use strict';
 
@@ -699,7 +758,10 @@
       scheduleSearchFetched:   false, // getScheduleRange フェッチ済みか
       scheduleSearchItems:     [],    // [{date, propertyName, uid, staff, isSameDayIn, order, taskCount}]
       scheduleSearchByDate:    {},    // { [date]: { items: [...], latestUpdatedAt } }
-      scheduleSearchLoading:   false  // フェッチ中
+      scheduleSearchLoading:   false,  // フェッチ中
+      // 進捗編集ドロワー
+      editDrawerProp: null,   // 編集中の propertyName
+      editDrawerView: null    // 'board' or 'staff'
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -1498,11 +1560,11 @@
       updateProgressStats();
       renderProgressStaff(S.progressItems);
       renderProgressBoard(S.progressItems);
+      if (S.editDrawerProp) updateEditDrawer();
     }
 
     function getEffectiveProgress(propertyName) {
       if (S.progressData[propertyName]) return S.progressData[propertyName];
-      // 行未作成の場合は defaults から初期値を計算
       var def = S.progressDefaults[propertyName] || {};
       return {
         status:     'TODO',
@@ -1512,6 +1574,43 @@
         orderIndex: 0,
         updatedAt:  ''
       };
+    }
+
+    function buildProgTile(item, view) {
+      var pd     = getEffectiveProgress(item.propertyName);
+      var status = pd.status || 'TODO';
+      var pn     = item.propertyName;
+      var pnEsc  = esc(pn);
+
+      var tileCls = 'prog-tile' +
+        (status === 'DOING' ? ' doing' : status === 'DONE' ? ' done' : '');
+
+      var staffText = item.staff || '';
+      var staffCls  = staffText ? 'prog-tile-staff' : 'prog-tile-staff unset';
+      var staffDisp = staffText || '未設定';
+
+      var marks = '';
+      if (pd.linen === 'DONE') {
+        marks += '<span class="prog-mark prog-mark-linen-done">リ✓</span>';
+      } else {
+        marks += '<span class="prog-mark prog-mark-linen">リ</span>';
+      }
+      if (pd.trash === 'DONE') {
+        marks += '<span class="prog-mark prog-mark-trash-done">ゴ✓</span>';
+      } else if (pd.trash === 'NEED') {
+        marks += '<span class="prog-mark prog-mark-trash">ゴ</span>';
+      }
+      if (pd.check === 'DONE') {
+        marks += '<span class="prog-mark prog-mark-check-done">チ✓</span>';
+      } else if (pd.check === 'NEED') {
+        marks += '<span class="prog-mark prog-mark-check">チ</span>';
+      }
+
+      return '<button class="' + tileCls + '" data-tile-prop="' + pnEsc + '" data-tile-view="' + view + '">' +
+        '<div class="prog-tile-name">' + pnEsc + '</div>' +
+        '<div class="' + staffCls + '">' + esc(staffDisp) + '</div>' +
+        '<div class="prog-tile-marks">' + marks + '</div>' +
+      '</button>';
     }
 
     function renderProgressStaff(items) {
@@ -1546,12 +1645,22 @@
           return oi1 - oi2;
         });
 
+        var total  = sItems.length;
+        var done   = sItems.filter(function(i) {
+          return getEffectiveProgress(i.propertyName).status === 'DONE';
+        }).length;
+        var remain = total - done;
+
         html += '<div class="prog-section">' +
-          '<div class="prog-section-title">' + esc(staffName || '未担当') + '</div>';
-        sItems.forEach(function(item, posInGroup) {
-          html += buildProgCard(item, 'staff', sItems, posInGroup);
+          '<div class="prog-section-header">' +
+            '<span class="prog-section-title">' + esc(staffName || '未担当') + '</span>' +
+            '<span class="prog-section-remain">残り' + remain + '件（完了 ' + done + '/' + total + '）</span>' +
+          '</div>' +
+          '<div class="prog-tiles prog-tiles-staff">';
+        sItems.forEach(function(item) {
+          html += buildProgTile(item, 'staff');
         });
-        html += '</div>';
+        html += '</div></div>';
       });
 
       container.innerHTML = html;
@@ -1577,127 +1686,132 @@
         });
       }
 
+      function sectionHtml(sectionItems, title) {
+        if (!sectionItems.length) return '';
+        var total  = sectionItems.length;
+        var done   = sectionItems.filter(function(i) {
+          return getEffectiveProgress(i.propertyName).status === 'DONE';
+        }).length;
+        var remain = total - done;
+        var h = '<div class="prog-section">' +
+          '<div class="prog-section-header">' +
+            '<span class="prog-section-title">' + esc(title) + '</span>' +
+            '<span class="prog-section-remain">残り' + remain + '件（完了 ' + done + '/' + total + '）</span>' +
+          '</div>' +
+          '<div class="prog-tiles prog-tiles-board">';
+        sectionItems.forEach(function(item) { h += buildProgTile(item, 'board'); });
+        h += '</div></div>';
+        return h;
+      }
+
       var sameDayItems = sortByStatusOrder(items.filter(function(i) { return i.isSameDayIn; }));
       var notInItems   = sortByStatusOrder(items.filter(function(i) { return !i.isSameDayIn; }));
 
-      var html = '';
-      if (sameDayItems.length) {
-        html += '<div class="prog-section"><div class="prog-section-title">同日イン</div>';
-        sameDayItems.forEach(function(item) { html += buildProgCard(item, 'board', null, 0); });
-        html += '</div>';
-      }
-      if (notInItems.length) {
-        html += '<div class="prog-section"><div class="prog-section-title">インなし</div>';
-        notInItems.forEach(function(item) { html += buildProgCard(item, 'board', null, 0); });
-        html += '</div>';
-      }
-
-      container.innerHTML = html;
+      container.innerHTML = sectionHtml(sameDayItems, '同日イン') + sectionHtml(notInItems, 'インなし');
     }
 
-    function buildProgCard(item, view, groupItems, posInGroup) {
-      var pd    = getEffectiveProgress(item.propertyName);
+    // ── 進捗編集ドロワー ──────────────────────────────────────────────
+    function openEditDrawer(propName, view) {
+      S.editDrawerProp = propName;
+      S.editDrawerView = view;
+      document.getElementById('ped-prop-name').textContent = propName;
+      updateEditDrawer();
+      document.getElementById('prog-edit-drawer').hidden = false;
+    }
+
+    function closeEditDrawer() {
+      S.editDrawerProp = null;
+      S.editDrawerView = null;
+      document.getElementById('prog-edit-drawer').hidden = true;
+    }
+
+    function updateEditDrawer() {
+      var pn   = S.editDrawerProp;
+      var view = S.editDrawerView;
+      if (!pn) return;
+
+      var pd     = getEffectiveProgress(pn);
       var status = pd.status || 'TODO';
-      var cardClass = 'prog-card' + (status === 'DOING' ? ' doing' : status === 'DONE' ? ' done' : '');
-      var pn = item.propertyName;
-      var pnEsc = esc(pn);
 
-      var label = item.isSameDayIn
-        ? '<span class="prog-label-samedayin">同日イン</span>'
-        : '<span class="prog-label-notin">インなし</span>';
-
-      // 進捗ボードビューでは担当名も表示（担当なしは「未設定」）
-      var staffLabel = view === 'board'
-        ? '<span class="prog-card-staff">' + esc(item.staff || '未設定') + '</span>'
-        : '';
-
-      var cnt = S.taskCounts[pn] || 0;
-      var taskRow = cnt > 0
-        ? '<div class="prog-card-bottom"><span class="prog-task-count">対応 ' + cnt + ' 件</span></div>'
-        : '';
-
-      // ステータスボタン
-      var statusRow = '<div class="status-row">' +
-        '<button class="status-btn' + (status === 'TODO'  ? ' active-todo'  : '') + '" data-status="TODO"  data-prog-prop="' + pnEsc + '">未開始</button>' +
-        '<button class="status-btn' + (status === 'DOING' ? ' active-doing' : '') + '" data-status="DOING" data-prog-prop="' + pnEsc + '">清掃中</button>' +
-        '<button class="status-btn' + (status === 'DONE'  ? ' active-done'  : '') + '" data-status="DONE"  data-prog-prop="' + pnEsc + '">清掃完了</button>' +
-      '</div>';
-
-      // 進捗ボードビュー：リネン・ゴミ・チェック
-      var indicatorsHtml = '';
-      if (view === 'board') {
-        var indicators = '';
-
-        // リネン（常に表示）
-        if (pd.linen === 'DONE') {
-          indicators += '<span class="prog-ind-btn linen-done">リネン済 ✓</span>';
-        } else {
-          indicators += '<button class="prog-ind-btn linen-todo" data-linen-prop="' + pnEsc + '">リネン未</button>';
+      // ステータスボタンの active 状態を更新
+      document.querySelectorAll('.ped-status-btn').forEach(function(btn) {
+        var s = btn.dataset.pedStatus;
+        btn.classList.remove('active-todo', 'active-doing', 'active-done');
+        if (s === status) {
+          btn.classList.add(
+            s === 'TODO' ? 'active-todo' : s === 'DOING' ? 'active-doing' : 'active-done'
+          );
         }
+      });
 
-        // ゴミ
-        if (pd.trash === 'DONE') {
-          indicators += '<span class="prog-ind-btn trash-done">ゴミ回収済 ✓</span>';
-        } else if (pd.trash === 'NEED') {
-          indicators += '<button class="prog-ind-btn trash-need" data-trash-prop="' + pnEsc + '">ゴミ要回収</button>';
-        } else {
-          indicators += '<button class="prog-ind-on" data-trash-on-prop="' + pnEsc + '">ゴミ+</button>';
-        }
-
-        // チェック
-        if (pd.check === 'DONE') {
-          indicators += '<span class="prog-ind-btn check-done">チェック済 ✓</span>';
-        } else if (pd.check === 'NEED') {
-          indicators += '<button class="prog-ind-btn check-need" data-check-prop="' + pnEsc + '">チェック要</button>';
-        } else {
-          indicators += '<button class="prog-ind-on" data-check-on-prop="' + pnEsc + '">チェック+</button>';
-        }
-
-        indicatorsHtml = '<div class="prog-indicators">' + indicators + '</div>';
-      }
-
-      // 担当変更セレクト（DONE カードは表示しない）
-      var staffSelHtml = '';
+      // 担当変更セレクト（DONE は非表示）
+      var staffSection = document.getElementById('ped-staff-section');
+      staffSection.hidden = (status === 'DONE');
       if (status !== 'DONE') {
-        var selOpts = '<option value=""' + (!item.staff ? ' selected' : '') + '>未設定</option>';
-        if (item.staff && !S.cleaners.some(function(c) { return c.name === item.staff; })) {
-          selOpts += '<option value="' + esc(item.staff) + '" selected>' + esc(item.staff) + '</option>';
+        var currentItem = null;
+        S.progressItems.forEach(function(i) { if (i.propertyName === pn) currentItem = i; });
+        var curStaff = currentItem ? (currentItem.staff || '') : '';
+        var opts = '<option value=""' + (!curStaff ? ' selected' : '') + '>未設定</option>';
+        if (curStaff && !S.cleaners.some(function(c) { return c.name === curStaff; })) {
+          opts += '<option value="' + esc(curStaff) + '" selected>' + esc(curStaff) + '</option>';
         }
         S.cleaners.forEach(function(c) {
-          selOpts += '<option value="' + esc(c.name) + '"' +
-            (c.name === item.staff ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+          opts += '<option value="' + esc(c.name) + '"' +
+            (c.name === curStaff ? ' selected' : '') + '>' + esc(c.name) + '</option>';
         });
-        staffSelHtml = '<div class="prog-staff-row">' +
-          '<select class="prog-staff-sel" data-staff-chg-prop="' + pnEsc + '">' + selOpts + '</select>' +
-        '</div>';
+        document.getElementById('ped-staff-sel').innerHTML = opts;
       }
 
-      // スタッフ別ビュー：並べ替えボタン
-      var reorderHtml = '';
-      if (view === 'staff' && groupItems) {
-        var sameStatusPeers = groupItems.filter(function(it) {
-          return getEffectiveProgress(it.propertyName).status === status;
-        });
-        var posInSameStatus = sameStatusPeers.indexOf(item);
-        var canUp   = posInSameStatus > 0;
-        var canDown = posInSameStatus < sameStatusPeers.length - 1;
-        reorderHtml = '<div class="prog-reorder-row">' +
-          '<button class="prog-reorder-btn" data-reorder-up-prop="' + pnEsc + '"' + (canUp ? '' : ' disabled') + '>↑</button>' +
-          '<button class="prog-reorder-btn" data-reorder-dn-prop="' + pnEsc + '"' + (canDown ? '' : ' disabled') + '>↓</button>' +
-        '</div>';
+      // リネン・ゴミ・チェック（進捗ボードのみ）
+      var indSection = document.getElementById('ped-indicators-section');
+      indSection.hidden = (view !== 'board');
+      if (view === 'board') {
+        var linenBtn = document.getElementById('ped-linen-btn');
+        linenBtn.className = 'ped-ind-btn ' + (pd.linen === 'DONE' ? 'linen-done' : 'linen-todo');
+        linenBtn.textContent = pd.linen === 'DONE' ? 'リネン済 ✓' : 'リネン未 → 済に';
+        linenBtn.disabled = (pd.linen === 'DONE');
+
+        var trashBtn = document.getElementById('ped-trash-btn');
+        if (pd.trash === 'DONE') {
+          trashBtn.className = 'ped-ind-btn trash-done'; trashBtn.textContent = 'ゴミ回収済 ✓'; trashBtn.disabled = true;
+        } else if (pd.trash === 'NEED') {
+          trashBtn.className = 'ped-ind-btn trash-need'; trashBtn.textContent = 'ゴミ要回収 → 回収済に'; trashBtn.disabled = false;
+        } else {
+          trashBtn.className = 'ped-ind-btn trash-none'; trashBtn.textContent = 'オフ → ゴミ要回収に'; trashBtn.disabled = false;
+        }
+
+        var checkBtn = document.getElementById('ped-check-btn');
+        if (pd.check === 'DONE') {
+          checkBtn.className = 'ped-ind-btn check-done'; checkBtn.textContent = 'チェック済 ✓'; checkBtn.disabled = true;
+        } else if (pd.check === 'NEED') {
+          checkBtn.className = 'ped-ind-btn check-need'; checkBtn.textContent = 'チェック要 → 済に'; checkBtn.disabled = false;
+        } else {
+          checkBtn.className = 'ped-ind-btn check-none'; checkBtn.textContent = 'オフ → チェック要に'; checkBtn.disabled = false;
+        }
       }
 
-      return '<div class="' + cardClass + '">' +
-        '<div class="prog-card-top">' +
-          '<span class="prog-card-name">' + pnEsc + '</span>' +
-          staffLabel + label +
-        '</div>' +
-        taskRow +
-        statusRow +
-        indicatorsHtml +
-        staffSelHtml +
-        reorderHtml +
-      '</div>';
+      // 並べ替え（スタッフ別のみ）
+      var reorderSection = document.getElementById('ped-reorder-section');
+      reorderSection.hidden = (view !== 'staff');
+      if (view === 'staff') {
+        var staffName = '';
+        S.progressItems.forEach(function(i) { if (i.propertyName === pn) staffName = i.staff || ''; });
+        var peers = S.progressItems.filter(function(i) {
+          return (i.staff || '') === staffName && getEffectiveProgress(i.propertyName).status === status;
+        }).sort(function(a, b) {
+          var oa = S.progressData[a.propertyName] ? (S.progressData[a.propertyName].orderIndex || 0) : (a.order || 0);
+          var ob = S.progressData[b.propertyName] ? (S.progressData[b.propertyName].orderIndex || 0) : (b.order || 0);
+          return oa - ob;
+        });
+        var pos = peers.findIndex(function(i) { return i.propertyName === pn; });
+        document.getElementById('ped-up-btn').disabled = (pos <= 0);
+        document.getElementById('ped-dn-btn').disabled = (pos >= peers.length - 1);
+      }
+
+      // 追加対応ボタン
+      var cnt = S.taskCounts[pn] || 0;
+      document.getElementById('ped-tasks-btn').textContent =
+        cnt > 0 ? '対応を見る（' + cnt + '件）' : '対応を見る';
     }
 
     // ── 進捗更新 ─────────────────────────────────────────────────────
@@ -2160,63 +2274,67 @@
         document.getElementById('progress-staff-view').hidden = true;
       });
 
-      // 進捗確認パネルのボタン委譲（status・linen・trash・check・reorder）
+      // 進捗確認パネル：タイルタップで編集ドロワーを開く
       document.getElementById('panel-progress').addEventListener('click', function(e) {
-        // ステータスボタン
-        var statusBtn = e.target.closest('[data-status]');
-        if (statusBtn && statusBtn.dataset.progProp) {
-          updateProgressField(statusBtn.dataset.progProp, { status: statusBtn.dataset.status });
+        var tile = e.target.closest('[data-tile-prop]');
+        if (tile) {
+          openEditDrawer(tile.dataset.tileProp, tile.dataset.tileView);
+        }
+      });
+
+      // 進捗編集ドロワーのイベント
+      document.getElementById('prog-edit-drawer').addEventListener('click', function(e) {
+        if (e.target === this) { closeEditDrawer(); return; }
+
+        if (e.target.closest('#ped-close')) { closeEditDrawer(); return; }
+
+        var statusBtn = e.target.closest('.ped-status-btn');
+        if (statusBtn && S.editDrawerProp) {
+          updateProgressField(S.editDrawerProp, { status: statusBtn.dataset.pedStatus });
           return;
         }
-        // リネン（未 → 済）
-        var linenBtn = e.target.closest('[data-linen-prop]');
-        if (linenBtn) {
-          updateProgressField(linenBtn.dataset.linenProp, { linen: 'DONE' });
+
+        if (e.target.closest('#ped-linen-btn') && S.editDrawerProp) {
+          updateProgressField(S.editDrawerProp, { linen: 'DONE' });
           return;
         }
-        // ゴミ（NEED → DONE）
-        var trashBtn = e.target.closest('[data-trash-prop]');
-        if (trashBtn) {
-          updateProgressField(trashBtn.dataset.trashProp, { trash: 'DONE' });
+
+        if (e.target.closest('#ped-trash-btn') && S.editDrawerProp) {
+          var trashPd = getEffectiveProgress(S.editDrawerProp);
+          var newTrash = trashPd.trash === '' ? 'NEED' : trashPd.trash === 'NEED' ? 'DONE' : trashPd.trash;
+          if (newTrash !== trashPd.trash) updateProgressField(S.editDrawerProp, { trash: newTrash });
           return;
         }
-        // ゴミを NEED にする
-        var trashOnBtn = e.target.closest('[data-trash-on-prop]');
-        if (trashOnBtn) {
-          updateProgressField(trashOnBtn.dataset.trashOnProp, { trash: 'NEED' });
+
+        if (e.target.closest('#ped-check-btn') && S.editDrawerProp) {
+          var checkPd = getEffectiveProgress(S.editDrawerProp);
+          var newCheck = checkPd.check === '' ? 'NEED' : checkPd.check === 'NEED' ? 'DONE' : checkPd.check;
+          if (newCheck !== checkPd.check) updateProgressField(S.editDrawerProp, { check: newCheck });
           return;
         }
-        // チェック（NEED → DONE）
-        var checkBtn = e.target.closest('[data-check-prop]');
-        if (checkBtn) {
-          updateProgressField(checkBtn.dataset.checkProp, { check: 'DONE' });
+
+        if (e.target.closest('#ped-up-btn') && S.editDrawerProp) {
+          reorderProgressCard(S.editDrawerProp, 'up');
           return;
         }
-        // チェックを NEED にする
-        var checkOnBtn = e.target.closest('[data-check-on-prop]');
-        if (checkOnBtn) {
-          updateProgressField(checkOnBtn.dataset.checkOnProp, { check: 'NEED' });
+
+        if (e.target.closest('#ped-dn-btn') && S.editDrawerProp) {
+          reorderProgressCard(S.editDrawerProp, 'down');
           return;
         }
-        // 並べ替え（↑）
-        var upBtn = e.target.closest('[data-reorder-up-prop]');
-        if (upBtn) {
-          reorderProgressCard(upBtn.dataset.reorderUpProp, 'up');
-          return;
-        }
-        // 並べ替え（↓）
-        var dnBtn = e.target.closest('[data-reorder-dn-prop]');
-        if (dnBtn) {
-          reorderProgressCard(dnBtn.dataset.reorderDnProp, 'down');
+
+        if (e.target.closest('#ped-tasks-btn') && S.editDrawerProp) {
+          var taskProp = S.editDrawerProp;
+          closeEditDrawer();
+          openTaskDrawer(taskProp);
           return;
         }
       });
 
-      // 進捗確認パネル：担当変更セレクト
-      document.getElementById('panel-progress').addEventListener('change', function(e) {
-        var sel = e.target.closest('[data-staff-chg-prop]');
-        if (sel) {
-          changeProgressStaff(sel.dataset.staffChgProp, sel.value);
+      // 進捗編集ドロワー：担当変更
+      document.getElementById('ped-staff-sel').addEventListener('change', function() {
+        if (S.editDrawerProp) {
+          changeProgressStaff(S.editDrawerProp, this.value);
         }
       });
 
