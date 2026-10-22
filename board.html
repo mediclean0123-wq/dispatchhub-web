@@ -190,6 +190,12 @@
       cursor: pointer; white-space: nowrap; flex-shrink: 0;
     }
     .btn-add-task:active { opacity: 0.75; }
+    .btn-resend {
+      background: transparent; color: var(--green); border: 1px solid var(--green);
+      border-radius: 4px; padding: 0.2rem 0.45rem; font-size: 0.72rem; font-weight: bold;
+      cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    }
+    .btn-resend:active { opacity: 0.75; }
     .board-add-row {
       margin-bottom: 0.6rem;
     }
@@ -783,11 +789,15 @@
           });
           html += '<div class="bcol">';
           html += '<div class="bcol-title">' + esc(name) + '</div>';
+          var showResend = (S.boardDate === today() || S.boardDate === tomorrow());
           props.forEach(function(p) {
             var icon  = canRep ? '⚪' : '📵';
             var cnt   = S.taskCounts[p.propertyName] || 0;
             var badge = cnt > 0
               ? '<span class="task-badge" data-prop="' + esc(p.propertyName) + '">対応 ' + cnt + ' 件</span>'
+              : '';
+            var resendBtn = showResend
+              ? '<button class="btn-resend" data-prop="' + esc(p.propertyName) + '">再送</button>'
               : '';
             html += '<div class="bprop">' +
               '<span class="bprop-icon">' + icon + '</span>' +
@@ -796,6 +806,7 @@
               '</span>' +
               '<div class="bprop-bottom">' +
                 badge +
+                resendBtn +
                 '<button class="btn-add-task" data-prop="' + esc(p.propertyName) + '">＋対応</button>' +
               '</div>' +
             '</div>';
@@ -1032,6 +1043,29 @@
         });
     }
 
+    // ── 再送 ─────────────────────────────────────────────────────────
+
+    function resendBlock(propName) {
+      if (!confirm('この物件の今の担当と対応を、全体グループに送ります。よろしいですか')) return;
+      var RESEND_ERRORS = {
+        already_pending:  '再送は既に依頼済みです（最大5分で届きます）',
+        invalid_property: '物件名が無効です',
+        invalid_date:     '今日か明日の日付のみ再送できます'
+      };
+      callApi({ action: 'resendPropertyBlock', propertyName: propName, date: S.boardDate })
+        .then(function(r) {
+          if (!r.ok) {
+            toast(RESEND_ERRORS[r.error] || ('エラー: ' + (r.error || '不明')));
+            return;
+          }
+          toast('再送を依頼しました。最大5分で届きます');
+        })
+        .catch(function(e) {
+          if (e.isUnauthorized) { handleUnauthorized(); return; }
+          toast('再送エラー: ' + e.message);
+        });
+    }
+
     // ── イベント ──────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', function() {
 
@@ -1155,6 +1189,8 @@
         if (addBtn) { openTaskModal(addBtn.dataset.prop); return; }
         var badge = e.target.closest('.task-badge');
         if (badge) { openTaskDrawer(badge.dataset.prop); return; }
+        var resendBtn = e.target.closest('.btn-resend');
+        if (resendBtn) { resendBlock(resendBtn.dataset.prop); return; }
       });
 
       // 画面が隠れているあいだはボードの自動更新を止める
