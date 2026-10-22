@@ -265,6 +265,7 @@
       border-radius: 10px; background: #e3f2fd; color: #1565c0;
     }
     .task-date-label { font-size: 0.75rem; color: var(--muted); }
+    .task-date-display { font-size: 0.95rem; font-weight: 600; color: var(--green); padding: 0.15rem 0; }
     .task-expired-label {
       font-size: 0.7rem; color: #c00; font-weight: bold;
       background: #fce4ec; border-radius: 4px; padding: 0.1rem 0.35rem;
@@ -622,12 +623,7 @@
       </div>
       <div class="form-row">
         <label class="form-label">日付</label>
-        <div class="toggle-row" id="date-mode-row">
-          <button class="toggle-btn" data-mode="NEXT"      id="mode-next">次回清掃</button>
-          <button class="toggle-btn" data-mode="DATE"      id="mode-tomorrow">明日</button>
-          <button class="toggle-btn" data-mode="DATE_PICK" id="mode-pick">日付指定</button>
-        </div>
-        <input type="date" id="task-date-pick" class="form-date-input" style="margin-top:0.4rem" hidden>
+        <div class="task-date-display" id="task-modal-date"></div>
       </div>
       <div class="modal-actions">
         <button class="btn btn-import" id="task-modal-cancel">キャンセル</button>
@@ -1244,7 +1240,7 @@
                 '</div>';
               });
             }
-            html += '<button class="btn-sched-add-task" data-sched-add-prop="' + pnEsc + '">＋ 対応追加</button>';
+            html += '<button class="btn-sched-add-task" data-sched-add-prop="' + pnEsc + '" data-sched-add-date="' + esc(item.date) + '">＋ 対応追加</button>';
             if (showResend) {
               html += '<button class="btn-sched-resend" data-sched-resend-prop="' + pnEsc + '">再送</button>';
             }
@@ -1868,20 +1864,20 @@
     var taskModal = {
       propName:      null,
       photoRequired: false,
-      dateMode:      'NEXT'
+      boundDate:     ''
     };
 
-    function openTaskModal(propName) {
+    function openTaskModal(propName, date) {
       taskModal.propName = propName;
+      taskModal.boundDate = date || '';
       taskModal.photoRequired = false;
-      taskModal.dateMode = 'NEXT';
       document.getElementById('task-modal-prop').textContent = propName;
+      document.getElementById('task-modal-date').textContent = fmtDate(date) + 'の清掃に対応';
       document.getElementById('task-type').value = 'WORK';
       document.getElementById('task-content').value = '';
       document.getElementById('task-char-count').textContent = '0 / 200';
       document.getElementById('task-char-count').classList.remove('over');
       setPhotoToggle(false);
-      setDateMode('NEXT');
       document.getElementById('task-modal').hidden = false;
     }
 
@@ -1891,41 +1887,19 @@
       document.getElementById('photo-yes').classList.toggle('selected', val);
     }
 
-    function setDateMode(mode) {
-      taskModal.dateMode = mode;
-      ['next', 'tomorrow', 'pick'].forEach(function(id) {
-        document.getElementById('mode-' + id).classList.remove('selected');
-      });
-      if (mode === 'NEXT')      document.getElementById('mode-next').classList.add('selected');
-      if (mode === 'DATE')      document.getElementById('mode-tomorrow').classList.add('selected');
-      if (mode === 'DATE_PICK') document.getElementById('mode-pick').classList.add('selected');
-      document.getElementById('task-date-pick').hidden = (mode !== 'DATE_PICK');
-    }
-
     function closeTaskModal() {
       document.getElementById('task-modal').hidden = true;
     }
 
     function submitTask() {
-      var propName = taskModal.propName;
-      var type     = document.getElementById('task-type').value;
-      var content  = document.getElementById('task-content').value.trim();
-      var mode     = taskModal.dateMode;
+      var propName   = taskModal.propName;
+      var boundDate  = taskModal.boundDate;
+      var type       = document.getElementById('task-type').value;
+      var content    = document.getElementById('task-content').value.trim();
 
       if (!content) { toast('内容を入力してください'); return; }
       if (content.length > 200) { toast('内容は200文字以内にしてください'); return; }
-
-      var targetMode, targetDate;
-      if (mode === 'NEXT') {
-        targetMode = 'NEXT'; targetDate = '';
-      } else if (mode === 'DATE') {
-        targetMode = 'DATE';
-        targetDate = tomorrow();
-      } else {
-        targetMode = 'DATE';
-        targetDate = document.getElementById('task-date-pick').value;
-        if (!targetDate) { toast('日付を選んでください'); return; }
-      }
+      if (!boundDate) { toast('日付が設定されていません'); return; }
 
       closeTaskModal();
       setBusy(true);
@@ -1935,12 +1909,16 @@
         type:          type,
         content:       content,
         photoRequired: taskModal.photoRequired,
-        targetMode:    targetMode,
-        targetDate:    targetDate
+        targetMode:    'DATE',
+        targetDate:    boundDate
       }).then(function(r) {
         setBusy(false);
         if (r.ok) {
           toast('登録しました ✓');
+          // 検索モードの件数を楽観的に更新（loadScheduleTab では更新されないため）
+          S.scheduleSearchItems.forEach(function(i) {
+            if (i.propertyName === propName && i.date === boundDate) i.taskCount++;
+          });
           if (S.scheduleDetailKey) {
             delete S.scheduleTasks[S.scheduleDetailKey.split('\t')[0]];
             openScheduleDetail(S.scheduleDetailKey.split('\t')[0]);
@@ -2078,7 +2056,7 @@
             var p = sel.value;
             if (!p) return;
             closeTaskDrawer();
-            openTaskModal(p);
+            openTaskModal(p, S.boardDate);
           };
         })
         .catch(function(e) {
@@ -2320,11 +2298,8 @@
         el.textContent = len + ' / 200';
         el.classList.toggle('over', len > 200);
       });
-      document.getElementById('photo-no').addEventListener('click',      function() { setPhotoToggle(false); });
-      document.getElementById('photo-yes').addEventListener('click',     function() { setPhotoToggle(true); });
-      document.getElementById('mode-next').addEventListener('click',     function() { setDateMode('NEXT'); });
-      document.getElementById('mode-tomorrow').addEventListener('click', function() { setDateMode('DATE'); });
-      document.getElementById('mode-pick').addEventListener('click',     function() { setDateMode('DATE_PICK'); });
+      document.getElementById('photo-no').addEventListener('click',  function() { setPhotoToggle(false); });
+      document.getElementById('photo-yes').addEventListener('click', function() { setPhotoToggle(true); });
       document.getElementById('task-modal-cancel').addEventListener('click', closeTaskModal);
       document.getElementById('task-modal-submit').addEventListener('click', submitTask);
       document.getElementById('task-modal').addEventListener('click', function(e) {
@@ -2406,7 +2381,7 @@
         }
         // 対応追加
         var addBtn = e.target.closest('[data-sched-add-prop]');
-        if (addBtn) { openTaskModal(addBtn.dataset.schedAddProp); return; }
+        if (addBtn) { openTaskModal(addBtn.dataset.schedAddProp, addBtn.dataset.schedAddDate); return; }
         // 再送
         var resendBtn = e.target.closest('[data-sched-resend-prop]');
         if (resendBtn) { resendBlock(resendBtn.dataset.schedResendProp); return; }
