@@ -171,6 +171,130 @@
       pointer-events: none; transition: opacity 0.25s;
     }
     #toast[hidden] { display: none; }
+
+    /* ── 対応追加 ── */
+    .bprop-bottom {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 0.3rem; gap: 0.3rem;
+    }
+    .task-badge {
+      display: inline-flex; align-items: center; gap: 0.2rem;
+      background: #fff3e0; color: #e65100; border: 1px solid #ffcc80;
+      border-radius: 20px; padding: 0.18rem 0.5rem; font-size: 0.72rem;
+      font-weight: bold; cursor: pointer; white-space: nowrap;
+    }
+    .task-badge:active { opacity: 0.7; }
+    .btn-add-task {
+      background: var(--green); color: #fff; border: none; border-radius: 4px;
+      padding: 0.2rem 0.45rem; font-size: 0.72rem; font-weight: bold;
+      cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    }
+    .btn-add-task:active { opacity: 0.75; }
+    .btn-resend {
+      background: transparent; color: var(--green); border: 1px solid var(--green);
+      border-radius: 4px; padding: 0.2rem 0.45rem; font-size: 0.72rem; font-weight: bold;
+      cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    }
+    .btn-resend:active { opacity: 0.75; }
+    .board-add-row {
+      margin-bottom: 0.6rem;
+    }
+    .btn-board-add {
+      width: 100%; padding: 0.55rem; border-radius: 7px;
+      border: 1.5px dashed var(--green); background: transparent;
+      color: var(--green); font-size: 0.88rem; font-weight: bold;
+      font-family: inherit; cursor: pointer;
+    }
+    .btn-board-add:active { background: #f0faf5; }
+
+    /* ── タスク登録モーダル ── */
+    .task-modal-box {
+      background: var(--card); border-radius: 14px;
+      padding: 1.25rem; max-width: 340px; width: calc(100% - 2rem);
+      max-height: 90vh; overflow-y: auto;
+    }
+    .task-modal-title {
+      font-size: 1rem; font-weight: bold; margin-bottom: 0.9rem; text-align: center;
+    }
+    .task-modal-prop {
+      font-size: 0.82rem; color: var(--muted); text-align: center;
+      margin-top: -0.5rem; margin-bottom: 0.9rem;
+    }
+    .form-row { margin-bottom: 0.8rem; }
+    .form-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.3rem; display: block; }
+    .form-sel, .form-input, .form-textarea {
+      width: 100%; padding: 0.45rem 0.6rem; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 0.9rem; font-family: inherit; background: var(--card);
+    }
+    .form-textarea { height: 80px; resize: vertical; }
+    .toggle-row { display: flex; gap: 0.5rem; }
+    .toggle-btn {
+      flex: 1; padding: 0.45rem; border: 1.5px solid var(--border); border-radius: 6px;
+      background: var(--bg); font-size: 0.88rem; font-family: inherit; cursor: pointer;
+    }
+    .toggle-btn.selected {
+      border-color: var(--green); background: #e8f5e9; color: var(--green); font-weight: bold;
+    }
+    .form-date-input {
+      width: 100%; padding: 0.45rem 0.6rem; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 0.9rem; font-family: inherit; background: var(--card);
+    }
+    .char-count { font-size: 0.75rem; color: var(--muted); text-align: right; margin-top: 0.2rem; }
+    .char-count.over { color: #c00; }
+
+    /* ── タスクドロワー ── */
+    .drawer-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 40;
+    }
+    .drawer-overlay[hidden] { display: none; }
+    .drawer-box {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--card); border-radius: 14px 14px 0 0;
+      padding: 1rem; max-height: 75vh; overflow-y: auto; z-index: 45;
+    }
+    .drawer-title {
+      font-size: 0.95rem; font-weight: bold; margin-bottom: 0.75rem;
+    }
+    .task-item {
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.65rem 0.75rem; margin-bottom: 0.55rem; background: var(--bg);
+    }
+    .task-item-header {
+      display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;
+    }
+    .task-type-badge {
+      font-size: 0.7rem; font-weight: bold; padding: 0.15rem 0.45rem;
+      border-radius: 10px; background: #e3f2fd; color: #1565c0;
+    }
+    .task-date-label { font-size: 0.75rem; color: var(--muted); }
+    .task-expired-label {
+      font-size: 0.7rem; color: #c00; font-weight: bold;
+      background: #fce4ec; border-radius: 4px; padding: 0.1rem 0.35rem;
+    }
+    .task-content { font-size: 0.86rem; margin-bottom: 0.45rem; }
+    .task-photo-tag {
+      font-size: 0.72rem; color: #e65100; background: #fff3e0;
+      border-radius: 4px; padding: 0.1rem 0.35rem; display: inline-block; margin-bottom: 0.45rem;
+    }
+    .task-actions { display: flex; gap: 0.5rem; }
+    .btn-task-done {
+      flex: 1; padding: 0.4rem; border: none; border-radius: 6px;
+      background: var(--green); color: #fff; font-size: 0.82rem; font-weight: bold;
+      font-family: inherit; cursor: pointer;
+    }
+    .btn-task-done:active { opacity: 0.75; }
+    .btn-task-cancel {
+      flex: 1; padding: 0.4rem; border: 1.5px solid #aaa; border-radius: 6px;
+      background: transparent; color: #555; font-size: 0.82rem; font-weight: bold;
+      font-family: inherit; cursor: pointer;
+    }
+    .btn-task-cancel:active { opacity: 0.75; }
+    .drawer-empty { color: var(--muted); font-size: 0.88rem; text-align: center; padding: 1rem 0; }
+    .drawer-prop-sel {
+      width: 100%; padding: 0.45rem 0.6rem; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 0.92rem; font-family: inherit;
+      background: var(--card); margin-bottom: 0.9rem;
+    }
   </style>
 </head>
 
@@ -216,6 +340,9 @@
         <label for="board-date-sel">日付</label>
         <input type="date" id="board-date-sel">
       </div>
+      <div class="board-add-row">
+        <button class="btn-board-add" id="btn-board-add-task">＋ 物件を選んで対応追加</button>
+      </div>
       <div class="board-stats">
         <div class="bstat"><span class="bstat-n" id="b-done">-</span><span class="bstat-l">完了</span></div>
         <div class="bstat"><span class="bstat-n" id="b-total">-</span><span class="bstat-l">全体</span></div>
@@ -225,6 +352,55 @@
         <div id="board-cols" class="board-cols"></div>
       </div>
       <div class="refresh-note" id="refresh-note">30秒ごとに自動更新</div>
+    </div>
+  </div>
+
+  <!-- タスク登録モーダル -->
+  <div id="task-modal" class="modal-overlay" hidden>
+    <div class="task-modal-box">
+      <div class="task-modal-title">対応追加</div>
+      <div class="task-modal-prop" id="task-modal-prop"></div>
+      <div class="form-row">
+        <label class="form-label">種類</label>
+        <select id="task-type" class="form-sel">
+          <option value="WORK">作業追加（WORK）</option>
+          <option value="TIME">時間変更（TIME）</option>
+          <option value="CARRY">持ち込み（CARRY）</option>
+          <option value="OTHER">その他（OTHER）</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">内容 <span id="task-char-count" class="char-count">0 / 200</span></label>
+        <textarea id="task-content" class="form-textarea" placeholder="内容を入力（必須・200文字以内）" maxlength="200"></textarea>
+      </div>
+      <div class="form-row">
+        <label class="form-label">写真</label>
+        <div class="toggle-row">
+          <button class="toggle-btn" data-val="false" id="photo-no">不要</button>
+          <button class="toggle-btn" data-val="true"  id="photo-yes">必要</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">日付</label>
+        <div class="toggle-row" id="date-mode-row">
+          <button class="toggle-btn" data-mode="NEXT" id="mode-next">次回清掃</button>
+          <button class="toggle-btn" data-mode="DATE" id="mode-tomorrow">明日</button>
+          <button class="toggle-btn" data-mode="DATE_PICK" id="mode-pick">日付指定</button>
+        </div>
+        <input type="date" id="task-date-pick" class="form-date-input" style="margin-top:0.4rem" hidden>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-import" id="task-modal-cancel">キャンセル</button>
+        <button class="btn btn-save"   id="task-modal-submit">登録</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- タスク一覧ドロワー -->
+  <div id="task-drawer" class="drawer-overlay" hidden>
+    <div class="drawer-box">
+      <div class="drawer-title" id="drawer-title">対応一覧</div>
+      <div id="drawer-body"></div>
     </div>
   </div>
 
@@ -257,6 +433,8 @@
       latestUpdatedAt: null,
       busy:            false,
       updating:        false,  // getSchedule が sr.updating=true のとき保存を禁止
+      taskCounts:      {},     // { propertyName: openCount }
+      activeProps:     [],     // 全有効物件名リスト（「物件を選んで追加」用）
       sessionExpired:  false,
       activeTab:       'assign',
       boardTimer:      null
@@ -547,6 +725,7 @@
         var sr = res[0], cr = res[1];
         if (cr && cr.ok) S.cleaners = cr.cleaners;
         if (!sr.ok) { toast('ボードの読み込みに失敗しました'); return; }
+        S.taskCounts = sr.taskCounts || {};
 
         var hdr = sr.schedule.header;
         var H = {
@@ -610,13 +789,27 @@
           });
           html += '<div class="bcol">';
           html += '<div class="bcol-title">' + esc(name) + '</div>';
+          var showResend = (S.boardDate === today() || S.boardDate === tomorrow());
           props.forEach(function(p) {
-            var icon = canRep ? '⚪' : '📵';
+            var icon  = canRep ? '⚪' : '📵';
+            var cnt   = S.taskCounts[p.propertyName] || 0;
+            var badge = cnt > 0
+              ? '<span class="task-badge" data-prop="' + esc(p.propertyName) + '">対応 ' + cnt + ' 件</span>'
+              : '';
+            var resendBtn = showResend
+              ? '<button class="btn-resend" data-prop="' + esc(p.propertyName) + '">再送</button>'
+              : '';
             html += '<div class="bprop">' +
               '<span class="bprop-icon">' + icon + '</span>' +
-              '<span>' + esc(p.propertyName) +
+              '<span style="flex:1">' + esc(p.propertyName) +
                 (canRep ? '' : '<br><span class="no-report">報告なし</span>') +
-              '</span></div>';
+              '</span>' +
+              '<div class="bprop-bottom">' +
+                badge +
+                resendBtn +
+                '<button class="btn-add-task" data-prop="' + esc(p.propertyName) + '">＋対応</button>' +
+              '</div>' +
+            '</div>';
           });
           html += '</div>';
         });
@@ -631,6 +824,246 @@
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('ボード読み込みエラー: ' + e.message);
       });
+    }
+
+    // ── 対応追加モーダル ──────────────────────────────────────────────
+
+    var taskModal = {
+      propName: null,
+      photoRequired: false,
+      dateMode: 'NEXT'   // 'NEXT' | 'DATE' | 'DATE_PICK'
+    };
+
+    function openTaskModal(propName) {
+      taskModal.propName = propName;
+      taskModal.photoRequired = false;
+      taskModal.dateMode = 'NEXT';
+      document.getElementById('task-modal-prop').textContent = propName;
+      document.getElementById('task-type').value = 'WORK';
+      document.getElementById('task-content').value = '';
+      document.getElementById('task-char-count').textContent = '0 / 200';
+      document.getElementById('task-char-count').classList.remove('over');
+      setPhotoToggle(false);
+      setDateMode('NEXT');
+      document.getElementById('task-modal').hidden = false;
+    }
+
+    function setPhotoToggle(val) {
+      taskModal.photoRequired = val;
+      document.getElementById('photo-no').classList.toggle('selected', !val);
+      document.getElementById('photo-yes').classList.toggle('selected', val);
+    }
+
+    function setDateMode(mode) {
+      taskModal.dateMode = mode;
+      ['next', 'tomorrow', 'pick'].forEach(function(id) {
+        document.getElementById('mode-' + id).classList.remove('selected');
+      });
+      if (mode === 'NEXT')      document.getElementById('mode-next').classList.add('selected');
+      if (mode === 'DATE')      document.getElementById('mode-tomorrow').classList.add('selected');
+      if (mode === 'DATE_PICK') document.getElementById('mode-pick').classList.add('selected');
+      document.getElementById('task-date-pick').hidden = (mode !== 'DATE_PICK');
+    }
+
+    function closeTaskModal() {
+      document.getElementById('task-modal').hidden = true;
+    }
+
+    function submitTask() {
+      var propName = taskModal.propName;
+      var type     = document.getElementById('task-type').value;
+      var content  = document.getElementById('task-content').value.trim();
+      var mode     = taskModal.dateMode;
+
+      if (!content) { toast('内容を入力してください'); return; }
+      if (content.length > 200) { toast('内容は200文字以内にしてください'); return; }
+
+      var targetMode, targetDate;
+      if (mode === 'NEXT') {
+        targetMode = 'NEXT'; targetDate = '';
+      } else if (mode === 'DATE') {
+        targetMode = 'DATE';
+        targetDate = tomorrow();
+      } else {
+        targetMode = 'DATE';
+        targetDate = document.getElementById('task-date-pick').value;
+        if (!targetDate) { toast('日付を選んでください'); return; }
+      }
+
+      closeTaskModal();
+      setBusy(true);
+      callApi({
+        action: 'addCleanTask',
+        propertyName:  propName,
+        type:          type,
+        content:       content,
+        photoRequired: taskModal.photoRequired,
+        targetMode:    targetMode,
+        targetDate:    targetDate
+      }).then(function(r) {
+        setBusy(false);
+        if (r.ok) {
+          toast('登録しました ✓');
+          loadBoard();
+        } else {
+          toast('登録エラー: ' + (r.error || '不明'));
+        }
+      }).catch(function(e) {
+        setBusy(false);
+        if (e.isUnauthorized) { handleUnauthorized(); return; }
+        toast('登録エラー: ' + e.message);
+      });
+    }
+
+    // ── タスクドロワー ───────────────────────────────────────────────
+
+    function openTaskDrawer(propName) {
+      var drawer = document.getElementById('task-drawer');
+      document.getElementById('drawer-title').textContent = propName + ' の対応一覧';
+      document.getElementById('drawer-body').innerHTML = '<div class="drawer-empty">読み込み中…</div>';
+      drawer.hidden = false;
+
+      callApi({ action: 'getCleanTasksForProperty', propertyName: propName })
+        .then(function(r) {
+          if (!r.ok) { document.getElementById('drawer-body').innerHTML = '<div class="drawer-empty">取得に失敗しました</div>'; return; }
+          renderDrawerBody(r.tasks || [], propName);
+        })
+        .catch(function(e) {
+          if (e.isUnauthorized) { handleUnauthorized(); return; }
+          document.getElementById('drawer-body').innerHTML = '<div class="drawer-empty">取得エラー: ' + esc(e.message) + '</div>';
+        });
+    }
+
+    function renderDrawerBody(tasks, propName) {
+      if (!tasks.length) {
+        document.getElementById('drawer-body').innerHTML = '<div class="drawer-empty">OPEN の対応はありません</div>';
+        return;
+      }
+      var todayYmd = today();
+      var html = '';
+      tasks.forEach(function(t) {
+        var dateLabel = t.targetMode === 'NEXT'
+          ? '次回清掃' + (t.boundDate ? '（' + t.boundDate + '）' : '')
+          : t.targetDate;
+        var expired = t.targetMode === 'DATE' && t.targetDate && t.targetDate < todayYmd;
+        html += '<div class="task-item">' +
+          '<div class="task-item-header">' +
+            '<span class="task-type-badge">' + esc(t.type) + '</span>' +
+            '<span class="task-date-label">' + esc(dateLabel) + '</span>' +
+            (expired ? '<span class="task-expired-label">期限切れ</span>' : '') +
+          '</div>' +
+          '<div class="task-content">' + esc(t.content) + '</div>' +
+          (t.photoRequired ? '<div class="task-photo-tag">📷 写真必要</div>' : '') +
+          '<div class="task-actions">' +
+            '<button class="btn-task-done"   data-tid="' + esc(t.taskId) + '" data-prop="' + esc(propName) + '">完了</button>' +
+            '<button class="btn-task-cancel" data-tid="' + esc(t.taskId) + '" data-prop="' + esc(propName) + '">取消</button>' +
+          '</div>' +
+        '</div>';
+      });
+      document.getElementById('drawer-body').innerHTML = html;
+
+      document.querySelectorAll('.btn-task-done, .btn-task-cancel').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var tid    = btn.dataset.tid;
+          var pn     = btn.dataset.prop;
+          var status = btn.classList.contains('btn-task-done') ? 'DONE' : 'CANCELLED';
+          btn.disabled = true;
+          callApi({ action: 'updateCleanTaskStatus', taskId: tid, status: status })
+            .then(function(r) {
+              if (r.ok) {
+                toast(status === 'DONE' ? '完了にしました ✓' : '取り消しました');
+                openTaskDrawer(pn); // ドロワーを再描画
+                loadBoard();        // バッジ件数を更新
+              } else {
+                btn.disabled = false;
+                toast('更新エラー: ' + (r.error || '不明'));
+              }
+            })
+            .catch(function(e) {
+              btn.disabled = false;
+              if (e.isUnauthorized) { handleUnauthorized(); return; }
+              toast('更新エラー: ' + e.message);
+            });
+        });
+      });
+    }
+
+    function closeTaskDrawer() {
+      document.getElementById('task-drawer').hidden = true;
+    }
+
+    // ── 「物件を選んで追加」プロパティ選択 ──────────────────────────
+
+    function openBoardAddTask() {
+      // ドロワーを開いて「読み込み中」を表示
+      var drawer = document.getElementById('task-drawer');
+      document.getElementById('drawer-title').textContent = '物件を選んで対応追加';
+      document.getElementById('drawer-body').innerHTML = '<div class="drawer-empty">読み込み中…</div>';
+      drawer.hidden = false;
+
+      callApi({ action: 'getActiveProperties' })
+        .then(function(r) {
+          if (!r.ok) {
+            closeTaskDrawer();
+            toast('物件一覧の取得に失敗しました: ' + (r.error || '不明'));
+            return;
+          }
+          var props = r.properties || [];
+          if (!props.length) {
+            document.getElementById('drawer-body').innerHTML = '<div class="drawer-empty">有効な物件がありません</div>';
+            return;
+          }
+
+          var sel = document.createElement('select');
+          sel.className = 'drawer-prop-sel';
+          var placeholder = document.createElement('option');
+          placeholder.value = ''; placeholder.textContent = '物件を選んでください';
+          sel.appendChild(placeholder);
+          props.forEach(function(p) {
+            var opt = document.createElement('option');
+            opt.value = p; opt.textContent = p;
+            sel.appendChild(opt);
+          });
+
+          var body = document.getElementById('drawer-body');
+          body.innerHTML = '';
+          body.appendChild(sel);
+
+          sel.onchange = function() {
+            var p = sel.value;
+            if (!p) return;
+            closeTaskDrawer();
+            openTaskModal(p);
+          };
+        })
+        .catch(function(e) {
+          closeTaskDrawer();
+          if (e.isUnauthorized) { handleUnauthorized(); return; }
+          toast('物件一覧の取得エラー: ' + e.message);
+        });
+    }
+
+    // ── 再送 ─────────────────────────────────────────────────────────
+
+    function resendBlock(propName) {
+      if (!confirm('この物件の今の担当と対応を、全体グループに送ります。よろしいですか')) return;
+      var RESEND_ERRORS = {
+        already_pending:  '再送は既に依頼済みです（最大5分で届きます）',
+        invalid_property: '物件名が無効です',
+        invalid_date:     '今日か明日の日付のみ再送できます'
+      };
+      callApi({ action: 'resendPropertyBlock', propertyName: propName, date: S.boardDate })
+        .then(function(r) {
+          if (!r.ok) {
+            toast(RESEND_ERRORS[r.error] || ('エラー: ' + (r.error || '不明')));
+            return;
+          }
+          toast('再送を依頼しました。最大5分で届きます');
+        })
+        .catch(function(e) {
+          if (e.isUnauthorized) { handleUnauthorized(); return; }
+          toast('再送エラー: ' + e.message);
+        });
     }
 
     // ── イベント ──────────────────────────────────────────────────────
@@ -721,6 +1154,43 @@
           toast('保存エラー: ' + e.message);
           setBusy(false);
         });
+      });
+
+      // タスク登録モーダル：内部イベント
+      document.getElementById('task-content').addEventListener('input', function() {
+        var len = this.value.length;
+        var el  = document.getElementById('task-char-count');
+        el.textContent = len + ' / 200';
+        el.classList.toggle('over', len > 200);
+      });
+      document.getElementById('photo-no').addEventListener('click', function() { setPhotoToggle(false); });
+      document.getElementById('photo-yes').addEventListener('click', function() { setPhotoToggle(true); });
+      document.getElementById('mode-next').addEventListener('click', function() { setDateMode('NEXT'); });
+      document.getElementById('mode-tomorrow').addEventListener('click', function() { setDateMode('DATE'); });
+      document.getElementById('mode-pick').addEventListener('click', function() { setDateMode('DATE_PICK'); });
+      document.getElementById('task-modal-cancel').addEventListener('click', closeTaskModal);
+      document.getElementById('task-modal-submit').addEventListener('click', submitTask);
+      // モーダル背景タップで閉じる
+      document.getElementById('task-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeTaskModal();
+      });
+
+      // ドロワー背景タップで閉じる
+      document.getElementById('task-drawer').addEventListener('click', function(e) {
+        if (e.target === this) closeTaskDrawer();
+      });
+
+      // 「物件を選んで対応追加」ボタン
+      document.getElementById('btn-board-add-task').addEventListener('click', openBoardAddTask);
+
+      // ボード内のボタン委譲（board-cols は再描画されるため、親に委譲）
+      document.getElementById('panel-board').addEventListener('click', function(e) {
+        var addBtn = e.target.closest('.btn-add-task');
+        if (addBtn) { openTaskModal(addBtn.dataset.prop); return; }
+        var badge = e.target.closest('.task-badge');
+        if (badge) { openTaskDrawer(badge.dataset.prop); return; }
+        var resendBtn = e.target.closest('.btn-resend');
+        if (resendBtn) { resendBlock(resendBtn.dataset.prop); return; }
       });
 
       // 画面が隠れているあいだはボードの自動更新を止める
