@@ -856,6 +856,38 @@
       renderScheduleList();
     }
 
+    function restoreScheduleRangeFromCache(c) {
+      if (!c || !Array.isArray(c.scheduleSearchItems)) return;
+      S.scheduleSearchItems   = c.scheduleSearchItems;
+      S.scheduleSearchByDate  = c.scheduleSearchByDate  || {};
+      S.scheduleProgressData  = c.scheduleProgressData  || {};
+      S.scheduleSearchFetched = true;
+      if (c.cleaners && c.cleaners.length) S.cleaners = c.cleaners;
+      applyScheduleDate(S.boardDate);
+      updateScheduleStats();
+      renderScheduleList();
+    }
+
+    // byDate から S.scheduleItems・S.scheduleAssignUpdatedAt・S.taskCounts をセットしソートする
+    function applyScheduleDate(date) {
+      var dateData = S.scheduleSearchByDate[date] || { items: [], latestUpdatedAt: null };
+      S.scheduleItems           = (dateData.items || []).slice();
+      S.scheduleAssignUpdatedAt = dateData.latestUpdatedAt || null;
+      S.taskCounts = {};
+      S.scheduleItems.forEach(function(i) { S.taskCounts[i.propertyName] = i.taskCount; });
+      S.scheduleTasks = {};
+      var cmap = {};
+      S.cleaners.forEach(function(c, i) { cmap[c.name] = i; });
+      S.scheduleItems.sort(function(a, b) {
+        var emptyA = !a.staff, emptyB = !b.staff;
+        if (emptyA !== emptyB) return emptyA ? -1 : 1;
+        var ia = cmap[a.staff] !== undefined ? cmap[a.staff] : 9999;
+        var ib = cmap[b.staff] !== undefined ? cmap[b.staff] : 9999;
+        if (ia !== ib) return ia - ib;
+        return (a.order || 999) - (b.order || 999);
+      });
+    }
+
     function toast(msg, ms) {
       var el = document.getElementById('toast');
       el.textContent = msg;
@@ -1104,34 +1136,17 @@
 
     // ── 物件名検索：複数日データ取得 ─────────────────────────────────
     function loadScheduleSearchData() {
-      S.scheduleSearchLoading = true;
-      renderScheduleList();
-
-      var fromDate = today();
-      var d90 = new Date();
-      d90.setDate(d90.getDate() + 90);
-      var toDate = d90.getFullYear() + '-' +
-        String(d90.getMonth() + 1).padStart(2, '0') + '-' +
-        String(d90.getDate()).padStart(2, '0');
-
-      callApi({ action: 'getScheduleRange', fromDate: fromDate, toDate: toDate })
-        .then(function(r) {
-          S.scheduleSearchLoading = false;
-          if (!r.ok) { toast('検索データの取得に失敗しました'); renderScheduleList(); return; }
-          S.scheduleSearchItems   = r.items   || [];
-          S.scheduleSearchByDate  = r.byDate  || {};
-          S.scheduleSearchFetched = true;
-          renderScheduleList();
-        })
-        .catch(function(e) {
-          S.scheduleSearchLoading = false;
-          if (e.isUnauthorized) { handleUnauthorized(); return; }
-          toast('検索データの取得エラー: ' + e.message);
-          renderScheduleList();
-        });
+      // 範囲データは loadScheduleTab が取得済み。未取得なら取得を開始して描画を待つ。
+      if (!S.scheduleSearchFetched && !S.scheduleSearchLoading) {
+        loadScheduleTab();
+      } else {
+        renderScheduleList();
+      }
     }
 
     // ── 今後の清掃予定タブ ────────────────────────────────────────────
+    // getScheduleRange(today〜+90) を一度取得して S.scheduleSearchItems/ByDate に保持する。
+    // 日付切り替えは保持データから applyScheduleDate() でノーコスト切替。
     function loadScheduleTab(silent) {
       if (S.sessionExpired) return;
       if (silent) {
@@ -1139,35 +1154,45 @@
             !document.getElementById('task-modal').hidden ||
             !document.getElementById('task-drawer').hidden) return;
       } else {
-        var _sc = lsGet('dh_schedule_' + S.boardDate);
+        var _sc = lsGet('dh_schedule_range');
         if (_sc) {
-          restoreScheduleFromCache(_sc);
+          restoreScheduleRangeFromCache(_sc);
         } else {
           document.getElementById('sched-list').innerHTML =
             '<div class="msg"><span class="spin">↻</span> 読み込み中…</div>';
         }
       }
 
+      S.scheduleSearchLoading = true;
+
+      var fromDate = today();
+      var _d90 = new Date();
+      _d90.setDate(_d90.getDate() + 90);
+      var toDate = _d90.getFullYear() + '-' +
+        String(_d90.getMonth() + 1).padStart(2, '0') + '-' +
+        String(_d90.getDate()).padStart(2, '0');
+
       var cleanerProm = S.cleaners.length
         ? Promise.resolve(null)
         : callApi({ action: 'getCleanerList' });
 
-      var progressProm = (S.boardDate === today())
-        ? callApi({ action: 'getProgress', date: S.boardDate })
-        : Promise.resolve(null);
+      var progressProm = callApi({ action: 'getProgress', date: fromDate });
 
       return Promise.all([
-        callApi({ action: 'getSchedule', date: S.boardDate }),
+        callApi({ action: 'getScheduleRange', fromDate: fromDate, toDate: toDate }),
         cleanerProm,
         progressProm
       ]).then(function(res) {
         var sr = res[0], cr = res[1], pr = res[2];
+        S.scheduleSearchLoading = false;
         if (cr && cr.ok) S.cleaners = cr.cleaners;
         if (!sr.ok) { toast('スケジュールの読み込みに失敗しました'); return; }
 
-        S.taskCounts = sr.taskCounts || {};
+        S.scheduleSearchItems   = sr.items  || [];
+        S.scheduleSearchByDate  = sr.byDate || {};
+        S.scheduleSearchFetched = true;
 
-        // 今日の場合は progressData で DONE チェック
+        // 今日の DONE チェック用
         S.scheduleProgressData = {};
         if (pr && pr.ok) {
           (pr.progress || []).forEach(function(p) {
@@ -1175,60 +1200,7 @@
           });
         }
 
-        var hdr = sr.schedule.header;
-        var H = {
-          pn:  hdr.indexOf('PropertyName'),
-          fd:  hdr.indexOf('Final_CheckoutDate'),
-          sdc: hdr.indexOf('Auto_SameDayCheckout'),
-          ord: hdr.indexOf('Order'),
-          uid: hdr.indexOf('UID')
-        };
-
-        var seen = {}, unique = [];
-        sr.schedule.rows.forEach(function(row) {
-          var k = String(row[H.pn] || '').trim() + '\t' + String(row[H.fd] || '').trim();
-          if (!seen[k]) { seen[k] = true; unique.push(row); }
-        });
-
-        var am = {};
-        (sr.assignments || []).forEach(function(a) {
-          var pn = String(a.propertyName || '').trim();
-          am[pn + '\t' + (a.uid || '')] = a;
-          am['pn\t' + pn]               = a;
-        });
-        S.scheduleAssignUpdatedAt = sr.latestUpdatedAt || null;
-
-        S.scheduleItems = unique.map(function(row) {
-          var pn  = String(row[H.pn]  || '').trim();
-          var uid = String(row[H.uid] || '').trim();
-          var sdc = H.sdc >= 0 ? String(row[H.sdc] || '').trim() : '';
-          var a   = am[pn + '\t' + uid] || am['pn\t' + pn];
-          return {
-            propertyName: pn,
-            uid:          uid,
-            date:         String(row[H.fd] || '').trim(),
-            staff:        a ? String(a.staff || '') : '',
-            order:        a ? (Number(a.order) || 0) : (Number(row[H.ord]) || 0),
-            isSameDayIn:  sdc === 'Yes',
-            taskCount:    S.taskCounts[pn] || 0
-          };
-        });
-
-        // タスクキャッシュをリセット（再読込のたびに）
-        S.scheduleTasks = {};
-
-        // ソート：未担当先頭 → cleaners 順 → order 昇順
-        var cmap = {};
-        S.cleaners.forEach(function(c, i) { cmap[c.name] = i; });
-        S.scheduleItems.sort(function(a, b) {
-          var emptyA = !a.staff, emptyB = !b.staff;
-          if (emptyA !== emptyB) return emptyA ? -1 : 1;
-          var ia = cmap[a.staff] !== undefined ? cmap[a.staff] : 9999;
-          var ib = cmap[b.staff] !== undefined ? cmap[b.staff] : 9999;
-          if (ia !== ib) return ia - ib;
-          return (a.order || 999) - (b.order || 999);
-        });
-
+        applyScheduleDate(S.boardDate);
         updateScheduleStats();
 
         var now = new Date();
@@ -1237,16 +1209,16 @@
           String(now.getMinutes()).padStart(2, '0') + '  ／  30秒ごとに自動更新';
 
         S.scheduleFetchedAt = Date.now();
-        lsSet('dh_schedule_' + S.boardDate, {
-          scheduleItems:           S.scheduleItems,
-          scheduleAssignUpdatedAt: S.scheduleAssignUpdatedAt,
-          scheduleProgressData:    S.scheduleProgressData,
-          taskCounts:              S.taskCounts,
-          cleaners:                S.cleaners
+        lsSet('dh_schedule_range', {
+          scheduleSearchItems:  S.scheduleSearchItems,
+          scheduleSearchByDate: S.scheduleSearchByDate,
+          scheduleProgressData: S.scheduleProgressData,
+          cleaners:             S.cleaners
         });
 
         renderScheduleList();
       }).catch(function(e) {
+        S.scheduleSearchLoading = false;
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('スケジュール読み込みエラー: ' + e.message);
       });
@@ -1396,92 +1368,59 @@
       var parts    = key.split('\t');
       var propName = parts[0];
       var date     = parts[1];
-      var isSearchMode = S.scheduleSearchText.trim().length > 0;
 
-      if (isSearchMode) {
-        // 検索モード：scheduleSearchByDate[date] を使う
-        var dateData = S.scheduleSearchByDate[date];
-        if (!dateData) { _staffPendingSchedule = false; return; }
+      // 検索モード・通常モード共通：scheduleSearchByDate[date] を使う
+      var dateData = S.scheduleSearchByDate[date];
+      if (!dateData) { _staffPendingSchedule = false; return; }
 
-        var oldStaff = '';
-        S.scheduleSearchItems.forEach(function(i) {
-          if (i.propertyName === propName && i.date === date) { oldStaff = i.staff || ''; i.staff = newStaff; }
-        });
-        dateData.items.forEach(function(i) {
+      var oldStaff = null;
+      // scheduleSearchItems・dateData.items・scheduleItems は同一オブジェクトを参照するが明示的に更新
+      S.scheduleSearchItems.forEach(function(i) {
+        if (i.propertyName === propName && i.date === date) {
+          if (oldStaff === null) oldStaff = i.staff || '';
+          i.staff = newStaff;
+        }
+      });
+      dateData.items.forEach(function(i) {
+        if (i.propertyName === propName) i.staff = newStaff;
+      });
+      if (date === S.boardDate) {
+        S.scheduleItems.forEach(function(i) {
           if (i.propertyName === propName) i.staff = newStaff;
         });
-        var oldUpdatedAt = dateData.latestUpdatedAt;
-        renderScheduleList();
-
-        var rows = dateData.items.map(function(i) {
-          return { propertyName: i.propertyName, uid: i.uid || '', staff: i.staff || '', order: i.order || 0 };
-        });
-        callApi({
-          action: 'saveAssignments', date: date, rows: rows, knownUpdatedAt: oldUpdatedAt || ''
-        }).then(function(r) {
-          _staffPendingSchedule = false;
-          if (r.ok) {
-            if (r.latestUpdatedAt) dateData.latestUpdatedAt = r.latestUpdatedAt;
-            toast('担当を変更しました。反映まで最大5分かかります');
-            return;
-          }
-          // ロールバック
-          S.scheduleSearchItems.forEach(function(i) {
-            if (i.propertyName === propName && i.date === date) i.staff = oldStaff;
-          });
-          dateData.items.forEach(function(i) {
-            if (i.propertyName === propName) i.staff = oldStaff;
-          });
-          dateData.latestUpdatedAt = oldUpdatedAt;
-          renderScheduleList();
-          if (r.error === 'conflict') {
-            toast('他の人が先に保存しました。再読込します');
-            S.scheduleSearchFetched = false;
-            loadScheduleSearchData();
-          } else {
-            toast('担当変更エラー: ' + (r.error || '不明'));
-          }
-        }).catch(function(e) {
-          _staffPendingSchedule = false;
-          S.scheduleSearchItems.forEach(function(i) {
-            if (i.propertyName === propName && i.date === date) i.staff = oldStaff;
-          });
-          dateData.items.forEach(function(i) {
-            if (i.propertyName === propName) i.staff = oldStaff;
-          });
-          dateData.latestUpdatedAt = oldUpdatedAt;
-          renderScheduleList();
-          if (e.isUnauthorized) { handleUnauthorized(); return; }
-          toast('担当変更エラー: ' + e.message);
-        });
-        return;
       }
-
-      // 通常モード：scheduleItems を使う
-      var oldStaff2 = '';
-      S.scheduleItems.forEach(function(i) {
-        if (i.propertyName === propName) { oldStaff2 = i.staff || ''; i.staff = newStaff; }
-      });
-      var oldUpdatedAt2 = S.scheduleAssignUpdatedAt;
+      if (oldStaff === null) oldStaff = '';
+      var oldUpdatedAt = dateData.latestUpdatedAt;
       renderScheduleList();
 
-      var rows2 = S.scheduleItems.map(function(i) {
+      var rows = dateData.items.map(function(i) {
         return { propertyName: i.propertyName, uid: i.uid || '', staff: i.staff || '', order: i.order || 0 };
       });
       callApi({
-        action: 'saveAssignments', date: S.boardDate, rows: rows2, knownUpdatedAt: oldUpdatedAt2 || ''
+        action: 'saveAssignments', date: date, rows: rows, knownUpdatedAt: oldUpdatedAt || ''
       }).then(function(r) {
         _staffPendingSchedule = false;
         if (r.ok) {
-          if (r.latestUpdatedAt) S.scheduleAssignUpdatedAt = r.latestUpdatedAt;
+          if (r.latestUpdatedAt) {
+            dateData.latestUpdatedAt = r.latestUpdatedAt;
+            if (date === S.boardDate) S.scheduleAssignUpdatedAt = r.latestUpdatedAt;
+          }
           toast('担当を変更しました。反映まで最大5分かかります');
           return;
         }
         // ロールバック
-        S.scheduleItems.forEach(function(i) {
-          if (i.propertyName === propName) i.staff = oldStaff2;
+        S.scheduleSearchItems.forEach(function(i) {
+          if (i.propertyName === propName && i.date === date) i.staff = oldStaff;
         });
-        S.scheduleAssignUpdatedAt = oldUpdatedAt2;
+        dateData.items.forEach(function(i) {
+          if (i.propertyName === propName) i.staff = oldStaff;
+        });
+        if (date === S.boardDate) {
+          S.scheduleItems.forEach(function(i) {
+            if (i.propertyName === propName) i.staff = oldStaff;
+          });
+        }
+        dateData.latestUpdatedAt = oldUpdatedAt;
         renderScheduleList();
         if (r.error === 'conflict') {
           toast('他の人が先に保存しました。再読込します');
@@ -1491,10 +1430,18 @@
         }
       }).catch(function(e) {
         _staffPendingSchedule = false;
-        S.scheduleItems.forEach(function(i) {
-          if (i.propertyName === propName) i.staff = oldStaff2;
+        S.scheduleSearchItems.forEach(function(i) {
+          if (i.propertyName === propName && i.date === date) i.staff = oldStaff;
         });
-        S.scheduleAssignUpdatedAt = oldUpdatedAt2;
+        dateData.items.forEach(function(i) {
+          if (i.propertyName === propName) i.staff = oldStaff;
+        });
+        if (date === S.boardDate) {
+          S.scheduleItems.forEach(function(i) {
+            if (i.propertyName === propName) i.staff = oldStaff;
+          });
+        }
+        dateData.latestUpdatedAt = oldUpdatedAt;
         renderScheduleList();
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('担当変更エラー: ' + e.message);
@@ -2121,15 +2068,25 @@
         setBusy(false);
         if (r.ok) {
           toast('登録しました ✓');
-          // 検索モードの件数を楽観的に更新（loadScheduleTab では更新されないため）
+          // 保持データの taskCount をローカル更新（全取得なし）
           S.scheduleSearchItems.forEach(function(i) {
             if (i.propertyName === propName && i.date === boundDate) i.taskCount++;
           });
+          if (S.scheduleSearchByDate[boundDate]) {
+            S.scheduleSearchByDate[boundDate].items.forEach(function(i) {
+              if (i.propertyName === propName) i.taskCount++;
+            });
+          }
+          if (S.boardDate === boundDate) {
+            S.scheduleItems.forEach(function(i) {
+              if (i.propertyName === propName) { i.taskCount++; S.taskCounts[propName] = (S.taskCounts[propName] || 0) + 1; }
+            });
+          }
           if (S.scheduleDetailKey) {
             delete S.scheduleTasks[S.scheduleDetailKey.split('\t')[0]];
             openScheduleDetail(S.scheduleDetailKey.split('\t')[0]);
           }
-          loadScheduleTab();
+          renderScheduleList();
         } else {
           toast('登録エラー: ' + (r.error || '不明'));
         }
@@ -2203,7 +2160,7 @@
               if (r.ok) {
                 toast(status === 'DONE' ? '完了にしました ✓' : '取り消しました');
                 openTaskDrawer(pn);
-                loadScheduleTab();
+                loadScheduleTab(true);
               } else {
                 btn.disabled = false;
                 toast('更新エラー: ' + (r.error || '不明'));
@@ -2445,7 +2402,14 @@
         S.boardDate = this.value;
         S.scheduleExpandedKey = null;
         S.scheduleDetailKey   = null;
-        loadScheduleTab();
+        if (S.scheduleSearchFetched) {
+          // 範囲データ取得済み：API コールなしに切替
+          applyScheduleDate(S.boardDate);
+          updateScheduleStats();
+          renderScheduleList();
+        } else {
+          loadScheduleTab();
+        }
       });
 
       // スプシを取り込む
