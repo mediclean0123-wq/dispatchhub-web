@@ -761,7 +761,9 @@
       scheduleSearchLoading:   false,  // フェッチ中
       // 進捗編集ドロワー
       editDrawerProp: null,   // 編集中の propertyName
-      editDrawerView: null    // 'board' or 'staff'
+      editDrawerView: null,   // 'board' or 'staff'
+      progressFetchedAt: 0,
+      scheduleFetchedAt: 0
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -801,6 +803,59 @@
     function statusRank(s) { return STATUS_RANK[s] !== undefined ? STATUS_RANK[s] : 2; }
 
     var toastTimer;
+    var CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+    var FRESH_MS     = 30 * 1000;
+
+    function lsGet(key) {
+      try {
+        var raw = localStorage.getItem(key);
+        if (!raw) return null;
+        var obj = JSON.parse(raw);
+        if (!obj || typeof obj.ts !== 'number') return null;
+        if (Date.now() - obj.ts > CACHE_TTL_MS) { localStorage.removeItem(key); return null; }
+        return obj.data;
+      } catch (e) { return null; }
+    }
+
+    function lsSet(key, data) {
+      try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data: data })); } catch (e) {}
+    }
+
+    function restoreProgressFromCache(c) {
+      if (!c || !Array.isArray(c.progressItems)) return;
+      S.progressItems           = c.progressItems;
+      S.progressData            = c.progressData            || {};
+      S.progressDefaults        = c.progressDefaults        || {};
+      S.progressAssignUpdatedAt = c.progressAssignUpdatedAt || null;
+      S.taskCounts              = c.taskCounts              || {};
+      if (c.cleaners && c.cleaners.length) S.cleaners = c.cleaners;
+      updateProgressStats();
+      renderProgressStaff(S.progressItems);
+      renderProgressBoard(S.progressItems);
+    }
+
+    function updateScheduleStats() {
+      var sameDayN   = S.scheduleItems.filter(function(i) { return i.isSameDayIn; }).length;
+      var notInN     = S.scheduleItems.filter(function(i) { return !i.isSameDayIn; }).length;
+      var totalTasks = S.scheduleItems.reduce(function(acc, i) { return acc + i.taskCount; }, 0);
+      document.getElementById('s-total').textContent     = S.scheduleItems.length;
+      document.getElementById('s-samedayin').textContent = sameDayN;
+      document.getElementById('s-notin').textContent     = notInN;
+      document.getElementById('s-tasks').textContent     = totalTasks;
+    }
+
+    function restoreScheduleFromCache(c) {
+      if (!c || !Array.isArray(c.scheduleItems)) return;
+      S.scheduleItems           = c.scheduleItems;
+      S.scheduleAssignUpdatedAt = c.scheduleAssignUpdatedAt || null;
+      S.scheduleProgressData    = c.scheduleProgressData    || {};
+      S.taskCounts              = c.taskCounts              || {};
+      if (c.cleaners && c.cleaners.length) S.cleaners = c.cleaners;
+      S.scheduleTasks = {};
+      updateScheduleStats();
+      renderScheduleList();
+    }
+
     function toast(msg, ms) {
       var el = document.getElementById('toast');
       el.textContent = msg;
@@ -829,7 +884,7 @@
     function startBoardTimer() {
       stopBoardTimer();
       if (!document.hidden && !S.sessionExpired) {
-        S.boardTimer = setInterval(loadScheduleTab, 30000);
+        S.boardTimer = setInterval(function() { loadScheduleTab(true); }, 30000);
       }
     }
 
@@ -841,7 +896,7 @@
     function startProgressTimer() {
       stopProgressTimer();
       if (!document.hidden && !S.sessionExpired) {
-        S.progressTimer = setInterval(loadProgress, 30000);
+        S.progressTimer = setInterval(function() { loadProgress(true); }, 30000);
       }
     }
 
@@ -1077,10 +1132,21 @@
     }
 
     // ── 今後の清掃予定タブ ────────────────────────────────────────────
-    function loadScheduleTab() {
+    function loadScheduleTab(silent) {
       if (S.sessionExpired) return;
-      document.getElementById('sched-list').innerHTML =
-        '<div class="msg"><span class="spin">↻</span> 読み込み中…</div>';
+      if (silent) {
+        if (_staffPendingSchedule || S.scheduleDetailKey ||
+            !document.getElementById('task-modal').hidden ||
+            !document.getElementById('task-drawer').hidden) return;
+      } else {
+        var _sc = lsGet('dh_schedule_' + S.boardDate);
+        if (_sc) {
+          restoreScheduleFromCache(_sc);
+        } else {
+          document.getElementById('sched-list').innerHTML =
+            '<div class="msg"><span class="spin">↻</span> 読み込み中…</div>';
+        }
+      }
 
       var cleanerProm = S.cleaners.length
         ? Promise.resolve(null)
@@ -1163,18 +1229,21 @@
           return (a.order || 999) - (b.order || 999);
         });
 
-        var sameDayN  = S.scheduleItems.filter(function(i) { return i.isSameDayIn; }).length;
-        var notInN    = S.scheduleItems.filter(function(i) { return !i.isSameDayIn; }).length;
-        var totalTasks = S.scheduleItems.reduce(function(acc, i) { return acc + i.taskCount; }, 0);
-        document.getElementById('s-total').textContent     = S.scheduleItems.length;
-        document.getElementById('s-samedayin').textContent = sameDayN;
-        document.getElementById('s-notin').textContent     = notInN;
-        document.getElementById('s-tasks').textContent     = totalTasks;
+        updateScheduleStats();
 
         var now = new Date();
         document.getElementById('refresh-note').textContent =
           '最終更新: ' + now.getHours() + ':' +
           String(now.getMinutes()).padStart(2, '0') + '  ／  30秒ごとに自動更新';
+
+        S.scheduleFetchedAt = Date.now();
+        lsSet('dh_schedule_' + S.boardDate, {
+          scheduleItems:           S.scheduleItems,
+          scheduleAssignUpdatedAt: S.scheduleAssignUpdatedAt,
+          scheduleProgressData:    S.scheduleProgressData,
+          taskCounts:              S.taskCounts,
+          cleaners:                S.cleaners
+        });
 
         renderScheduleList();
       }).catch(function(e) {
@@ -1447,11 +1516,24 @@
     }
 
     // ── 進捗確認タブ ────────────────────────────────────────────────
-    function loadProgress() {
+    function loadProgress(silent) {
       if (S.sessionExpired) return;
-      document.getElementById('progress-staff-view').innerHTML =
-        '<div class="msg"><span class="spin">↻</span> 読み込み中…</div>';
-      document.getElementById('progress-board-view').innerHTML = '';
+      if (silent) {
+        var _anyPend = Object.keys(_progressPending).some(function(k) { return _progressPending[k]; });
+        if (_anyPend || _reorderPending || _staffPendingProgress ||
+            S.editDrawerProp ||
+            !document.getElementById('task-modal').hidden ||
+            !document.getElementById('task-drawer').hidden) return;
+      } else {
+        var _pc = lsGet('dh_progress_' + S.progressDate);
+        if (_pc) {
+          restoreProgressFromCache(_pc);
+        } else {
+          document.getElementById('progress-staff-view').innerHTML =
+            '<div class="msg"><span class="spin">↻</span> 読み込み中…</div>';
+          document.getElementById('progress-board-view').innerHTML = '';
+        }
+      }
 
       var cleanerProm = S.cleaners.length
         ? Promise.resolve(null)
@@ -1531,6 +1613,16 @@
         document.getElementById('progress-refresh-note').textContent =
           '最終更新: ' + now.getHours() + ':' +
           String(now.getMinutes()).padStart(2, '0') + '  ／  30秒ごとに自動更新';
+
+        S.progressFetchedAt = Date.now();
+        lsSet('dh_progress_' + S.progressDate, {
+          progressItems:           S.progressItems,
+          progressData:            S.progressData,
+          progressDefaults:        S.progressDefaults,
+          progressAssignUpdatedAt: S.progressAssignUpdatedAt,
+          taskCounts:              S.taskCounts,
+          cleaners:                S.cleaners
+        });
       }).catch(function(e) {
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('進捗確認読み込みエラー: ' + e.message);
@@ -2219,11 +2311,11 @@
           stopBoardTimer();
           stopProgressTimer();
           if (tab === 'progress') {
-            loadProgress();
+            if (Date.now() - S.progressFetchedAt >= FRESH_MS) loadProgress();
             startProgressTimer();
           }
           if (tab === 'schedule') {
-            loadScheduleTab();
+            if (Date.now() - S.scheduleFetchedAt >= FRESH_MS) loadScheduleTab();
             startBoardTimer();
           }
         });
@@ -2518,11 +2610,11 @@
           stopProgressTimer();
         } else {
           if (S.activeTab === 'schedule') {
-            loadScheduleTab();
+            loadScheduleTab(true);
             startBoardTimer();
           }
           if (S.activeTab === 'progress') {
-            loadProgress();
+            loadProgress(true);
             startProgressTimer();
           }
         }
