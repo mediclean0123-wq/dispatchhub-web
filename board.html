@@ -85,32 +85,7 @@
       padding: 0.35rem 0; margin-top: 0.6rem; border-bottom: 1px solid var(--border);
     }
 
-    /* ── 物件カード（担当割り） ── */
-    .prop-card {
-      background: var(--card); border-radius: 8px;
-      padding: 0.65rem 0.75rem; margin-top: 0.4rem;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.07);
-    }
-    .prop-name { font-weight: bold; font-size: 0.92rem; margin-bottom: 0.4rem; }
-    .prop-ctrl { display: flex; align-items: center; gap: 0.4rem; }
-    .staff-sel {
-      flex: 1; padding: 0.38rem 0.5rem; border: 1px solid var(--border); border-radius: 6px;
-      font-size: 0.88rem; font-family: inherit; background: var(--card);
-    }
-    .ord-btn {
-      width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 4px;
-      background: var(--bg); cursor: pointer; font-size: 0.7rem; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .ord-btn:active { background: var(--border); }
-    .ord-badge {
-      min-width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 4px;
-      background: var(--bg); font-size: 0.78rem; font-weight: bold; color: var(--muted);
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-
-    /* ── ボタン ── */
-    .actions { display: flex; gap: 0.6rem; margin-top: 1rem; padding-bottom: 1rem; }
+    /* ── ボタン（モーダル共通） ── */
     .btn {
       flex: 1; padding: 0.7rem; border-radius: 8px; border: none; cursor: pointer;
       font-size: 0.92rem; font-weight: bold; font-family: inherit; transition: opacity 0.15s;
@@ -429,23 +404,6 @@
     }
     .btn-ped-tasks:active { background: var(--border); }
 
-    /* 担当割りを開くボタン / 戻るボタン */
-    .assign-open-row { margin-bottom: 0.6rem; }
-    .btn-assign-open {
-      width: 100%; padding: 0.55rem; border-radius: 7px;
-      border: 1.5px solid var(--muted); background: transparent;
-      color: var(--muted); font-size: 0.85rem; font-weight: bold;
-      font-family: inherit; cursor: pointer;
-    }
-    .btn-assign-open:active { background: #f0f0f0; }
-    .assign-back-row { margin-bottom: 0.75rem; }
-    .btn-assign-back {
-      padding: 0.45rem 0.9rem; border-radius: 7px;
-      border: 1.5px solid var(--border); background: var(--card);
-      color: #555; font-size: 0.85rem; font-family: inherit; cursor: pointer;
-    }
-    .btn-assign-back:active { background: var(--bg); }
-
     /* ── 今後の清掃予定タブ：検索 ── */
     .sched-search {
       width: 100%; padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 6px;
@@ -463,6 +421,11 @@
     }
     .sched-row-main:active { background: var(--bg); }
     .sched-prop-name { flex: 1; font-size: 0.88rem; font-weight: 600; word-break: break-word; }
+    .sched-order-num {
+      font-size: 0.72rem; font-weight: bold; color: var(--muted);
+      background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+      padding: 0 0.3rem; margin-right: 0.3rem; flex-shrink: 0;
+    }
     .sched-type-badge-in {
       font-size: 0.68rem; font-weight: bold; color: #1565c0; background: #e3f2fd;
       border-radius: 8px; padding: 0.12rem 0.4rem; white-space: nowrap; flex-shrink: 0;
@@ -598,28 +561,6 @@
       <button class="tab-btn"        data-tab="schedule">今後の清掃予定</button>
     </nav>
 
-    <!-- 担当割りパネル（タブバー非表示・今後の清掃予定タブから開く）-->
-    <div id="panel-assign" class="panel" hidden>
-      <div class="assign-back-row">
-        <button id="btn-assign-back" class="btn-assign-back">← 今後の清掃予定に戻る</button>
-      </div>
-      <div class="date-row">
-        <label for="date-sel">日付</label>
-        <input type="date" id="date-sel">
-      </div>
-      <div id="updating-warn" class="warn" hidden>
-        清掃データ更新中のため保存できません。少し待って再読込してください
-      </div>
-      <div id="assign-notice" class="notice" hidden>
-        この日は画面の担当割りが優先されます（最終保存：<span id="notice-time"></span>）
-      </div>
-      <div id="prop-list"></div>
-      <div class="actions">
-        <button class="btn btn-import" id="btn-import" disabled>スプシを取り込む</button>
-        <button class="btn btn-save"   id="btn-save"   disabled>保存</button>
-      </div>
-    </div>
-
     <!-- 進捗確認タブ -->
     <div id="panel-progress" class="panel">
       <div class="date-row">
@@ -651,9 +592,6 @@
 
     <!-- 今後の清掃予定タブ -->
     <div id="panel-schedule" class="panel" hidden>
-      <div class="assign-open-row">
-        <button class="btn-assign-open" id="btn-open-assign">担当割りを開く</button>
-      </div>
       <div class="date-row">
         <label for="board-date-sel">日付</label>
         <input type="date" id="board-date-sel">
@@ -942,14 +880,9 @@
       S.taskCounts = {};
       S.scheduleItems.forEach(function(i) { S.taskCounts[i.propertyName] = i.taskCount; });
       S.scheduleTasks = {};
-      var cmap = {};
-      S.cleaners.forEach(function(c, i) { cmap[c.name] = i; });
       S.scheduleItems.sort(function(a, b) {
-        var emptyA = !a.staff, emptyB = !b.staff;
-        if (emptyA !== emptyB) return emptyA ? -1 : 1;
-        var ia = cmap[a.staff] !== undefined ? cmap[a.staff] : 9999;
-        var ib = cmap[b.staff] !== undefined ? cmap[b.staff] : 9999;
-        if (ia !== ib) return ia - ib;
+        var ar = areaRank(a.area) - areaRank(b.area);
+        if (ar) return ar;
         return (a.order || 999) - (b.order || 999);
       });
     }
@@ -970,8 +903,6 @@
 
     function setBusy(v) {
       S.busy = v;
-      document.getElementById('btn-save').disabled   = v || S.updating || S.sessionExpired;
-      document.getElementById('btn-import').disabled = v || S.sessionExpired;
     }
 
     function stopBoardTimer() {
@@ -1003,10 +934,7 @@
       stopProgressTimer();
       S.sessionExpired = true;
       document.getElementById('session-banner').hidden = false;
-      document.getElementById('btn-save').disabled   = true;
-      document.getElementById('btn-import').disabled = true;
       var msg = '<div class="msg">ログインの有効期限が切れました。画面を開き直してください</div>';
-      document.getElementById('prop-list').innerHTML           = msg;
       document.getElementById('sched-list').innerHTML          = msg;
       document.getElementById('progress-staff-view').innerHTML = msg;
       document.getElementById('progress-board-view').innerHTML = '';
@@ -1044,160 +972,6 @@
         }
         return data;
       });
-    }
-
-    // ── 担当割り：スケジュール読み込み ──────────────────────────────
-    function loadSchedule(date) {
-      setBusy(true);
-      document.getElementById('prop-list').innerHTML =
-        '<div class="msg"><span class="spin">↻</span> 読み込み中…</div>';
-
-      var cleanerProm = S.cleaners.length
-        ? Promise.resolve(null)
-        : callApi({ action: 'getCleanerList' });
-
-      return Promise.all([
-        callApi({ action: 'getSchedule', date: date }),
-        cleanerProm
-      ]).then(function(res) {
-        var sr = res[0], cr = res[1];
-        if (!sr.ok) throw new Error('getSchedule: ' + (sr.error || '不明'));
-        if (cr) {
-          if (!cr.ok) throw new Error('getCleanerList: ' + (cr.error || '不明'));
-          S.cleaners = cr.cleaners;
-        }
-
-        S.updating = !!sr.updating;
-        document.getElementById('updating-warn').hidden = !S.updating;
-
-        var hdr = sr.schedule.header;
-        var H = {
-          pn:   hdr.indexOf('PropertyName'),
-          fd:   hdr.indexOf('Final_CheckoutDate'),
-          fs:   hdr.indexOf('Final_AssignedStaff'),
-          ord:  hdr.indexOf('Order'),
-          area: hdr.indexOf('Area'),
-          uid:  hdr.indexOf('UID')
-        };
-
-        var seen = {}, unique = [];
-        sr.schedule.rows.forEach(function(row) {
-          var k = String(row[H.pn] || '').trim() + '\t' + String(row[H.fd] || '').trim();
-          if (!seen[k]) { seen[k] = true; unique.push(row); }
-        });
-
-        var am = {};
-        (sr.assignments || []).forEach(function(a) {
-          var pn = String(a.propertyName || '').trim();
-          am[pn + '\t' + (a.uid || '')] = a;
-          am['pn\t' + pn]               = a;
-        });
-
-        S.items = unique.map(function(row) {
-          var pn  = String(row[H.pn]  || '').trim();
-          var uid = String(row[H.uid] || '').trim();
-          var cs  = String(row[H.fs]  || '').trim();
-          var co  = Number(row[H.ord]) || 0;
-          var ar  = H.area >= 0 ? String(row[H.area] || '').trim() : '';
-          var a   = am[pn + '\t' + uid] || am['pn\t' + pn];
-          return {
-            propertyName: pn, uid: uid, date: date, area: ar,
-            staff:   a ? String(a.staff  || '')  : cs,
-            order:   a ? (Number(a.order) || 0)  : co,
-            csStaff: cs, csOrder: co
-          };
-        });
-
-        S.latestUpdatedAt = sr.latestUpdatedAt || null;
-
-        var hasAsgn = (sr.assignments || []).length > 0;
-        document.getElementById('assign-notice').hidden = !hasAsgn;
-        if (hasAsgn && sr.latestUpdatedAt) {
-          document.getElementById('notice-time').textContent = fmtTime(sr.latestUpdatedAt);
-        }
-
-        renderAssign();
-        setBusy(false);
-      });
-    }
-
-    // ── 担当割り：描画 ──────────────────────────────────────────────
-    function renderAssign() {
-      var list = document.getElementById('prop-list');
-      if (!S.items.length) {
-        list.innerHTML = '<div class="msg">この日の清掃はありません</div>';
-        return;
-      }
-
-      var sorted = S.items.slice().sort(function(a, b) {
-        var d = areaRank(a.area) - areaRank(b.area);
-        if (d !== 0) return d;
-        return (a.order || 999) - (b.order || 999);
-      });
-
-      var groups = [], curArea = null;
-      sorted.forEach(function(item) {
-        var a = item.area || '';
-        if (a !== curArea) { groups.push({ area: a, items: [] }); curArea = a; }
-        groups[groups.length - 1].items.push(item);
-      });
-
-      var html = '';
-      groups.forEach(function(g) {
-        html += '<div class="area-label">' +
-          esc(g.area ? 'エリア ' + g.area : 'エリア未設定') + '</div>';
-        g.items.forEach(function(item) {
-          var idx  = S.items.indexOf(item);
-          var opts = '<option value=""' + (!item.staff ? ' selected' : '') + '>（未割り当て）</option>';
-          if (item.staff && !S.cleaners.some(function(c) { return c.name === item.staff; })) {
-            opts += '<option value="' + esc(item.staff) + '" selected>' + esc(item.staff) + '</option>';
-          }
-          S.cleaners.forEach(function(c) {
-            opts += '<option value="' + esc(c.name) + '"' +
-              (c.name === item.staff ? ' selected' : '') + '>' + esc(c.name) + '</option>';
-          });
-          html +=
-            '<div class="prop-card">' +
-              '<div class="prop-name">' + esc(item.propertyName) + '</div>' +
-              '<div class="prop-ctrl">' +
-                '<select class="staff-sel" data-idx="' + idx + '">' + opts + '</select>' +
-                '<button class="ord-btn" data-action="up"   data-idx="' + idx + '">↑</button>' +
-                '<span  class="ord-badge">' + (item.order || '–') + '</span>' +
-                '<button class="ord-btn" data-action="down" data-idx="' + idx + '">↓</button>' +
-              '</div>' +
-            '</div>';
-        });
-      });
-
-      list.innerHTML = html;
-
-      list.querySelectorAll('.ord-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          syncStaff();
-          reorder(parseInt(btn.dataset.idx, 10), btn.dataset.action === 'up' ? -1 : 1);
-        });
-      });
-    }
-
-    function syncStaff() {
-      document.querySelectorAll('.staff-sel').forEach(function(sel) {
-        var i = parseInt(sel.dataset.idx, 10);
-        if (!isNaN(i)) S.items[i].staff = sel.value;
-      });
-    }
-
-    function reorder(idx, delta) {
-      var item = S.items[idx];
-      var peers = S.items.filter(function(it) { return it.staff === item.staff; })
-        .sort(function(a, b) { return (a.order || 999) - (b.order || 999); });
-      if (peers.length < 2) return;
-      peers.forEach(function(it, i) { it.order = i + 1; });
-      var pos = peers.indexOf(item);
-      var np  = pos + delta;
-      if (np < 0 || np >= peers.length) return;
-      var other = peers[np];
-      var tmp = item.order; item.order = other.order; other.order = tmp;
-      renderAssign();
     }
 
     // ── 物件名検索：複数日データ取得 ─────────────────────────────────
@@ -1312,6 +1086,12 @@
         }
         items = S.scheduleSearchItems.filter(function(i) {
           return i.propertyName.toLowerCase().indexOf(search) >= 0;
+        }).sort(function(a, b) {
+          if (a.date < b.date) return -1;
+          if (a.date > b.date) return 1;
+          var ar = areaRank(a.area) - areaRank(b.area);
+          if (ar) return ar;
+          return (a.order || 999) - (b.order || 999);
         });
       } else {
         items = S.scheduleItems;
@@ -1332,6 +1112,7 @@
       (S.lineRequests || []).forEach(function(lr) { if (lr.uid) pendingByUid[lr.uid] = lr; });
 
       var html = '';
+      var _curArea = null, _curAreaDate = null;
       displayItems.forEach(function(item) {
         var pn     = item.propertyName;
         var key    = pn + '\t' + item.date;
@@ -1340,6 +1121,14 @@
         var uid    = item.uid || '';
         var isExpanded = (S.scheduleExpandedKey === key);
         var isDetail   = (S.scheduleDetailKey   === key);
+
+        var itemDate = isSearchMode ? item.date : null;
+        if (item.area !== _curArea || itemDate !== _curAreaDate) {
+          html += '<div class="area-label">' +
+            esc(item.area ? 'エリア ' + item.area : 'エリア未設定') + '</div>';
+          _curArea = item.area;
+          _curAreaDate = itemDate;
+        }
 
         var typeBadge = item.isSameDayIn
           ? '<span class="sched-type-badge-in">同日イン</span>'
@@ -1369,9 +1158,14 @@
           ? '<span class="sched-date-label">' + esc(fmtDate(item.date)) + '</span>'
           : '';
 
+        var orderNum = (item.order > 0)
+          ? '<span class="sched-order-num">' + item.order + '</span>'
+          : '';
+
         html += '<div class="sched-row' + (isExpanded ? ' expanded' : '') + '" data-sched-key="' + keyEsc + '">';
         html += '<div class="sched-row-main" data-sched-toggle="' + keyEsc + '">' +
           dateLabel +
+          orderNum +
           '<span class="sched-prop-name">' + pnEsc + '</span>' +
           typeBadge +
           '<span class="' + staffCls + '">' + esc(staffText) + '</span>' +
@@ -2473,7 +2267,6 @@
           });
           document.getElementById('panel-progress').hidden = (tab !== 'progress');
           document.getElementById('panel-schedule').hidden = (tab !== 'schedule');
-          document.getElementById('panel-assign').hidden   = true;
           stopBoardTimer();
           stopProgressTimer();
           if (tab === 'progress') {
@@ -2484,29 +2277,6 @@
             if (Date.now() - S.scheduleFetchedAt >= FRESH_MS) loadScheduleTab();
             startBoardTimer();
           }
-        });
-      });
-
-      // 担当割りを開く
-      document.getElementById('btn-open-assign').addEventListener('click', function() {
-        document.getElementById('panel-schedule').hidden = true;
-        document.getElementById('panel-assign').hidden   = false;
-        if (!S.items.length && S.currentDate) {
-          loadSchedule(S.currentDate).catch(function(e) {
-            if (e.isUnauthorized) { handleUnauthorized(); return; }
-            toast('読み込みエラー: ' + e.message);
-            setBusy(false);
-          });
-        }
-      });
-
-      // 担当割りから戻る
-      document.getElementById('btn-assign-back').addEventListener('click', function() {
-        document.getElementById('panel-assign').hidden   = true;
-        document.getElementById('panel-schedule').hidden = false;
-        S.activeTab = 'schedule';
-        document.querySelectorAll('.tab-btn').forEach(function(b) {
-          b.classList.toggle('active', b.dataset.tab === 'schedule');
         });
       });
 
@@ -2616,16 +2386,6 @@
         }
       });
 
-      // 担当割りタブ：日付変更
-      document.getElementById('date-sel').addEventListener('change', function() {
-        S.currentDate = this.value;
-        loadSchedule(S.currentDate).catch(function(e) {
-          if (e.isUnauthorized) { handleUnauthorized(); return; }
-          toast('読み込みエラー: ' + e.message);
-          setBusy(false);
-        });
-      });
-
       // 今後の清掃予定タブ：日付変更
       document.getElementById('board-date-sel').addEventListener('change', function() {
         S.boardDate = this.value;
@@ -2639,59 +2399,6 @@
         } else {
           loadScheduleTab();
         }
-      });
-
-      // スプシを取り込む
-      document.getElementById('btn-import').addEventListener('click', function() {
-        syncStaff();
-        S.items.forEach(function(item) {
-          item.staff = item.csStaff;
-          item.order = item.csOrder;
-        });
-        renderAssign();
-        toast('スプシの担当を取り込みました');
-      });
-
-      // 保存
-      document.getElementById('btn-save').addEventListener('click', function() {
-        if (S.busy || S.updating || S.sessionExpired) return;
-        syncStaff();
-        setBusy(true);
-        var rows = S.items.map(function(item) {
-          return {
-            propertyName: item.propertyName,
-            uid:          item.uid,
-            staff:        item.staff,
-            order:        item.order
-          };
-        });
-        callApi({
-          action:         'saveAssignments',
-          date:           S.currentDate,
-          rows:           rows,
-          knownUpdatedAt: S.latestUpdatedAt
-        }).then(function(r) {
-          if (r.ok) {
-            toast('保存しました ✓');
-            return loadSchedule(S.currentDate);
-          }
-          if (r.error === 'conflict') {
-            showConflictModal(function() {
-              loadSchedule(S.currentDate).catch(function(e) {
-                if (e.isUnauthorized) { handleUnauthorized(); return; }
-                toast('読み込みエラー: ' + e.message);
-                setBusy(false);
-              });
-            });
-            return;
-          }
-          toast('保存エラー: ' + (r.error || '不明'));
-          setBusy(false);
-        }).catch(function(e) {
-          if (e.isUnauthorized) { handleUnauthorized(); return; }
-          toast('保存エラー: ' + e.message);
-          setBusy(false);
-        });
       });
 
       // タスク登録モーダル内部イベント
@@ -2858,10 +2565,8 @@
     liff.init({ liffId: CFG.LIFF_ID }).then(function() {
       if (!liff.isLoggedIn()) { liff.login(); return; }
       S.idToken      = liff.getIDToken();
-      S.currentDate  = tomorrow();
       S.boardDate    = today();
       S.progressDate = today();
-      document.getElementById('date-sel').value          = S.currentDate;
       document.getElementById('board-date-sel').value    = S.boardDate;
       document.getElementById('progress-date-sel').value = S.progressDate;
       document.getElementById('loading').hidden = true;
