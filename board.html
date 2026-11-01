@@ -389,14 +389,6 @@
       font-size: 0.72rem; font-family: inherit; cursor: pointer; color: var(--muted);
     }
     .ped-ind-back-btn:active { background: var(--border); }
-    .ped-reorder-row { display: flex; gap: 0.4rem; }
-    .ped-reorder-btn {
-      flex: 1; padding: 0.45rem; border-radius: 6px;
-      border: 1.5px solid var(--border); background: var(--bg);
-      font-size: 0.82rem; font-family: inherit; cursor: pointer; text-align: center;
-    }
-    .ped-reorder-btn:disabled { opacity: 0.35; cursor: default; }
-    .ped-reorder-btn:active:not(:disabled) { background: var(--border); }
     .btn-ped-tasks {
       width: 100%; padding: 0.5rem; border-radius: 6px;
       border: 1.5px solid var(--border); background: var(--bg);
@@ -412,6 +404,58 @@
     }
 
     /* ── 今後の清掃予定タブ：行リスト ── */
+    /* ── 担当別 / エリア別 切り替え ── */
+    .sched-grouping-bar { display: flex; gap: 0.4rem; margin-bottom: 0.5rem; }
+    .sched-grouping-btn {
+      flex: 1; padding: 0.35rem 0; border-radius: 6px;
+      border: 1.5px solid var(--border); background: var(--bg);
+      font-size: 0.82rem; font-family: inherit; cursor: pointer; text-align: center; color: var(--muted);
+    }
+    .sched-grouping-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .sched-grouping-btn:active:not(.active) { background: var(--border); }
+    .sched-staff-label {
+      padding: 0.3rem 0.75rem; font-size: 0.8rem; font-weight: bold;
+      color: #555; background: #e8eaf6; border-bottom: 1px solid var(--border);
+    }
+    .sched-area-inline {
+      font-size: 0.7rem; color: var(--muted); background: var(--bg);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 0 0.25rem; margin-left: 0.2rem; flex-shrink: 0;
+    }
+    /* ── タップ順モード ── */
+    .btn-order-mode {
+      width: 100%; padding: 0.45rem; border-radius: 6px;
+      border: 1.5px solid var(--accent); background: var(--bg);
+      font-size: 0.85rem; font-family: inherit; cursor: pointer; color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+    .btn-order-mode:active { background: #e8eaf6; }
+    .order-mode-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .order-mode-title { font-weight: bold; font-size: 0.9rem; flex-shrink: 0; }
+    .order-mode-staff-sel {
+      flex: 1; padding: 0.3rem 0.4rem; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.85rem; font-family: inherit; background: var(--card);
+    }
+    .order-mode-list { background: var(--card); border-radius: 8px; overflow: hidden; margin-bottom: 0.5rem; }
+    .order-tap-row {
+      display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid var(--border); cursor: pointer;
+    }
+    .order-tap-row:last-child { border-bottom: none; }
+    .order-tap-row:active { background: #f0f4ff; }
+    .order-tap-row.tapped { background: #e8f5e9; }
+    .order-tap-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 1.4rem; height: 1.4rem; border-radius: 50%;
+      font-size: 0.75rem; font-weight: bold; flex-shrink: 0;
+      border: 1.5px solid var(--border); background: var(--bg); color: var(--muted);
+    }
+    .order-tap-row.tapped .order-tap-badge {
+      background: var(--accent); border-color: var(--accent); color: #fff;
+    }
+    .order-tap-name { font-size: 0.88rem; flex: 1; }
+    .order-mode-actions { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .order-mode-actions .btn { flex: 1; }
     .sched-list { background: var(--card); border-radius: 8px; overflow: hidden; margin-bottom: 0.75rem; }
     .sched-row { border-bottom: 1px solid var(--border); }
     .sched-row:last-child { border-bottom: none; }
@@ -603,6 +647,27 @@
         <div class="bstat"><span class="bstat-n" id="s-notin">-</span><span class="bstat-l">インなし</span></div>
         <div class="bstat"><span class="bstat-n" id="s-tasks">-</span><span class="bstat-l">対応予定</span></div>
       </div>
+      <div class="sched-grouping-bar" id="sched-grouping-bar" hidden>
+        <button class="sched-grouping-btn active" id="btn-group-area">エリア別</button>
+        <button class="sched-grouping-btn"        id="btn-group-staff">担当別</button>
+      </div>
+      <div id="order-mode-bar" hidden>
+        <button id="btn-order-mode" class="btn-order-mode">順番を決める</button>
+      </div>
+      <div id="order-mode-panel" hidden>
+        <div class="order-mode-header">
+          <span class="order-mode-title">順番を決める</span>
+          <select id="order-mode-staff-sel" class="order-mode-staff-sel">
+            <option value="">-- スタッフを選ぶ --</option>
+          </select>
+        </div>
+        <div id="order-mode-list" class="order-mode-list"></div>
+        <div class="order-mode-actions">
+          <button id="btn-order-reset"  class="btn btn-import">やり直し</button>
+          <button id="btn-order-cancel" class="btn btn-import">キャンセル</button>
+          <button id="btn-order-confirm" class="btn btn-save">確定</button>
+        </div>
+      </div>
       <div id="sched-list" class="sched-list"></div>
       <div class="refresh-note" id="refresh-note">30秒ごとに自動更新</div>
     </div>
@@ -703,13 +768,6 @@
           <button id="ped-check-back" class="ped-ind-back-btn" hidden>戻す</button>
         </div>
       </div>
-      <div id="ped-reorder-section" class="ped-section" hidden>
-        <div class="ped-label">並べ替え（同じ状況の中で）</div>
-        <div class="ped-reorder-row">
-          <button id="ped-up-btn" class="ped-reorder-btn">↑ 前へ</button>
-          <button id="ped-dn-btn" class="ped-reorder-btn">↓ 後ろへ</button>
-        </div>
-      </div>
       <div class="ped-section">
         <button id="ped-tasks-btn" class="btn-ped-tasks">対応を見る</button>
       </div>
@@ -723,7 +781,6 @@
 
     // ── 楽観的更新の二重送信防止フラグ ────────────────────────────────
     var _progressPending      = {};   // { [propName]: true } — updateProgressField 中
-    var _reorderPending       = false;  // reorderProgressCard 中
     var _staffPendingProgress = false;  // changeProgressStaff 中
     var _staffPendingSchedule = false;  // changeScheduleStaff 中
 
@@ -762,6 +819,12 @@
       scheduleSearchItems:     [],    // [{date, propertyName, uid, staff, isSameDayIn, order, taskCount}]
       scheduleSearchByDate:    {},    // { [date]: { items: [...], latestUpdatedAt } }
       scheduleSearchLoading:   false,  // フェッチ中
+      // 表示モード
+      scheduleGrouping:        'area', // 'area' | 'staff'
+      orderMode:               false,  // タップ順モード中
+      orderModeStaff:          '',     // 選択スタッフ
+      orderModeTaps:           [],     // タップした uid 順リスト
+      isAdmin:                 false,  // saveAssignments 権限あり
       // 進捗編集ドロワー
       editDrawerProp: null,   // 編集中の propertyName
       editDrawerView: null,   // 'board' or 'staff'
@@ -805,6 +868,251 @@
 
     var STATUS_RANK = { 'DONE': 0, 'DOING': 1, 'TODO': 2 };
     function statusRank(s) { return STATUS_RANK[s] !== undefined ? STATUS_RANK[s] : 2; }
+
+    // ── スケジュールタブ：表示バー制御 ───────────────────────────────
+    function updateScheduleViewBars() {
+      var isSearch = S.scheduleSearchText.trim().length > 0;
+      var loaded   = S.scheduleSearchFetched || S.scheduleSearchLoading;
+      // グループ切り替えバー: データ読み込み後に表示
+      document.getElementById('sched-grouping-bar').hidden = !loaded;
+      // 順番を決めるボタン: ADMIN + 単日モード + モード外
+      document.getElementById('order-mode-bar').hidden =
+        !S.isAdmin || isSearch || S.orderMode;
+    }
+
+    // ── タップ順モード ────────────────────────────────────────────────
+    function renderOrderModeList() {
+      var staff = S.orderModeStaff;
+      var listEl = document.getElementById('order-mode-list');
+      if (!staff) { listEl.innerHTML = ''; return; }
+
+      var items = S.scheduleItems.filter(function(i) { return (i.staff || '') === staff; });
+      items = items.slice().sort(function(a, b) {
+        var ar = areaRank(a.area) - areaRank(b.area);
+        if (ar) return ar;
+        return (a.order || 999) - (b.order || 999);
+      });
+
+      var taps = S.orderModeTaps;
+      var html = '';
+      var _curArea = null;
+      items.forEach(function(item) {
+        if (item.area !== _curArea) {
+          html += '<div class="area-label">' +
+            esc(item.area ? 'エリア ' + item.area : 'エリア未設定') + '</div>';
+          _curArea = item.area;
+        }
+        var tapIdx = taps.indexOf(item.uid);
+        var isTapped = tapIdx >= 0;
+        html += '<div class="order-tap-row' + (isTapped ? ' tapped' : '') +
+          '" data-order-uid="' + esc(item.uid) + '">' +
+          '<span class="order-tap-badge">' + (isTapped ? String(tapIdx + 1) : '') + '</span>' +
+          '<span class="order-tap-name">' + esc(item.propertyName) + '</span>' +
+        '</div>';
+      });
+      listEl.innerHTML = html;
+    }
+
+    function enterOrderMode() {
+      S.orderMode = true;
+      S.orderModeStaff = '';
+      S.orderModeTaps  = [];
+
+      var staffList = [];
+      S.scheduleItems.forEach(function(i) {
+        if (i.staff && staffList.indexOf(i.staff) < 0) staffList.push(i.staff);
+      });
+      staffList.sort();
+      var sel = document.getElementById('order-mode-staff-sel');
+      sel.innerHTML = '<option value="">-- スタッフを選ぶ --</option>' +
+        staffList.map(function(s) {
+          return '<option value="' + esc(s) + '">' + esc(s) + '</option>';
+        }).join('');
+      sel.value = '';
+
+      document.getElementById('order-mode-bar').hidden    = true;
+      document.getElementById('sched-grouping-bar').hidden = true;
+      document.getElementById('order-mode-panel').hidden  = false;
+      document.getElementById('sched-list').hidden        = true;
+      document.getElementById('board-date-sel').disabled  = true;
+      document.getElementById('sched-search').disabled    = true;
+      renderOrderModeList();
+    }
+
+    function exitOrderMode() {
+      S.orderMode      = false;
+      S.orderModeStaff = '';
+      S.orderModeTaps  = [];
+
+      document.getElementById('order-mode-panel').hidden  = true;
+      document.getElementById('sched-list').hidden        = false;
+      document.getElementById('board-date-sel').disabled  = false;
+      document.getElementById('sched-search').disabled    = false;
+      updateScheduleViewBars();
+    }
+
+    function confirmOrderMode() {
+      var staff = S.orderModeStaff;
+      if (!staff) { toast('スタッフを選んでください'); return; }
+
+      var dateData = S.scheduleSearchByDate[S.boardDate];
+      if (!dateData) { exitOrderMode(); return; }
+
+      var taps = S.orderModeTaps;
+      var staffItems = S.scheduleItems.filter(function(i) { return (i.staff || '') === staff; })
+        .slice().sort(function(a, b) {
+          var ar = areaRank(a.area) - areaRank(b.area);
+          if (ar) return ar;
+          return (a.order || 999) - (b.order || 999);
+        });
+
+      var tappedItems   = taps.map(function(uid) {
+        return staffItems.find(function(i) { return i.uid === uid; });
+      }).filter(Boolean);
+      var untappedItems = staffItems.filter(function(i) { return taps.indexOf(i.uid) < 0; });
+
+      var newOrders = {};
+      tappedItems.forEach(function(item, idx)   { newOrders[item.uid] = idx + 1; });
+      untappedItems.forEach(function(item, idx) { newOrders[item.uid] = tappedItems.length + idx + 1; });
+
+      // 楽観的更新
+      var oldOrders = {};
+      dateData.items.forEach(function(i) { oldOrders[i.uid] = i.order; });
+      [S.scheduleSearchItems, dateData.items, S.scheduleItems].forEach(function(arr) {
+        arr.forEach(function(i) {
+          if (newOrders[i.uid] !== undefined) i.order = newOrders[i.uid];
+        });
+      });
+      applyScheduleDate(S.boardDate);
+      exitOrderMode();
+      renderScheduleList();
+
+      var oldUpdatedAt = dateData.latestUpdatedAt;
+      var rows = dateData.items.map(function(i) {
+        return { propertyName: i.propertyName, uid: i.uid || '', staff: i.staff || '', order: i.order || 0 };
+      });
+
+      callApi({ action: 'saveAssignments', date: S.boardDate, rows: rows, knownUpdatedAt: oldUpdatedAt || '' })
+        .then(function(r) {
+          if (r.ok) {
+            if (r.latestUpdatedAt) {
+              dateData.latestUpdatedAt = r.latestUpdatedAt;
+              S.scheduleAssignUpdatedAt = r.latestUpdatedAt;
+            }
+            toast('順番を保存しました。反映まで最大5分かかります');
+            return;
+          }
+          // ロールバック
+          [S.scheduleSearchItems, dateData.items, S.scheduleItems].forEach(function(arr) {
+            arr.forEach(function(i) { if (oldOrders[i.uid] !== undefined) i.order = oldOrders[i.uid]; });
+          });
+          dateData.latestUpdatedAt = oldUpdatedAt;
+          applyScheduleDate(S.boardDate);
+          renderScheduleList();
+          if (r.error === 'conflict') {
+            toast('他の人が先に保存しました。再読込します');
+            loadScheduleTab();
+          } else {
+            toast('順番の保存エラー: ' + (r.error || '不明'));
+          }
+        }).catch(function(e) {
+          [S.scheduleSearchItems, dateData.items, S.scheduleItems].forEach(function(arr) {
+            arr.forEach(function(i) { if (oldOrders[i.uid] !== undefined) i.order = oldOrders[i.uid]; });
+          });
+          dateData.latestUpdatedAt = oldUpdatedAt;
+          applyScheduleDate(S.boardDate);
+          renderScheduleList();
+          if (e.isUnauthorized) { handleUnauthorized(); return; }
+          toast('順番の保存エラー: ' + e.message);
+        });
+    }
+
+    // ── 担当別表示 ──────────────────────────────────────────────────
+    function renderScheduleListStaff() {
+      var search       = S.scheduleSearchText.trim().toLowerCase();
+      var isSearchMode = search.length > 0;
+      var allItems;
+
+      if (isSearchMode) {
+        if (S.scheduleSearchLoading) {
+          document.getElementById('sched-list').innerHTML =
+            '<div class="msg"><span class="spin">↻</span> 検索中…</div>';
+          return;
+        }
+        if (!S.scheduleSearchFetched) {
+          document.getElementById('sched-list').innerHTML =
+            '<div class="msg"><span class="spin">↻</span> 検索データを読み込み中…</div>';
+          return;
+        }
+        allItems = S.scheduleSearchItems.filter(function(i) {
+          return i.propertyName.toLowerCase().indexOf(search) >= 0;
+        });
+      } else {
+        allItems = S.scheduleItems;
+      }
+
+      if (!allItems.length) {
+        document.getElementById('sched-list').innerHTML = isSearchMode
+          ? '<div class="msg">「' + esc(S.scheduleSearchText) + '」に一致する物件はありません</div>'
+          : '<div class="msg">この日の清掃はありません</div>';
+        return;
+      }
+
+      var pendingByUid = {};
+      (S.lineRequests || []).forEach(function(lr) { if (lr.uid) pendingByUid[lr.uid] = lr; });
+
+      // 日付ごとに担当グループを構成（検索モードは複数日）
+      var dateList = [];
+      var byDate   = {};
+      allItems.forEach(function(item) {
+        var d = isSearchMode ? item.date : S.boardDate;
+        if (!byDate[d]) { byDate[d] = {}; dateList.push(d); }
+        var s = item.staff || '';
+        if (!byDate[d][s]) byDate[d][s] = [];
+        byDate[d][s].push(item);
+      });
+      if (isSearchMode) dateList.sort();
+
+      var html = '';
+      dateList.forEach(function(dt) {
+        if (isSearchMode) {
+          html += '<div class="sched-date-label">' + esc(fmtDate(dt)) + '</div>';
+        }
+        var staffMap  = byDate[dt];
+        var staffList = Object.keys(staffMap);
+        // 未担当を最後、あとは名前順
+        staffList.sort(function(a, b) {
+          if (a === '') return 1;
+          if (b === '') return -1;
+          return a < b ? -1 : a > b ? 1 : 0;
+        });
+
+        staffList.forEach(function(staffName) {
+          var sItems = staffMap[staffName].slice().sort(function(a, b) {
+            return (a.order || 9999) - (b.order || 9999);
+          });
+          html += '<div class="sched-staff-label">' +
+            esc(staffName || '未担当') + '（' + sItems.length + '件）</div>';
+
+          sItems.forEach(function(item) {
+            var key = item.propertyName + '\t' + item.date;
+            var isExpanded = (S.scheduleExpandedKey === key);
+            var isDetail   = (S.scheduleDetailKey   === key);
+            var areaInline = item.area
+              ? '<span class="sched-area-inline">エリア ' + esc(item.area) + '</span>'
+              : '';
+            html += buildSchedItemHtml(item, {
+              isExpanded: isExpanded, isDetail: isDetail,
+              showDateLabel: false,
+              showResend: !isSearchMode && (dt === today() || dt === tomorrow()),
+              pendingByUid: pendingByUid, areaInline: areaInline
+            });
+          });
+        });
+      });
+
+      document.getElementById('sched-list').innerHTML = html;
+    }
 
     var toastTimer;
     var CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -866,9 +1174,11 @@
       S.scheduleSearchByDate  = c.scheduleSearchByDate  || {};
       S.scheduleProgressData  = c.scheduleProgressData  || {};
       S.scheduleSearchFetched = true;
+      S.isAdmin = true;
       if (c.cleaners && c.cleaners.length) S.cleaners = c.cleaners;
       applyScheduleDate(S.boardDate);
       updateScheduleStats();
+      updateScheduleViewBars();
       renderScheduleList();
     }
 
@@ -1031,6 +1341,7 @@
         S.scheduleSearchItems   = sr.items  || [];
         S.scheduleSearchByDate  = sr.byDate || {};
         S.scheduleSearchFetched = true;
+        S.isAdmin = true;
         S.lineRequests = sr.lineRequests || [];
 
         // 今日の DONE チェック用
@@ -1058,6 +1369,7 @@
           cleaners:             S.cleaners
         });
 
+        updateScheduleViewBars();
         renderScheduleList();
       }).catch(function(e) {
         S.scheduleSearchLoading = false;
@@ -1069,6 +1381,7 @@
     var SEARCH_MAX = 30;
 
     function renderScheduleList() {
+      if (S.scheduleGrouping === 'staff') { renderScheduleListStaff(); return; }
       var search       = S.scheduleSearchText.trim().toLowerCase();
       var isSearchMode = search.length > 0;
       var items;
@@ -1116,9 +1429,6 @@
       displayItems.forEach(function(item) {
         var pn     = item.propertyName;
         var key    = pn + '\t' + item.date;
-        var keyEsc = esc(key);
-        var pnEsc  = esc(pn);
-        var uid    = item.uid || '';
         var isExpanded = (S.scheduleExpandedKey === key);
         var isDetail   = (S.scheduleDetailKey   === key);
 
@@ -1129,6 +1439,34 @@
           _curArea = item.area;
           _curAreaDate = itemDate;
         }
+
+        html += buildSchedItemHtml(item, {
+          isExpanded: isExpanded, isDetail: isDetail,
+          showDateLabel: isSearchMode, showResend: showResend,
+          pendingByUid: pendingByUid, areaInline: ''
+        });
+      });
+
+      if (moreCount > 0) {
+        html += '<div class="sched-search-more">他にも ' + moreCount + ' 件あります</div>';
+      }
+
+      document.getElementById('sched-list').innerHTML = html;
+    }
+
+    function buildSchedItemHtml(item, opts) {
+      var isExpanded    = opts.isExpanded;
+      var isDetail      = opts.isDetail;
+      var showDateLabel = opts.showDateLabel;
+      var showResend    = opts.showResend;
+      var pendingByUid  = opts.pendingByUid || {};
+      var areaInline    = opts.areaInline   || '';
+
+      var pn     = item.propertyName;
+      var key    = pn + '\t' + item.date;
+      var keyEsc = esc(key);
+      var pnEsc  = esc(pn);
+      var uid    = item.uid || '';
 
         var typeBadge = item.isSameDayIn
           ? '<span class="sched-type-badge-in">同日イン</span>'
@@ -1154,7 +1492,7 @@
           dateBadge = '<span class="sched-status-badge changed">変更済み</span>';
         }
 
-        var dateLabel = isSearchMode
+        var dateLabel = showDateLabel
           ? '<span class="sched-date-label">' + esc(fmtDate(item.date)) + '</span>'
           : '';
 
@@ -1162,11 +1500,12 @@
           ? '<span class="sched-order-num">' + item.order + '</span>'
           : '';
 
-        html += '<div class="sched-row' + (isExpanded ? ' expanded' : '') + '" data-sched-key="' + keyEsc + '">';
-        html += '<div class="sched-row-main" data-sched-toggle="' + keyEsc + '">' +
+      var h = '<div class="sched-row' + (isExpanded ? ' expanded' : '') + '" data-sched-key="' + keyEsc + '">';
+      h += '<div class="sched-row-main" data-sched-toggle="' + keyEsc + '">' +
           dateLabel +
           orderNum +
           '<span class="sched-prop-name">' + pnEsc + '</span>' +
+          areaInline +
           typeBadge +
           '<span class="' + staffCls + '">' + esc(staffText) + '</span>' +
           taskBadge +
@@ -1183,23 +1522,23 @@
               (item.staff === c.name ? ' selected' : '') + '>' + esc(c.name) + '</option>';
           });
 
-          html += '<div class="sched-expand">';
-          html += '<div class="sched-assign-section">' +
+          h += '<div class="sched-expand">';
+          h += '<div class="sched-assign-section">' +
             '<span class="sched-assign-label">担当：</span>' +
             '<select class="sched-staff-sel" data-sched-assign-key="' + keyEsc + '"' +
               (isDone ? ' disabled' : '') + '>' + selOpts + '</select>' +
           '</div>';
-          html += '<button class="sched-detail-btn" data-sched-detail-key="' + keyEsc + '">' +
+          h += '<button class="sched-detail-btn" data-sched-detail-key="' + keyEsc + '">' +
             (isDetail ? '▲ 詳細設定を閉じる' : '▼ 詳細設定') +
           '</button>';
 
           if (isDetail) {
-            html += '<div class="sched-tasks-section">';
+            h += '<div class="sched-tasks-section">';
             var tasks = S.scheduleTasks[pn];
             if (!tasks) {
-              html += '<div class="sched-tasks-empty">読み込み中…</div>';
+              h += '<div class="sched-tasks-empty">読み込み中…</div>';
             } else if (!tasks.length) {
-              html += '<div class="sched-tasks-empty">OPEN の対応はありません</div>';
+              h += '<div class="sched-tasks-empty">OPEN の対応はありません</div>';
             } else {
               var todayYmd = today();
               tasks.forEach(function(t) {
@@ -1207,7 +1546,7 @@
                   ? '次回清掃' + (t.boundDate ? '（' + t.boundDate + '）' : '')
                   : (t.targetDate || '');
                 var expired = t.targetMode === 'DATE' && t.targetDate && t.targetDate < todayYmd;
-                html += '<div class="sched-task-item">' +
+                h += '<div class="sched-task-item">' +
                   '<div class="task-item-header">' +
                     '<span class="task-type-badge">' + esc(t.type) + '</span>' +
                     '<span class="task-date-label">' + esc(dateLabel) + '</span>' +
@@ -1222,14 +1561,14 @@
                 '</div>';
               });
             }
-            html += '<button class="btn-sched-add-task" data-sched-add-prop="' + pnEsc + '" data-sched-add-date="' + esc(item.date) + '">＋ 対応追加</button>';
+            h += '<button class="btn-sched-add-task" data-sched-add-prop="' + pnEsc + '" data-sched-add-date="' + esc(item.date) + '">＋ 対応追加</button>';
             if (showResend) {
-              html += '<button class="btn-sched-resend" data-sched-resend-prop="' + pnEsc + '">再送</button>';
+              h += '<button class="btn-sched-resend" data-sched-resend-prop="' + pnEsc + '">再送</button>';
             }
             var defs = S.progressDefaults[pn] || {};
             var checkIsOn = defs.checkDefault === 'NEED';
             var trashIsOn = defs.trashDefault === 'NEED';
-            html += '<div class="sched-default-section">' +
+            h += '<div class="sched-default-section">' +
               '<div class="sched-default-label">初期値（清掃開始時の既定）</div>' +
               '<div class="sched-default-row">' +
                 '<span class="sched-default-name">チェック要</span>' +
@@ -1252,15 +1591,15 @@
             if (item.source !== 'MANUAL') {
               var tomorrowYmd = tomorrow();
               var canChange = item.autoDate && item.autoDate >= tomorrowYmd;
-              html += '<div class="sched-date-change-section">' +
+              h += '<div class="sched-date-change-section">' +
                 '<div class="sched-date-change-label">日程変更</div>';
               if (canChange) {
-                html += '<div class="sched-date-change-row">' +
+                h += '<div class="sched-date-change-row">' +
                   '<label>ICS 日付</label>' +
                   '<span>' + esc(fmtDate(item.autoDate)) + '</span>' +
                 '</div>';
                 if (item.manualDate) {
-                  html += '<div class="sched-date-change-row">' +
+                  h += '<div class="sched-date-change-row">' +
                     '<label>現在の設定</label>' +
                     '<span>' + esc(fmtDate(item.manualDate)) + '</span>' +
                     '<button class="btn-sched-clear-date"' +
@@ -1271,7 +1610,7 @@
                     '</button>' +
                   '</div>';
                 }
-                html += '<div class="sched-date-change-row">' +
+                h += '<div class="sched-date-change-row">' +
                   '<label>変更後の日付</label>' +
                   '<input type="date" class="sched-new-date-input"' +
                     ' data-sched-uid="' + esc(uid) + '"' +
@@ -1284,24 +1623,18 @@
                   '</button>' +
                 '</div>';
               } else {
-                html += '<div class="sched-date-change-row">' +
+                h += '<div class="sched-date-change-row">' +
                   '<span style="font-size:0.8rem;color:var(--muted)">日程変更は明日以降の清掃のみ可能です</span>' +
                 '</div>';
               }
-              html += '</div>';
+              h += '</div>';
             }
-            html += '</div>';
+            h += '</div>';
           }
-          html += '</div>';
+          h += '</div>';
         }
-        html += '</div>';
-      });
-
-      if (moreCount > 0) {
-        html += '<div class="sched-search-more">他にも ' + moreCount + ' 件あります</div>';
-      }
-
-      document.getElementById('sched-list').innerHTML = html;
+        h += '</div>';
+        return h;
     }
 
     function changeScheduleStaff(key, newStaff) {
@@ -1622,14 +1955,7 @@
       var html = '';
       staffOrder.forEach(function(staffName) {
         var sItems = groups[staffName].slice().sort(function(a, b) {
-          var pd1 = getEffectiveProgress(a.propertyName);
-          var pd2 = getEffectiveProgress(b.propertyName);
-          var sr1 = statusRank(pd1.status);
-          var sr2 = statusRank(pd2.status);
-          if (sr1 !== sr2) return sr1 - sr2;
-          var oi1 = S.progressData[a.propertyName] ? (S.progressData[a.propertyName].orderIndex || 0) : (a.order || 0);
-          var oi2 = S.progressData[b.propertyName] ? (S.progressData[b.propertyName].orderIndex || 0) : (b.order || 0);
-          return oi1 - oi2;
+          return (a.order || 9999) - (b.order || 9999);
         });
 
         var total  = sItems.length;
@@ -1670,14 +1996,7 @@
 
       function sortByStatusOrder(arr) {
         return arr.slice().sort(function(a, b) {
-          var pd1 = getEffectiveProgress(a.propertyName);
-          var pd2 = getEffectiveProgress(b.propertyName);
-          var sr1 = statusRank(pd1.status);
-          var sr2 = statusRank(pd2.status);
-          if (sr1 !== sr2) return sr1 - sr2;
-          var oi1 = S.progressData[a.propertyName] ? (S.progressData[a.propertyName].orderIndex || 0) : (a.order || 0);
-          var oi2 = S.progressData[b.propertyName] ? (S.progressData[b.propertyName].orderIndex || 0) : (b.order || 0);
-          return oi1 - oi2;
+          return (a.order || 9999) - (b.order || 9999);
         });
       }
 
@@ -1790,24 +2109,6 @@
         checkBack.hidden = !pd.check;
       }
 
-      // 並べ替え（スタッフ別のみ）
-      var reorderSection = document.getElementById('ped-reorder-section');
-      reorderSection.hidden = (view !== 'staff');
-      if (view === 'staff') {
-        var staffName = '';
-        S.progressItems.forEach(function(i) { if (i.propertyName === pn) staffName = i.staff || ''; });
-        var peers = S.progressItems.filter(function(i) {
-          return (i.staff || '') === staffName && getEffectiveProgress(i.propertyName).status === status;
-        }).sort(function(a, b) {
-          var oa = S.progressData[a.propertyName] ? (S.progressData[a.propertyName].orderIndex || 0) : (a.order || 0);
-          var ob = S.progressData[b.propertyName] ? (S.progressData[b.propertyName].orderIndex || 0) : (b.order || 0);
-          return oa - ob;
-        });
-        var pos = peers.findIndex(function(i) { return i.propertyName === pn; });
-        document.getElementById('ped-up-btn').disabled = (pos <= 0);
-        document.getElementById('ped-dn-btn').disabled = (pos >= peers.length - 1);
-      }
-
       // 追加対応ボタン
       var cnt = S.taskCounts[pn] || 0;
       document.getElementById('ped-tasks-btn').textContent =
@@ -1825,11 +2126,10 @@
 
       // 楽観的更新：即座に画面を変える
       var newPd = Object.assign({}, pd);
-      if (fields.status     !== undefined) newPd.status     = fields.status;
-      if (fields.linen      !== undefined) newPd.linen      = fields.linen;
-      if (fields.trash      !== undefined) newPd.trash      = fields.trash;
-      if (fields.check      !== undefined) newPd.check      = fields.check;
-      if (fields.orderIndex !== undefined) newPd.orderIndex = fields.orderIndex;
+      if (fields.status !== undefined) newPd.status = fields.status;
+      if (fields.linen  !== undefined) newPd.linen  = fields.linen;
+      if (fields.trash  !== undefined) newPd.trash  = fields.trash;
+      if (fields.check  !== undefined) newPd.check  = fields.check;
       S.progressData[propName] = newPd;
       rerenderProgress();
 
@@ -1900,67 +2200,6 @@
         renderScheduleList();
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('保存エラー: ' + e.message);
-      });
-    }
-
-    function reorderProgressCard(propName, direction) {
-      if (_reorderPending) return;
-
-      var pd = getEffectiveProgress(propName);
-      var staffName = '';
-      S.progressItems.forEach(function(i) { if (i.propertyName === propName) staffName = i.staff || ''; });
-
-      // 同スタッフ・同ステータスのカードを現在の視覚順で取得
-      var peers = S.progressItems.filter(function(i) {
-        return (i.staff || '') === staffName && getEffectiveProgress(i.propertyName).status === pd.status;
-      }).sort(function(a, b) {
-        var oa = S.progressData[a.propertyName] ? (S.progressData[a.propertyName].orderIndex || 0) : (a.order || 0);
-        var ob = S.progressData[b.propertyName] ? (S.progressData[b.propertyName].orderIndex || 0) : (b.order || 0);
-        return oa - ob;
-      });
-
-      var pos = peers.findIndex(function(i) { return i.propertyName === propName; });
-      var neighborPos = direction === 'up' ? pos - 1 : pos + 1;
-      if (neighborPos < 0 || neighborPos >= peers.length) return;
-
-      // スワップ後の配列を作り、全カードに 1..n を振り直す
-      var arr = peers.map(function(i) { return i.propertyName; });
-      var tmp = arr[pos]; arr[pos] = arr[neighborPos]; arr[neighborPos] = tmp;
-      var updates = arr.map(function(pn, idx) { return { propertyName: pn, orderIndex: idx + 1 }; });
-
-      // 楽観的更新：旧状態を保存してから即座に画面を変える
-      var oldData = {};
-      updates.forEach(function(u) {
-        oldData[u.propertyName] = Object.assign({}, S.progressData[u.propertyName] || {});
-      });
-      _reorderPending = true;
-      updates.forEach(function(u) {
-        var ex = S.progressData[u.propertyName] || {};
-        S.progressData[u.propertyName] = Object.assign({}, ex, { orderIndex: u.orderIndex });
-      });
-      rerenderProgress();
-
-      callApi({
-        action:  'updateProgressOrder',
-        date:    S.progressDate,
-        updates: updates
-      }).then(function(r) {
-        _reorderPending = false;
-        if (r.ok) {
-          updates.forEach(function(u) {
-            if (S.progressData[u.propertyName]) S.progressData[u.propertyName].updatedAt = r.updatedAt;
-          });
-        } else {
-          updates.forEach(function(u) { S.progressData[u.propertyName] = oldData[u.propertyName]; });
-          rerenderProgress();
-          toast('並び替えエラー: ' + (r.error || '不明'));
-        }
-      }).catch(function(e) {
-        _reorderPending = false;
-        updates.forEach(function(u) { S.progressData[u.propertyName] = oldData[u.propertyName]; });
-        rerenderProgress();
-        if (e.isUnauthorized) { handleUnauthorized(); return; }
-        toast('並び替えエラー: ' + e.message);
       });
     }
 
@@ -2361,16 +2600,6 @@
           return;
         }
 
-        if (e.target.closest('#ped-up-btn') && S.editDrawerProp) {
-          reorderProgressCard(S.editDrawerProp, 'up');
-          return;
-        }
-
-        if (e.target.closest('#ped-dn-btn') && S.editDrawerProp) {
-          reorderProgressCard(S.editDrawerProp, 'down');
-          return;
-        }
-
         if (e.target.closest('#ped-tasks-btn') && S.editDrawerProp) {
           var taskProp = S.editDrawerProp;
           closeEditDrawer();
@@ -2388,6 +2617,7 @@
 
       // 今後の清掃予定タブ：日付変更
       document.getElementById('board-date-sel').addEventListener('change', function() {
+        if (S.orderMode) exitOrderMode();
         S.boardDate = this.value;
         S.scheduleExpandedKey = null;
         S.scheduleDetailKey   = null;
@@ -2424,12 +2654,56 @@
       // 今後の清掃予定タブ：検索
       document.getElementById('sched-search').addEventListener('input', function() {
         S.scheduleSearchText = this.value;
+        updateScheduleViewBars();
         if (S.scheduleSearchText.trim().length > 0 && !S.scheduleSearchFetched && !S.scheduleSearchLoading) {
           loadScheduleSearchData();
         } else {
           renderScheduleList();
         }
       });
+
+      // 今後の清掃予定タブ：グループ切り替え（エリア別 / 担当別）
+      document.getElementById('btn-group-area').addEventListener('click', function() {
+        if (S.scheduleGrouping === 'area') return;
+        S.scheduleGrouping = 'area';
+        document.getElementById('btn-group-area').classList.add('active');
+        document.getElementById('btn-group-staff').classList.remove('active');
+        renderScheduleList();
+      });
+      document.getElementById('btn-group-staff').addEventListener('click', function() {
+        if (S.scheduleGrouping === 'staff') return;
+        S.scheduleGrouping = 'staff';
+        document.getElementById('btn-group-staff').classList.add('active');
+        document.getElementById('btn-group-area').classList.remove('active');
+        renderScheduleList();
+      });
+
+      // 今後の清掃予定タブ：順番を決めるモード
+      document.getElementById('btn-order-mode').addEventListener('click', enterOrderMode);
+      document.getElementById('order-mode-staff-sel').addEventListener('change', function() {
+        S.orderModeStaff = this.value;
+        S.orderModeTaps  = [];
+        renderOrderModeList();
+      });
+      document.getElementById('order-mode-list').addEventListener('click', function(e) {
+        var row = e.target.closest('.order-tap-row');
+        if (!row) return;
+        var uid = row.dataset.orderUid;
+        if (!uid) return;
+        var idx = S.orderModeTaps.indexOf(uid);
+        if (idx >= 0) {
+          S.orderModeTaps.splice(idx, 1);
+        } else {
+          S.orderModeTaps.push(uid);
+        }
+        renderOrderModeList();
+      });
+      document.getElementById('btn-order-reset').addEventListener('click', function() {
+        S.orderModeTaps = [];
+        renderOrderModeList();
+      });
+      document.getElementById('btn-order-cancel').addEventListener('click', exitOrderMode);
+      document.getElementById('btn-order-confirm').addEventListener('click', confirmOrderMode);
 
       // 今後の清掃予定タブ：行の展開・タスク操作（click 委譲）
       document.getElementById('panel-schedule').addEventListener('click', function(e) {
