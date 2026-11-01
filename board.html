@@ -331,9 +331,21 @@
       display: flex; flex-direction: column; gap: 0.1rem;
       text-align: left; font-family: inherit; width: 100%;
     }
-    .prog-tile.doing { background: #e3f2fd; border-color: #90caf9; }
-    .prog-tile.done  { background: #f0f0f0; border-color: #ccc; }
+    .prog-tile.doing       { background: #e3f2fd; border-color: #90caf9; }
+    .prog-tile.done        { background: #f0f0f0; border-color: #ccc; }
+    .prog-tile.linen-stage { background: #fffde7; border-color: #ffe082; }
     .prog-tile:active { opacity: 0.75; }
+    .prog-tile-nameline {
+      display: flex; align-items: flex-start; gap: 0.18rem; flex: 1; min-width: 0;
+    }
+    .prog-tile-num {
+      flex-shrink: 0; font-size: 0.58rem; font-weight: bold;
+      line-height: 1.7; background: rgba(0,0,0,0.09); color: #333;
+      border-radius: 2px; padding: 0 0.2rem; margin-top: 0.02rem;
+    }
+    .prog-tile-stage {
+      font-size: 0.6rem; color: #e65100; font-weight: bold; line-height: 1.3;
+    }
     .prog-tile-name {
       font-size: 0.78rem; font-weight: bold; word-break: break-word;
       overflow: hidden; display: -webkit-box;
@@ -1752,14 +1764,15 @@
       };
     }
 
-    function buildProgTile(item, view) {
+    function buildProgTile(item, view, num) {
       var pd     = getEffectiveProgress(item.propertyName);
       var status = pd.status || 'TODO';
       var pn     = item.propertyName;
       var pnEsc  = esc(pn);
+      var isLinenStage = (status === 'TODO' && pd.linen === 'DONE');
 
       var tileCls = 'prog-tile' +
-        (status === 'DOING' ? ' doing' : status === 'DONE' ? ' done' : '');
+        (status === 'DOING' ? ' doing' : status === 'DONE' ? ' done' : isLinenStage ? ' linen-stage' : '');
 
       var staffText = item.staff || '';
       var staffCls  = staffText ? 'prog-tile-staff' : 'prog-tile-staff unset';
@@ -1782,8 +1795,12 @@
         marks += '<span class="prog-mark prog-mark-check">チ</span>';
       }
 
+      var numBadge = (typeof num !== 'undefined') ? '<span class="prog-tile-num">' + num + '</span>' : '';
+      var stageLbl = isLinenStage ? '<div class="prog-tile-stage">リネン搬入済み</div>' : '';
+
       return '<button class="' + tileCls + '" data-tile-prop="' + pnEsc + '" data-tile-view="' + view + '">' +
-        '<div class="prog-tile-name">' + pnEsc + '</div>' +
+        '<div class="prog-tile-nameline">' + numBadge + '<div class="prog-tile-name">' + pnEsc + '</div></div>' +
+        stageLbl +
         '<div class="' + staffCls + '">' + esc(staffDisp) + '</div>' +
         '<div class="prog-tile-marks">' + marks + '</div>' +
       '</button>';
@@ -1833,8 +1850,16 @@
             '<span class="prog-section-remain">残り' + remain + '件（完了 ' + done + '/' + total + '）</span>' +
           '</div>' +
           '<div class="prog-tiles prog-tiles-staff">';
+
+        // 清掃順（item.order）で番号を割り当て。order=0 は末尾
+        var forNum = sItems.slice().sort(function(a, b) {
+          return (a.order || 9999) - (b.order || 9999);
+        });
+        var numMap = {};
+        forNum.forEach(function(it, i) { numMap[it.propertyName] = i + 1; });
+
         sItems.forEach(function(item) {
-          html += buildProgTile(item, 'staff');
+          html += buildProgTile(item, 'staff', numMap[item.propertyName]);
         });
         html += '</div></div>';
       });
