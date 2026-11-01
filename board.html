@@ -535,6 +535,37 @@
     .sched-search-more {
       text-align: center; padding: 0.55rem; font-size: 0.82rem; color: var(--muted);
     }
+    .sched-status-badge {
+      display: inline-block; font-size: 0.7rem; padding: 0.15rem 0.4rem;
+      border-radius: 3px; margin-left: 0.3rem; vertical-align: middle;
+    }
+    .sched-status-badge.changed { background: #e3f2fd; color: #1565c0; }
+    .sched-status-badge.manual  { background: #f3e5f5; color: #6a1b9a; }
+    .sched-status-badge.pending { background: #fff8e1; color: #e65100; }
+    .sched-status-badge.error   { background: #ffebee; color: #c62828; }
+    .sched-date-change-section {
+      border-top: 1px solid var(--border); margin-top: 0.5rem; padding-top: 0.45rem;
+    }
+    .sched-date-change-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.3rem; }
+    .sched-date-change-row {
+      display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;
+      font-size: 0.82rem;
+    }
+    .sched-date-change-row label { color: var(--muted); flex-shrink: 0; }
+    .sched-date-change-row input[type="date"] {
+      flex: 1; padding: 0.3rem 0.4rem; border: 1px solid var(--border); border-radius: 5px;
+      font-size: 0.82rem; font-family: inherit;
+    }
+    .btn-sched-change-date {
+      background: var(--green); color: #fff; border: none; border-radius: 5px;
+      padding: 0.3rem 0.6rem; font-size: 0.78rem; font-family: inherit; cursor: pointer;
+    }
+    .btn-sched-change-date:active { opacity: 0.75; }
+    .btn-sched-clear-date {
+      background: transparent; color: #c00; border: 1px solid #c00; border-radius: 5px;
+      padding: 0.3rem 0.6rem; font-size: 0.78rem; font-family: inherit; cursor: pointer;
+    }
+    .btn-sched-clear-date:active { opacity: 0.75; }
   </style>
 </head>
 
@@ -785,7 +816,8 @@
       editDrawerProp: null,   // 編集中の propertyName
       editDrawerView: null,   // 'board' or 'staff'
       progressFetchedAt: 0,
-      scheduleFetchedAt: 0
+      scheduleFetchedAt: 0,
+      lineRequests: []
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -1213,6 +1245,7 @@
         S.scheduleSearchItems   = sr.items  || [];
         S.scheduleSearchByDate  = sr.byDate || {};
         S.scheduleSearchFetched = true;
+        S.lineRequests = sr.lineRequests || [];
 
         // 今日の DONE チェック用
         S.scheduleProgressData = {};
@@ -1283,12 +1316,16 @@
       var displayItems = isSearchMode ? items.slice(0, SEARCH_MAX) : items;
       var showResend  = isSearchMode ? false : (S.boardDate === today() || S.boardDate === tomorrow());
 
+      var pendingByUid = {};
+      (S.lineRequests || []).forEach(function(lr) { if (lr.uid) pendingByUid[lr.uid] = lr; });
+
       var html = '';
       displayItems.forEach(function(item) {
         var pn     = item.propertyName;
         var key    = pn + '\t' + item.date;
         var keyEsc = esc(key);
         var pnEsc  = esc(pn);
+        var uid    = item.uid || '';
         var isExpanded = (S.scheduleExpandedKey === key);
         var isDetail   = (S.scheduleDetailKey   === key);
 
@@ -1304,6 +1341,17 @@
           ? '<span class="sched-task-cnt">対応' + item.taskCount + '件</span>'
           : '';
 
+        var dateBadge = '';
+        var pendingLr = uid ? pendingByUid[uid] : null;
+        if (pendingLr) {
+          if (pendingLr.result === 'PENDING') dateBadge = '<span class="sched-status-badge pending">反映待ち（最大5分）</span>';
+          else if (pendingLr.result === 'ERROR') dateBadge = '<span class="sched-status-badge error">反映に失敗</span>';
+        } else if (item.source === 'MANUAL') {
+          dateBadge = '<span class="sched-status-badge manual">手入力</span>';
+        } else if (item.syncStatus === 'Mixed' || item.finalReason === '手動で清掃日変更') {
+          dateBadge = '<span class="sched-status-badge changed">変更済み</span>';
+        }
+
         var dateLabel = isSearchMode
           ? '<span class="sched-date-label">' + esc(fmtDate(item.date)) + '</span>'
           : '';
@@ -1315,6 +1363,7 @@
           typeBadge +
           '<span class="' + staffCls + '">' + esc(staffText) + '</span>' +
           taskBadge +
+          dateBadge +
           '<span class="sched-chevron">▼</span>' +
         '</div>';
 
@@ -1392,6 +1441,48 @@
                 '</button>' +
               '</div>' +
             '</div>';
+            // 日程変更セクション（iCal 予約のみ）
+            if (item.source !== 'MANUAL') {
+              var tomorrowYmd = tomorrow();
+              var canChange = item.autoDate && item.autoDate >= tomorrowYmd;
+              html += '<div class="sched-date-change-section">' +
+                '<div class="sched-date-change-label">日程変更</div>';
+              if (canChange) {
+                html += '<div class="sched-date-change-row">' +
+                  '<label>ICS 日付</label>' +
+                  '<span>' + esc(fmtDate(item.autoDate)) + '</span>' +
+                '</div>';
+                if (item.manualDate) {
+                  html += '<div class="sched-date-change-row">' +
+                    '<label>現在の設定</label>' +
+                    '<span>' + esc(fmtDate(item.manualDate)) + '</span>' +
+                    '<button class="btn-sched-clear-date"' +
+                      ' data-sched-uid="' + esc(uid) + '"' +
+                      ' data-sched-pn="' + pnEsc + '"' +
+                      ' data-sched-old="' + esc(item.manualDate) + '">' +
+                      '元に戻す' +
+                    '</button>' +
+                  '</div>';
+                }
+                html += '<div class="sched-date-change-row">' +
+                  '<label>変更後の日付</label>' +
+                  '<input type="date" class="sched-new-date-input"' +
+                    ' data-sched-uid="' + esc(uid) + '"' +
+                    ' min="' + esc(tomorrowYmd) + '">' +
+                  '<button class="btn-sched-change-date"' +
+                    ' data-sched-uid="' + esc(uid) + '"' +
+                    ' data-sched-pn="' + pnEsc + '"' +
+                    ' data-sched-old="' + esc(item.autoDate) + '">' +
+                    '変更する' +
+                  '</button>' +
+                '</div>';
+              } else {
+                html += '<div class="sched-date-change-row">' +
+                  '<span style="font-size:0.8rem;color:var(--muted)">日程変更は明日以降の清掃のみ可能です</span>' +
+                '</div>';
+              }
+              html += '</div>';
+            }
             html += '</div>';
           }
           html += '</div>';
@@ -1949,6 +2040,22 @@
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('更新エラー: ' + e.message);
       });
+    }
+
+    function saveScheduleChange(kind, uid, propName, oldDate, newDate) {
+      callApi({ action: 'saveScheduleChange', kind: kind, uid: uid,
+                propertyName: propName, oldDate: oldDate, newDate: newDate })
+        .then(function(r) {
+          if (!r.ok) { toast('送信エラー: ' + (r.error || '不明')); return; }
+          S.lineRequests.push({ uid: uid, kind: kind, propertyName: propName,
+                                oldDate: oldDate, newDate: newDate, result: 'PENDING' });
+          renderScheduleList();
+          toast('変更を送信しました（最大5分で反映）');
+        })
+        .catch(function(e) {
+          if (e.isUnauthorized) { handleUnauthorized(); return; }
+          toast('送信エラー: ' + e.message);
+        });
     }
 
     function savePropertyDefaultField(propName, field, currentVal) {
@@ -2663,6 +2770,35 @@
             defBtn.dataset.schedDefaultField,
             defBtn.dataset.schedDefaultVal
           );
+          return;
+        }
+        // 日程変更「変更する」ボタン
+        var changeDateBtn = e.target.closest('.btn-sched-change-date');
+        if (changeDateBtn) {
+          var sect  = changeDateBtn.closest('.sched-date-change-section');
+          var inp   = sect ? sect.querySelector('.sched-new-date-input') : null;
+          if (!inp || !inp.value) { toast('変更後の日付を入力してください'); return; }
+          var uidC  = changeDateBtn.dataset.schedUid;
+          var propC = changeDateBtn.dataset.schedPn;
+          var oldC  = changeDateBtn.dataset.schedOld;
+          var newC  = inp.value;
+          var tomorrowVal = tomorrow();
+          if (newC < tomorrowVal) { toast('変更後の日付は明日以降にしてください'); return; }
+          var daysAhead = Math.ceil((new Date(newC) - new Date(today())) / 86400000);
+          var confirmMsg = fmtDate(oldC) + ' → ' + fmtDate(newC) + ' に変更しますか？';
+          if (daysAhead <= 3) confirmMsg += '\n\n間近の変更です。担当スタッフへの連絡を確認してください。';
+          if (!confirm(confirmMsg)) return;
+          saveScheduleChange('CHANGE', uidC, propC, oldC, newC);
+          return;
+        }
+        // 日程変更「元に戻す」ボタン
+        var clearDateBtn = e.target.closest('.btn-sched-clear-date');
+        if (clearDateBtn) {
+          var uidCl  = clearDateBtn.dataset.schedUid;
+          var propCl = clearDateBtn.dataset.schedPn;
+          var oldCl  = clearDateBtn.dataset.schedOld;
+          if (!confirm(fmtDate(oldCl) + ' の変更を元に戻しますか？')) return;
+          saveScheduleChange('CLEAR', uidCl, propCl, oldCl, '');
           return;
         }
       });
