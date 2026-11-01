@@ -1908,7 +1908,8 @@
       if (_progressPending[propName]) return;
       _progressPending[propName] = true;
 
-      var pd    = S.progressData[propName] || {};
+      var hasSavedRow = !!S.progressData[propName];
+      var pd    = hasSavedRow ? S.progressData[propName] : getEffectiveProgress(propName);
       var oldPd = Object.assign({}, pd);
 
       // 楽観的更新：即座に画面を変える
@@ -1926,7 +1927,7 @@
         propertyName:  propName,
         date:          S.progressDate,
         fields:        fields,
-        knownUpdatedAt: pd.updatedAt || ''
+        knownUpdatedAt: hasSavedRow ? (pd.updatedAt || '') : ''
       }).then(function(r) {
         _progressPending[propName] = false;
         if (r.ok) {
