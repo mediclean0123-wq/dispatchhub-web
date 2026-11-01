@@ -1348,7 +1348,8 @@
           else if (pendingLr.result === 'ERROR') dateBadge = '<span class="sched-status-badge error">反映に失敗</span>';
         } else if (item.source === 'MANUAL') {
           dateBadge = '<span class="sched-status-badge manual">手入力</span>';
-        } else if (item.syncStatus === 'Mixed' || item.finalReason === '手動で清掃日変更') {
+        } else if (item.syncStatus === 'Mixed' || item.finalReason === '手動で清掃日変更'
+                   || (item.manualDate && item.manualDate !== item.autoDate)) {
           dateBadge = '<span class="sched-status-badge changed">変更済み</span>';
         }
 
@@ -2784,9 +2785,10 @@
           var newC  = inp.value;
           var tomorrowVal = tomorrow();
           if (newC < tomorrowVal) { toast('変更後の日付は明日以降にしてください'); return; }
-          var daysAhead = Math.ceil((new Date(newC) - new Date(today())) / 86400000);
+          var daysAhead    = Math.ceil((new Date(newC) - new Date(today())) / 86400000);
+          var daysOldAhead = Math.ceil((new Date(oldC) - new Date(today())) / 86400000);
           var confirmMsg = fmtDate(oldC) + ' → ' + fmtDate(newC) + ' に変更しますか？';
-          if (daysAhead <= 3) confirmMsg += '\n\n間近の変更です。担当スタッフへの連絡を確認してください。';
+          if (daysAhead <= 3 || daysOldAhead <= 3) confirmMsg += '\n\n間近の変更です。担当スタッフへの連絡を確認してください。';
           if (!confirm(confirmMsg)) return;
           saveScheduleChange('CHANGE', uidC, propC, oldC, newC);
           return;
