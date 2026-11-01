@@ -392,10 +392,16 @@
     .ped-ind-btn.linen-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
     .ped-ind-btn.trash-none { background: var(--bg); color: var(--muted); }
     .ped-ind-btn.trash-need { background: #ffebee; color: #c62828; border-color: #ef9a9a; }
-    .ped-ind-btn.trash-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; cursor: default; }
+    .ped-ind-btn.trash-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
     .ped-ind-btn.check-none { background: var(--bg); color: var(--muted); }
     .ped-ind-btn.check-need { background: #fffde7; color: #f57f17; border-color: #fff176; }
-    .ped-ind-btn.check-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; cursor: default; }
+    .ped-ind-btn.check-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
+    .ped-ind-back-btn {
+      padding: 0.3rem 0.5rem; border-radius: 6px; flex-shrink: 0;
+      border: 1px solid var(--border); background: var(--bg);
+      font-size: 0.72rem; font-family: inherit; cursor: pointer; color: var(--muted);
+    }
+    .ped-ind-back-btn:active { background: var(--border); }
     .ped-reorder-row { display: flex; gap: 0.4rem; }
     .ped-reorder-btn {
       flex: 1; padding: 0.45rem; border-radius: 6px;
@@ -508,6 +514,19 @@
       font-family: inherit; cursor: pointer; margin-top: 0.4rem; margin-left: 0.4rem;
     }
     .btn-sched-resend:active { opacity: 0.75; }
+    .sched-default-section {
+      border-top: 1px solid var(--border); margin-top: 0.5rem; padding-top: 0.45rem;
+    }
+    .sched-default-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.3rem; }
+    .sched-default-row { display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.25rem; }
+    .sched-default-name { font-size: 0.78rem; width: 5.5em; flex-shrink: 0; }
+    .btn-sched-default {
+      padding: 0.28rem 0.6rem; border-radius: 5px;
+      border: 1.5px solid var(--border); background: var(--bg);
+      font-size: 0.78rem; font-family: inherit; cursor: pointer; color: var(--muted);
+    }
+    .btn-sched-default.is-on { background: #fffde7; color: #f57f17; border-color: #fff176; }
+    .btn-sched-default:active { opacity: 0.75; }
 
     /* ── 検索モード：日付ラベル・件数超過 ── */
     .sched-date-label {
@@ -690,14 +709,17 @@
         <div class="ped-ind-row">
           <span class="ped-ind-label">リネン</span>
           <button id="ped-linen-btn" class="ped-ind-btn linen-todo">リネン未</button>
+          <button id="ped-linen-back" class="ped-ind-back-btn" hidden>戻す</button>
         </div>
         <div class="ped-ind-row">
           <span class="ped-ind-label">ゴミ</span>
           <button id="ped-trash-btn" class="ped-ind-btn trash-none">オフ</button>
+          <button id="ped-trash-back" class="ped-ind-back-btn" hidden>戻す</button>
         </div>
         <div class="ped-ind-row">
           <span class="ped-ind-label">チェック</span>
           <button id="ped-check-btn" class="ped-ind-btn check-none">オフ</button>
+          <button id="ped-check-back" class="ped-ind-back-btn" hidden>戻す</button>
         </div>
       </div>
       <div id="ped-reorder-section" class="ped-section" hidden>
@@ -1198,6 +1220,7 @@
           (pr.progress || []).forEach(function(p) {
             S.scheduleProgressData[String(p.property || '').trim()] = p;
           });
+          S.progressDefaults = pr.defaults || {};
         }
 
         applyScheduleDate(S.boardDate);
@@ -1347,6 +1370,28 @@
             if (showResend) {
               html += '<button class="btn-sched-resend" data-sched-resend-prop="' + pnEsc + '">再送</button>';
             }
+            var defs = S.progressDefaults[pn] || {};
+            var checkIsOn = defs.checkDefault === 'NEED';
+            var trashIsOn = defs.trashDefault === 'NEED';
+            html += '<div class="sched-default-section">' +
+              '<div class="sched-default-label">初期値（清掃開始時の既定）</div>' +
+              '<div class="sched-default-row">' +
+                '<span class="sched-default-name">チェック要</span>' +
+                '<button class="btn-sched-default' + (checkIsOn ? ' is-on' : '') + '"' +
+                  ' data-sched-default-prop="' + pnEsc + '" data-sched-default-field="checkDefault"' +
+                  ' data-sched-default-val="' + (checkIsOn ? 'NEED' : '') + '">' +
+                  (checkIsOn ? 'ON' : 'OFF') +
+                '</button>' +
+              '</div>' +
+              '<div class="sched-default-row">' +
+                '<span class="sched-default-name">ゴミ要回収</span>' +
+                '<button class="btn-sched-default' + (trashIsOn ? ' is-on' : '') + '"' +
+                  ' data-sched-default-prop="' + pnEsc + '" data-sched-default-field="trashDefault"' +
+                  ' data-sched-default-val="' + (trashIsOn ? 'NEED' : '') + '">' +
+                  (trashIsOn ? 'ON' : 'OFF') +
+                '</button>' +
+              '</div>' +
+            '</div>';
             html += '</div>';
           }
           html += '</div>';
@@ -1805,28 +1850,33 @@
       var indSection = document.getElementById('ped-indicators-section');
       indSection.hidden = (view !== 'board');
       if (view === 'board') {
-        var linenBtn = document.getElementById('ped-linen-btn');
+        var linenBtn  = document.getElementById('ped-linen-btn');
+        var linenBack = document.getElementById('ped-linen-back');
         linenBtn.className = 'ped-ind-btn ' + (pd.linen === 'DONE' ? 'linen-done' : 'linen-todo');
         linenBtn.textContent = pd.linen === 'DONE' ? 'リネン済 ✓' : 'リネン未 → 済に';
-        linenBtn.disabled = (pd.linen === 'DONE');
+        linenBack.hidden = (pd.linen !== 'DONE');
 
-        var trashBtn = document.getElementById('ped-trash-btn');
+        var trashBtn  = document.getElementById('ped-trash-btn');
+        var trashBack = document.getElementById('ped-trash-back');
         if (pd.trash === 'DONE') {
-          trashBtn.className = 'ped-ind-btn trash-done'; trashBtn.textContent = 'ゴミ回収済 ✓'; trashBtn.disabled = true;
+          trashBtn.className = 'ped-ind-btn trash-done'; trashBtn.textContent = 'ゴミ回収済 ✓';
         } else if (pd.trash === 'NEED') {
-          trashBtn.className = 'ped-ind-btn trash-need'; trashBtn.textContent = 'ゴミ要回収 → 回収済に'; trashBtn.disabled = false;
+          trashBtn.className = 'ped-ind-btn trash-need'; trashBtn.textContent = 'ゴミ要回収 → 回収済に';
         } else {
-          trashBtn.className = 'ped-ind-btn trash-none'; trashBtn.textContent = 'オフ → ゴミ要回収に'; trashBtn.disabled = false;
+          trashBtn.className = 'ped-ind-btn trash-none'; trashBtn.textContent = 'オフ → ゴミ要回収に';
         }
+        trashBack.hidden = !pd.trash;
 
-        var checkBtn = document.getElementById('ped-check-btn');
+        var checkBtn  = document.getElementById('ped-check-btn');
+        var checkBack = document.getElementById('ped-check-back');
         if (pd.check === 'DONE') {
-          checkBtn.className = 'ped-ind-btn check-done'; checkBtn.textContent = 'チェック済 ✓'; checkBtn.disabled = true;
+          checkBtn.className = 'ped-ind-btn check-done'; checkBtn.textContent = 'チェック済 ✓';
         } else if (pd.check === 'NEED') {
-          checkBtn.className = 'ped-ind-btn check-need'; checkBtn.textContent = 'チェック要 → 済に'; checkBtn.disabled = false;
+          checkBtn.className = 'ped-ind-btn check-need'; checkBtn.textContent = 'チェック要 → 済に';
         } else {
-          checkBtn.className = 'ped-ind-btn check-none'; checkBtn.textContent = 'オフ → チェック要に'; checkBtn.disabled = false;
+          checkBtn.className = 'ped-ind-btn check-none'; checkBtn.textContent = 'オフ → チェック要に';
         }
+        checkBack.hidden = !pd.check;
       }
 
       // 並べ替え（スタッフ別のみ）
@@ -1897,6 +1947,31 @@
         rerenderProgress();
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('更新エラー: ' + e.message);
+      });
+    }
+
+    function savePropertyDefaultField(propName, field, currentVal) {
+      var newVal = currentVal === 'NEED' ? '' : 'NEED';
+      var oldDef = Object.assign({}, S.progressDefaults[propName] || {});
+      var newDef = Object.assign({}, oldDef);
+      newDef[field] = newVal;
+      S.progressDefaults[propName] = newDef;
+      renderScheduleList();
+
+      var req = { action: 'savePropertyDefault', propertyName: propName };
+      req.checkDefault = newDef.checkDefault || '';
+      req.trashDefault = newDef.trashDefault || '';
+      callApi(req).then(function(r) {
+        if (!r.ok) {
+          S.progressDefaults[propName] = oldDef;
+          renderScheduleList();
+          toast('保存エラー: ' + (r.error || '不明'));
+        }
+      }).catch(function(e) {
+        S.progressDefaults[propName] = oldDef;
+        renderScheduleList();
+        if (e.isUnauthorized) { handleUnauthorized(); return; }
+        toast('保存エラー: ' + e.message);
       });
     }
 
@@ -2344,7 +2419,13 @@
         }
 
         if (e.target.closest('#ped-linen-btn') && S.editDrawerProp) {
-          updateProgressField(S.editDrawerProp, { linen: 'DONE' });
+          var linenPd = getEffectiveProgress(S.editDrawerProp);
+          if (linenPd.linen !== 'DONE') updateProgressField(S.editDrawerProp, { linen: 'DONE' });
+          return;
+        }
+
+        if (e.target.closest('#ped-linen-back') && S.editDrawerProp) {
+          updateProgressField(S.editDrawerProp, { linen: '' });
           return;
         }
 
@@ -2355,10 +2436,24 @@
           return;
         }
 
+        if (e.target.closest('#ped-trash-back') && S.editDrawerProp) {
+          var trashBackPd = getEffectiveProgress(S.editDrawerProp);
+          var prevTrash = trashBackPd.trash === 'DONE' ? 'NEED' : '';
+          updateProgressField(S.editDrawerProp, { trash: prevTrash });
+          return;
+        }
+
         if (e.target.closest('#ped-check-btn') && S.editDrawerProp) {
           var checkPd = getEffectiveProgress(S.editDrawerProp);
           var newCheck = checkPd.check === '' ? 'NEED' : checkPd.check === 'NEED' ? 'DONE' : checkPd.check;
           if (newCheck !== checkPd.check) updateProgressField(S.editDrawerProp, { check: newCheck });
+          return;
+        }
+
+        if (e.target.closest('#ped-check-back') && S.editDrawerProp) {
+          var checkBackPd = getEffectiveProgress(S.editDrawerProp);
+          var prevCheck = checkBackPd.check === 'DONE' ? 'NEED' : '';
+          updateProgressField(S.editDrawerProp, { check: prevCheck });
           return;
         }
 
@@ -2559,6 +2654,16 @@
         // 再送
         var resendBtn = e.target.closest('[data-sched-resend-prop]');
         if (resendBtn) { resendBlock(resendBtn.dataset.schedResendProp); return; }
+        // 既定値トグル
+        var defBtn = e.target.closest('[data-sched-default-prop]');
+        if (defBtn) {
+          savePropertyDefaultField(
+            defBtn.dataset.schedDefaultProp,
+            defBtn.dataset.schedDefaultField,
+            defBtn.dataset.schedDefaultVal
+          );
+          return;
+        }
       });
 
       // 今後の清掃予定タブ：担当変更セレクト（change 委譲）
