@@ -1348,7 +1348,7 @@
           else if (pendingLr.result === 'ERROR') dateBadge = '<span class="sched-status-badge error">反映に失敗</span>';
         } else if (item.source === 'MANUAL') {
           dateBadge = '<span class="sched-status-badge manual">手入力</span>';
-        } else if (item.syncStatus === 'Mixed' || item.finalReason === '手動で清掃日変更'
+        } else if (item.finalReason === '手動で清掃日変更'
                    || (item.manualDate && item.manualDate !== item.autoDate)) {
           dateBadge = '<span class="sched-status-badge changed">変更済み</span>';
         }
