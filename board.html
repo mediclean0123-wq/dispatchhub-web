@@ -585,6 +585,40 @@
       padding: 0.3rem 0.6rem; font-size: 0.78rem; font-family: inherit; cursor: pointer;
     }
     .btn-sched-clear-date:active { opacity: 0.75; }
+
+    /* ── 手入力予約ボタン（手入力予約タブ入口）── */
+    .manual-open-row {
+      display: flex; justify-content: flex-end; margin-bottom: 0.5rem;
+    }
+    .btn-open-manual {
+      padding: 0.35rem 0.9rem; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--card); color: var(--fg); font-size: 0.82rem;
+      font-family: inherit; cursor: pointer;
+    }
+    .btn-open-manual:active { opacity: 0.75; }
+
+    /* ── 手入力予約パネル ── */
+    .manual-header-row {
+      display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;
+    }
+    .btn-manual-back {
+      padding: 0.35rem 0.7rem; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--card); color: var(--fg); font-size: 0.82rem;
+      font-family: inherit; cursor: pointer;
+    }
+    .btn-manual-back:active { opacity: 0.75; }
+    .manual-title { font-size: 1rem; font-weight: bold; }
+    .manual-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .manual-row {
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.65rem 0.8rem; font-size: 0.88rem;
+    }
+    .manual-row-prop { font-weight: bold; margin-bottom: 0.3rem; }
+    .manual-row-dates { color: var(--muted); font-size: 0.82rem; margin-bottom: 0.2rem; }
+    .manual-row-meta  { font-size: 0.82rem; color: var(--muted); }
+    .manual-empty { text-align: center; color: var(--muted); padding: 2rem 0; font-size: 0.88rem; }
+    .manual-loading { text-align: center; color: var(--muted); padding: 1rem 0; }
+    .manual-error { background: #ffebee; color: #c62828; border-radius: 6px; padding: 0.6rem 0.8rem; font-size: 0.85rem; }
   </style>
 </head>
 
@@ -636,6 +670,9 @@
 
     <!-- 今後の清掃予定タブ -->
     <div id="panel-schedule" class="panel" hidden>
+      <div class="manual-open-row">
+        <button id="btn-open-manual" class="btn-open-manual">手入力予約</button>
+      </div>
       <div class="date-row">
         <label for="board-date-sel">日付</label>
         <input type="date" id="board-date-sel">
@@ -670,6 +707,15 @@
       </div>
       <div id="sched-list" class="sched-list"></div>
       <div class="refresh-note" id="refresh-note">30秒ごとに自動更新</div>
+    </div>
+
+    <!-- 手入力予約パネル -->
+    <div id="panel-manual" class="panel" hidden>
+      <div class="manual-header-row">
+        <button id="btn-manual-back" class="btn-manual-back">← 今後の清掃予定</button>
+        <span class="manual-title">手入力予約</span>
+      </div>
+      <div id="manual-list" class="manual-list"></div>
     </div>
   </div>
 
@@ -830,7 +876,10 @@
       editDrawerView: null,   // 'board' or 'staff'
       progressFetchedAt: 0,
       scheduleFetchedAt: 0,
-      lineRequests: []
+      lineRequests: [],
+      // 手入力予約パネル
+      manualReservations: [],
+      manualLoading: false
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -1292,6 +1341,69 @@
       } else {
         renderScheduleList();
       }
+    }
+
+    // ── 手入力予約パネル ──────────────────────────────────────────────
+    function openManualPanel() {
+      document.getElementById('panel-schedule').hidden = true;
+      document.getElementById('panel-manual').hidden   = false;
+      loadManualReservations();
+    }
+
+    function closeManualPanel() {
+      document.getElementById('panel-manual').hidden   = true;
+      document.getElementById('panel-schedule').hidden = false;
+    }
+
+    function loadManualReservations() {
+      if (S.sessionExpired) return;
+      S.manualLoading = true;
+      renderManualList();
+      callApi({ action: 'getManualReservations' }).then(function(data) {
+        S.manualLoading = false;
+        if (!data.ok) { S.manualReservations = null; renderManualList(); return; }
+        S.manualReservations = data.reservations || [];
+        renderManualList();
+      }).catch(function() {
+        S.manualLoading = false;
+        S.manualReservations = null;
+        renderManualList();
+      });
+    }
+
+    function renderManualList() {
+      var el = document.getElementById('manual-list');
+      if (!el) return;
+      if (S.manualLoading) {
+        el.innerHTML = '<div class="manual-loading"><span class="spin">↻</span> 読み込み中…</div>';
+        return;
+      }
+      if (S.manualReservations === null) {
+        el.innerHTML = '<div class="manual-error">読み込みに失敗しました</div>';
+        return;
+      }
+      if (!S.manualReservations.length) {
+        el.innerHTML = '<div class="manual-empty">手入力予約はありません</div>';
+        return;
+      }
+      var html = '';
+      S.manualReservations.forEach(function(r) {
+        var chkin  = r.dtstart ? 'チェックイン: ' + esc(r.dtstart) : '';
+        var chkout = 'チェックアウト: ' + esc(r.dtend);
+        var sameDayStr = r.sameDay ? ' / 同日イン: あり' : '';
+        var meta = [];
+        if (r.guestName) meta.push(esc(r.guestName));
+        if (r.note)      meta.push(esc(r.note));
+        html += '<div class="manual-row">';
+        html += '<div class="manual-row-prop">' + esc(r.propName) + '</div>';
+        html += '<div class="manual-row-dates">';
+        if (chkin) html += chkin + ' / ';
+        html += chkout + sameDayStr;
+        html += '</div>';
+        if (meta.length) html += '<div class="manual-row-meta">' + meta.join(' ／ ') + '</div>';
+        html += '</div>';
+      });
+      el.innerHTML = html;
     }
 
     // ── 今後の清掃予定タブ ────────────────────────────────────────────
@@ -2506,6 +2618,7 @@
           });
           document.getElementById('panel-progress').hidden = (tab !== 'progress');
           document.getElementById('panel-schedule').hidden = (tab !== 'schedule');
+          document.getElementById('panel-manual').hidden   = true;
           stopBoardTimer();
           stopProgressTimer();
           if (tab === 'progress') {
@@ -2614,6 +2727,10 @@
           changeProgressStaff(S.editDrawerProp, this.value);
         }
       });
+
+      // 手入力予約パネル：開く / 戻る
+      document.getElementById('btn-open-manual').addEventListener('click', openManualPanel);
+      document.getElementById('btn-manual-back').addEventListener('click', closeManualPanel);
 
       // 今後の清掃予定タブ：日付変更
       document.getElementById('board-date-sel').addEventListener('change', function() {
