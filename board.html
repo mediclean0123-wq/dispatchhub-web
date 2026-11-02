@@ -697,6 +697,10 @@
       padding: 0.5rem 0.7rem; font-size: 0.82rem; margin: 0.4rem 0;
     }
     .manual-dup-warning-btns { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
+    .manual-type-row { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; }
+    .manual-type-btn { flex: 1; padding: 0.45rem 0; border: 1.5px solid var(--muted); border-radius: 6px; background: var(--card); color: var(--fg); font-size: 0.9rem; cursor: pointer; }
+    .manual-type-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
+    .manual-spot-badge { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; border-radius: 4px; font-size: 0.72rem; padding: 0 0.35rem; margin-left: 0.3rem; vertical-align: middle; }
   </style>
 </head>
 
@@ -796,6 +800,10 @@
       <!-- 追加フォーム -->
       <div id="manual-add-section" class="manual-add-section" hidden>
         <h3>手入力で追加</h3>
+        <div class="manual-type-row">
+          <button id="manual-type-normal" class="manual-type-btn active">通常</button>
+          <button id="manual-type-spot"   class="manual-type-btn">スポット</button>
+        </div>
         <div id="manual-dup-warning" class="manual-dup-warning" hidden>
           <div id="manual-dup-msg"></div>
           <div class="manual-dup-warning-btns">
@@ -815,7 +823,7 @@
           <select id="manual-form-prop" class="manual-form-sel"></select>
           <span id="manual-prop-toggle-all" class="manual-prop-toggle">すべての物件から選ぶ</span>
         </div>
-        <div class="manual-form-row">
+        <div id="manual-row-dtstart" class="manual-form-row">
           <label class="manual-form-label">チェックイン日</label>
           <input id="manual-form-dtstart" type="date" class="manual-form-input">
         </div>
@@ -823,15 +831,19 @@
           <label class="manual-form-label">チェックアウト日（清掃日） <span style="color:#c62828">*</span></label>
           <input id="manual-form-dtend" type="date" class="manual-form-input">
         </div>
-        <div class="manual-form-row">
+        <div id="manual-row-title" class="manual-form-row" hidden>
+          <label class="manual-form-label">タイトル <span style="color:#c62828">*</span></label>
+          <input id="manual-form-title" type="text" class="manual-form-input" placeholder="エアコンクリーニングなど">
+        </div>
+        <div id="manual-row-sameday" class="manual-form-row">
           <label class="manual-form-label">同日イン</label>
           <button id="manual-form-sameday" class="toggle-sameday">NO</button>
         </div>
-        <div class="manual-form-row">
+        <div id="manual-row-guest" class="manual-form-row">
           <label class="manual-form-label">ゲスト名</label>
           <input id="manual-form-guest" type="text" class="manual-form-input" placeholder="任意">
         </div>
-        <div class="manual-form-row">
+        <div id="manual-row-memo" class="manual-form-row">
           <label class="manual-form-label">メモ</label>
           <input id="manual-form-memo" type="text" class="manual-form-input" placeholder="任意">
         </div>
@@ -1014,6 +1026,7 @@
       manualCandidatesLoaded: false,
       manualShowAllProps: false,   // true = 全物件表示モード
       manualSameDay: false,        // フォームの同日イン状態
+      manualIsSpot: false,         // スポットモード
       manualChangeUid: null        // インライン変更中の UID
     };
 
@@ -1564,16 +1577,23 @@
       }
       var html = '';
       S.manualReservations.forEach(function(r) {
-        var chkin  = r.dtstart ? 'チェックイン: ' + esc(r.dtstart) : '';
-        var chkout = 'チェックアウト: ' + esc(r.dtend);
-        var sameDayStr = r.sameDay ? ' / 同日イン: あり' : '';
+        var isSpotRow  = !!(r.note && r.note.startsWith('[SPOT]'));
+        var spotTitle  = isSpotRow ? r.note.slice('[SPOT]'.length).trim() : '';
+        var chkin      = (!isSpotRow && r.dtstart) ? 'チェックイン: ' + esc(r.dtstart) : '';
+        var chkout     = (isSpotRow ? '清掃日: ' : 'チェックアウト: ') + esc(r.dtend);
+        var sameDayStr = (!isSpotRow && r.sameDay) ? ' / 同日イン: あり' : '';
         var meta = [];
-        if (r.guestName) meta.push(esc(r.guestName));
-        if (r.note)      meta.push(esc(r.note));
+        if (isSpotRow) {
+          if (spotTitle) meta.push(esc(spotTitle));
+        } else {
+          if (r.guestName) meta.push(esc(r.guestName));
+          if (r.note)      meta.push(esc(r.note));
+        }
+        var spotBadge = isSpotRow ? '<span class="manual-spot-badge">スポット</span>' : '';
         var badge = manualBadgeHtml(r.uid);
         var isChanging = (S.manualChangeUid === r.uid);
         html += '<div class="manual-row" data-uid="' + esc(r.uid) + '">';
-        html += '<div class="manual-row-prop">' + esc(r.propName) + badge + '</div>';
+        html += '<div class="manual-row-prop">' + esc(r.propName) + spotBadge + badge + '</div>';
         html += '<div class="manual-row-dates">';
         if (chkin) html += chkin + ' / ';
         html += chkout + sameDayStr;
@@ -1613,6 +1633,17 @@
       });
     }
 
+    function setManualType(isSpot) {
+      S.manualIsSpot = isSpot;
+      document.getElementById('manual-type-normal').classList.toggle('active', !isSpot);
+      document.getElementById('manual-type-spot').classList.toggle('active',   isSpot);
+      document.getElementById('manual-row-dtstart').hidden = isSpot;
+      document.getElementById('manual-row-title').hidden   = !isSpot;
+      document.getElementById('manual-row-sameday').hidden = isSpot;
+      document.getElementById('manual-row-guest').hidden   = isSpot;
+      document.getElementById('manual-row-memo').hidden    = isSpot;
+    }
+
     function openManualAddSection() {
       S.manualChangeUid = null;
       renderManualList();
@@ -1622,10 +1653,12 @@
       document.getElementById('manual-dup-warning-cont').hidden = true;
       document.getElementById('manual-form-dtstart').value = '';
       document.getElementById('manual-form-dtend').value   = '';
+      document.getElementById('manual-form-title').value   = '';
       document.getElementById('manual-form-guest').value   = '';
       document.getElementById('manual-form-memo').value    = '';
       S.manualSameDay = false;
       updateSameDayToggle();
+      setManualType(false);
       loadManualPropertyCandidates();
     }
 
@@ -1641,64 +1674,89 @@
       btn.classList.toggle('on', S.manualSameDay);
     }
 
-    function hasDuplicateManual(propName, dtend, excludeUid) {
+    function hasDuplicateManual(propName, dtend, excludeUid, isSpot) {
       var reservations = S.manualReservations || [];
       for (var i = 0; i < reservations.length; i++) {
         var r = reservations[i];
         if (excludeUid && r.uid === excludeUid) continue;
-        if (r.propName === propName && r.dtend === dtend) return true;
+        if (r.propName !== propName || r.dtend !== dtend) continue;
+        var rIsSpot = !!(r.note && r.note.startsWith('[SPOT]'));
+        // スポット同士、または通常同士のみ警告
+        if (!!isSpot === rIsSpot) return true;
       }
       var pending = S.manualPendingRequests || [];
       for (var j = 0; j < pending.length; j++) {
         var p = pending[j];
-        if (p.kind === 'MANUAL_ADD' && p.propName === propName && p.dtend === dtend) return true;
+        if (p.kind !== 'MANUAL_ADD') continue;
+        if (p.propName !== propName || p.dtend !== dtend) continue;
+        var pIsSpot = !!(p.memo && p.memo.startsWith('[SPOT]'));
+        if (!!isSpot === pIsSpot) return true;
       }
       return false;
     }
 
     function submitManualAdd(continueAdding) {
-      var propName  = document.getElementById('manual-form-prop').value.trim();
-      var dtstart   = document.getElementById('manual-form-dtstart').value.trim();
-      var dtend     = document.getElementById('manual-form-dtend').value.trim();
-      var guestName = document.getElementById('manual-form-guest').value.trim();
-      var memo      = document.getElementById('manual-form-memo').value.trim();
-      var sameDay   = S.manualSameDay ? 'Yes' : 'No';
+      var propName = document.getElementById('manual-form-prop').value.trim();
+      var dtend    = document.getElementById('manual-form-dtend').value.trim();
+      var isSpot   = S.manualIsSpot;
 
       if (!propName) { toast('物件名を選んでください'); return; }
-      if (!dtend)    { toast('チェックアウト日を入力してください'); return; }
+      if (!dtend)    { toast('チェックアウト日（清掃日）を入力してください'); return; }
       if (dtend < today()) { toast('チェックアウト日は今日以降にしてください'); return; }
 
-      var dupWarnId  = continueAdding ? 'manual-dup-warning-cont' : 'manual-dup-warning';
-      var dupMsgId   = continueAdding ? 'manual-dup-msg-cont'     : 'manual-dup-msg';
-      var forceId    = continueAdding ? 'btn-dup-force-save-cont' : 'btn-dup-force-save';
+      var dtstart, sameDay, guestName, memo;
+      if (isSpot) {
+        var title = document.getElementById('manual-form-title').value.trim();
+        if (!title) { toast('タイトルを入力してください'); return; }
+        dtstart   = '';
+        sameDay   = 'No';
+        guestName = '';
+        memo      = '[SPOT]' + title;
+      } else {
+        dtstart   = document.getElementById('manual-form-dtstart').value.trim();
+        sameDay   = S.manualSameDay ? 'Yes' : 'No';
+        guestName = document.getElementById('manual-form-guest').value.trim();
+        memo      = document.getElementById('manual-form-memo').value.trim();
+      }
+
+      var dupWarnId = continueAdding ? 'manual-dup-warning-cont' : 'manual-dup-warning';
+      var dupMsgId  = continueAdding ? 'manual-dup-msg-cont'     : 'manual-dup-msg';
+      var forceId   = continueAdding ? 'btn-dup-force-save-cont' : 'btn-dup-force-save';
 
       document.getElementById('manual-dup-warning').hidden      = true;
       document.getElementById('manual-dup-warning-cont').hidden = true;
 
-      if (hasDuplicateManual(propName, dtend, null)) {
+      if (hasDuplicateManual(propName, dtend, null, isSpot)) {
+        var dupLabel = isSpot ? 'スポット' : '予約';
         document.getElementById(dupMsgId).textContent =
-          'このチェックアウト日に同じ物件の予約が既にあります。それでも保存しますか？';
+          'この清掃日に同じ物件の' + dupLabel + 'が既にあります。それでも保存しますか？';
         document.getElementById(dupWarnId).hidden = false;
         document.getElementById(forceId).onclick = function() {
           document.getElementById(dupWarnId).hidden = true;
-          doSaveManualAdd(propName, dtstart, dtend, sameDay, guestName, memo, continueAdding);
+          doSaveManualAdd(propName, dtstart, dtend, sameDay, guestName, memo, continueAdding, isSpot);
         };
         return;
       }
-      doSaveManualAdd(propName, dtstart, dtend, sameDay, guestName, memo, continueAdding);
+      doSaveManualAdd(propName, dtstart, dtend, sameDay, guestName, memo, continueAdding, isSpot);
     }
 
-    function doSaveManualAdd(propName, dtstart, dtend, sameDay, guestName, memo, continueAdding) {
+    function doSaveManualAdd(propName, dtstart, dtend, sameDay, guestName, memo, continueAdding, isSpot) {
       callApi({
         action: 'saveManualReservation', kind: 'MANUAL_ADD',
         propertyName: propName, dtstart: dtstart, dtend: dtend,
-        sameDay: sameDay, guestName: guestName, memo: memo
+        sameDay: sameDay, guestName: guestName, memo: memo,
+        isSpot: !!isSpot
       }).then(function(data) {
         if (!data.ok) { toast('保存エラー: ' + (data.error || '不明')); return; }
         toast('登録しました。この一覧への反映には最大5分かかります。清掃スケジュールへの反映には最大1時間かかります。', 5000);
         if (continueAdding) {
-          document.getElementById('manual-form-dtstart').value = dtend;
-          document.getElementById('manual-form-dtend').value   = '';
+          if (!isSpot) {
+            document.getElementById('manual-form-dtstart').value = dtend;
+          }
+          document.getElementById('manual-form-dtend').value = '';
+          if (isSpot) {
+            document.getElementById('manual-form-title').value = '';
+          }
           document.getElementById('manual-dup-warning-cont').hidden = true;
         } else {
           closeManualAddSection();
@@ -3087,6 +3145,8 @@
         S.manualShowAllProps = !S.manualShowAllProps;
         renderManualPropSelect();
       });
+      document.getElementById('manual-type-normal').addEventListener('click', function() { setManualType(false); });
+      document.getElementById('manual-type-spot').addEventListener('click',   function() { setManualType(true); });
       document.getElementById('btn-dup-cancel').addEventListener('click', function() {
         document.getElementById('manual-dup-warning').hidden = true;
       });
