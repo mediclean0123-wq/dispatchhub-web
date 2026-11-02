@@ -712,6 +712,24 @@
     .manual-type-btn { flex: 1; padding: 0.45rem 0; border: 1.5px solid var(--muted); border-radius: 6px; background: var(--card); color: var(--fg); font-size: 0.9rem; cursor: pointer; }
     .manual-type-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
     .manual-spot-badge { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; border-radius: 4px; font-size: 0.72rem; padding: 0 0.35rem; margin-left: 0.3rem; vertical-align: middle; }
+    /* まとめて追加 */
+    .btn-manual-bulk { padding: 0.25rem 0.65rem; border: 1px solid #1976d2; border-radius: 5px; background: #e3f2fd; color: #1976d2; font-size: 0.8rem; font-family: inherit; cursor: pointer; margin-top: 0.1rem; }
+    .btn-manual-bulk:active { opacity: 0.75; }
+    .bulk-row { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.75rem; margin-bottom: 0.5rem; }
+    .bulk-row.bulk-row-saved { opacity: 0.45; pointer-events: none; }
+    .bulk-row-inputs { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: flex-end; }
+    .bulk-date-label { font-size: 0.74rem; color: var(--muted); margin-bottom: 0.15rem; }
+    .bulk-date-input { font-family: inherit; font-size: 0.85rem; padding: 0.25rem 0.4rem; border: 1px solid var(--border); border-radius: 5px; min-width: 0; max-width: 100%; box-sizing: border-box; width: 100%; }
+    .bulk-sameday-btn { padding: 0.2rem 0.55rem; border: 1px solid var(--border); border-radius: 5px; background: var(--card); color: var(--fg); font-size: 0.8rem; font-family: inherit; cursor: pointer; white-space: nowrap; }
+    .bulk-sameday-btn.on { background: #e8f5e9; border-color: #81c784; color: #2e7d32; }
+    .bulk-del-btn { padding: 0.2rem 0.55rem; border: 1px solid #f48fb1; border-radius: 5px; background: #fce4ec; color: #880e4f; font-size: 0.8rem; font-family: inherit; cursor: pointer; white-space: nowrap; }
+    .bulk-row-error { background: #ffebee; color: #c62828; font-size: 0.78rem; border-radius: 4px; padding: 0.2rem 0.5rem; margin-top: 0.35rem; }
+    .bulk-row-warn { background: #fff8e1; border: 1px solid #ffd54f; border-radius: 5px; padding: 0.3rem 0.5rem; font-size: 0.8rem; margin-top: 0.35rem; }
+    .bulk-row-status-ok { background: #e8f5e9; color: #2e7d32; font-size: 0.78rem; border-radius: 4px; padding: 0.2rem 0.5rem; margin-top: 0.35rem; }
+    .bulk-row-status-fail { background: #ffebee; color: #c62828; font-size: 0.78rem; border-radius: 4px; padding: 0.2rem 0.5rem; margin-top: 0.35rem; }
+    .bulk-progress { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.5rem; text-align: center; }
+    .btn-bulk-add-row { display: block; width: 100%; margin: 0.4rem 0; padding: 0.4rem; border: 1px dashed var(--border); border-radius: 6px; background: var(--card); color: var(--fg); font-size: 0.82rem; font-family: inherit; cursor: pointer; text-align: center; box-sizing: border-box; }
+    .btn-bulk-add-row:active { opacity: 0.75; }
   </style>
 </head>
 
@@ -867,6 +885,17 @@
           <button id="btn-manual-form-cancel" class="btn-manual-form-cancel">キャンセル</button>
         </div>
       </div>
+      <!-- まとめて追加フォーム -->
+      <div id="manual-bulk-section" class="manual-add-section" hidden>
+        <h3>まとめて追加 — <span id="bulk-prop-name"></span></h3>
+        <div id="bulk-rows-container"></div>
+        <button id="btn-bulk-add-row" class="btn-bulk-add-row">＋ 行を追加</button>
+        <div id="bulk-progress" class="bulk-progress" hidden></div>
+        <div class="manual-add-section-btns">
+          <button id="btn-bulk-save" class="btn-manual-save">まとめて保存</button>
+          <button id="btn-bulk-cancel" class="btn-manual-form-cancel">キャンセル</button>
+        </div>
+      </div>
       <!-- 絞り込みバー -->
       <div id="manual-filter-bar" class="manual-filter-bar" hidden>
         <select id="manual-filter-prop" class="manual-form-sel"></select>
@@ -876,6 +905,7 @@
           <button class="manual-range-btn" data-range="next-month">来月</button>
         </div>
         <div id="manual-filter-count" class="manual-filter-count"></div>
+        <button id="btn-manual-bulk" class="btn-manual-bulk" hidden>まとめて追加</button>
       </div>
       <!-- 追加ボタン（フォームが閉じているとき表示） -->
       <button id="btn-manual-add" class="btn-manual-add">＋ 手入力で追加</button>
@@ -1053,7 +1083,8 @@
       manualIsSpot: false,         // スポットモード
       manualChangeUid: null,       // インライン変更中の UID
       manualFilterProp: '',        // 絞り込み物件（'' = すべて）
-      manualFilterRange: 'all'     // 'all' | 'this-month' | 'next-month'
+      manualFilterRange: 'all',    // 'all' | 'this-month' | 'next-month'
+      bulkRows: []                 // まとめて追加の行データ
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -1607,9 +1638,14 @@
       var bar = document.getElementById('manual-filter-bar');
       if (!bar) return;
       var reservations = S.manualReservations || [];
-      var formOpen = !document.getElementById('manual-add-section').hidden;
+      var formOpen = !document.getElementById('manual-add-section').hidden
+                  || !document.getElementById('manual-bulk-section').hidden;
       if (!reservations.length || formOpen) { bar.hidden = true; return; }
       bar.hidden = false;
+
+      // まとめて追加ボタン（物件が絞り込まれているときだけ表示）
+      var bulkBtn = document.getElementById('btn-manual-bulk');
+      if (bulkBtn) bulkBtn.hidden = !S.manualFilterProp;
 
       // 物件 select を再生成
       var sel = document.getElementById('manual-filter-prop');
@@ -1765,6 +1801,185 @@
       document.getElementById('manual-add-section').hidden = true;
       document.getElementById('btn-manual-add').hidden     = false;
       renderManualFilterBar();
+    }
+
+    var BULK_MAX_ROWS = 31;
+
+    function openManualBulkSection() {
+      S.manualChangeUid = null;
+      S.bulkRows = [
+        { dtstart: '', dtend: '', sameDay: false, status: null, includeDup: false },
+        { dtstart: '', dtend: '', sameDay: false, status: null, includeDup: false },
+        { dtstart: '', dtend: '', sameDay: false, status: null, includeDup: false }
+      ];
+      var nameEl = document.getElementById('bulk-prop-name');
+      if (nameEl) nameEl.textContent = S.manualFilterProp;
+      document.getElementById('manual-bulk-section').hidden = false;
+      document.getElementById('btn-manual-add').hidden = true;
+      var progressEl = document.getElementById('bulk-progress');
+      if (progressEl) progressEl.hidden = true;
+      var saveBtn = document.getElementById('btn-bulk-save');
+      if (saveBtn) saveBtn.disabled = false;
+      renderBulkRows();
+      renderManualFilterBar();
+    }
+
+    function closeManualBulkSection() {
+      document.getElementById('manual-bulk-section').hidden = true;
+      document.getElementById('btn-manual-add').hidden = false;
+      renderManualFilterBar();
+    }
+
+    function syncBulkRowsFromDOM() {
+      var container = document.getElementById('bulk-rows-container');
+      if (!container) return;
+      S.bulkRows.forEach(function(row, i) {
+        var rowEl = container.querySelector('.bulk-row[data-row-idx="' + i + '"]');
+        if (!rowEl) return;
+        row.dtstart = rowEl.querySelector('.bulk-dtstart').value;
+        row.dtend   = rowEl.querySelector('.bulk-dtend').value;
+        var dupCheck = rowEl.querySelector('.bulk-dup-check');
+        if (dupCheck) row.includeDup = dupCheck.checked;
+      });
+    }
+
+    function computeBulkRowError(row) {
+      if (!row.dtend) return null;
+      if (row.dtend < today()) return '過去日は登録できません';
+      if (row.dtstart && row.dtstart >= row.dtend) return 'チェックイン日はチェックアウト日より前にしてください';
+      return null;
+    }
+
+    function computeBulkRowDup(row, rowIdx) {
+      if (!row.dtend || computeBulkRowError(row)) return false;
+      var propName = S.manualFilterProp;
+      var reservations = S.manualReservations || [];
+      for (var i = 0; i < reservations.length; i++) {
+        if (reservations[i].propName === propName && reservations[i].dtend === row.dtend) return true;
+      }
+      var pending = S.manualPendingRequests || [];
+      for (var j = 0; j < pending.length; j++) {
+        if (pending[j].kind !== 'MANUAL_ADD') continue;
+        if (pending[j].propName === propName && pending[j].dtend === row.dtend) return true;
+      }
+      for (var k = 0; k < S.bulkRows.length; k++) {
+        if (k === rowIdx) continue;
+        if (S.bulkRows[k].dtend && S.bulkRows[k].dtend === row.dtend) return true;
+      }
+      return false;
+    }
+
+    function renderBulkRows() {
+      var container = document.getElementById('bulk-rows-container');
+      if (!container) return;
+      var rows = S.bulkRows;
+      var html = '';
+      rows.forEach(function(row, i) {
+        var err    = row.status ? null : computeBulkRowError(row);
+        var isDup  = row.status ? false : computeBulkRowDup(row, i);
+        var savedClass = (row.status === 'ok') ? ' bulk-row-saved' : '';
+        html += '<div class="bulk-row' + savedClass + '" data-row-idx="' + i + '">';
+        html += '<div style="font-size:0.76rem;color:var(--muted);margin-bottom:0.3rem;">' + (i + 1) + '件目</div>';
+        html += '<div class="bulk-row-inputs">';
+        html += '<div style="flex:1 1 110px;min-width:0">';
+        html += '<div class="bulk-date-label">チェックイン日（任意）</div>';
+        html += '<input type="date" class="bulk-date-input bulk-dtstart" value="' + esc(row.dtstart) + '">';
+        html += '</div>';
+        html += '<div style="flex:1 1 110px;min-width:0">';
+        html += '<div class="bulk-date-label">チェックアウト日 <span style="color:#c62828">*</span></div>';
+        html += '<input type="date" class="bulk-date-input bulk-dtend" value="' + esc(row.dtend) + '">';
+        html += '</div>';
+        html += '<div style="display:flex;gap:0.3rem;align-items:flex-end">';
+        html += '<button class="bulk-sameday-btn' + (row.sameDay ? ' on' : '') + '" data-action="sameday">同日: ' + (row.sameDay ? 'YES' : 'NO') + '</button>';
+        if (rows.length > 1) {
+          html += '<button class="bulk-del-btn" data-action="del">削除</button>';
+        }
+        html += '</div>';
+        html += '</div>';
+        if (row.status === 'ok') {
+          html += '<div class="bulk-row-status-ok">✓ 保存しました</div>';
+        } else if (row.status === 'fail') {
+          html += '<div class="bulk-row-status-fail">保存に失敗しました</div>';
+        } else if (err) {
+          html += '<div class="bulk-row-error" data-bulk-err>' + esc(err) + '</div>';
+        } else if (isDup) {
+          html += '<div class="bulk-row-warn">';
+          html += '<label><input type="checkbox" class="bulk-dup-check"' + (row.includeDup ? ' checked' : '') + '> ';
+          html += 'この清掃日に同じ物件の予約が既にあります。保存する</label>';
+          html += '</div>';
+        }
+        html += '</div>';
+      });
+      container.innerHTML = html;
+      var addRowBtn = document.getElementById('btn-bulk-add-row');
+      if (addRowBtn) addRowBtn.hidden = (rows.length >= BULK_MAX_ROWS);
+    }
+
+    function submitBulkSave() {
+      var propName = S.manualFilterProp;
+      if (!propName) return;
+      syncBulkRowsFromDOM();
+
+      var hasError = false;
+      S.bulkRows.forEach(function(row) {
+        if (!row.dtend) return;
+        if (computeBulkRowError(row)) hasError = true;
+      });
+      renderBulkRows();
+      if (hasError) { toast('入力エラーがあります。確認してください。'); return; }
+
+      var toSave = [];
+      S.bulkRows.forEach(function(row, i) {
+        if (!row.dtend) return;
+        if (computeBulkRowError(row)) return;
+        if (computeBulkRowDup(row, i) && !row.includeDup) return;
+        if (row.status === 'ok') return;
+        toSave.push(i);
+      });
+      if (!toSave.length) {
+        toast('保存する行がありません（重複のある行はチェックを入れてください）');
+        return;
+      }
+
+      var saveBtn = document.getElementById('btn-bulk-save');
+      saveBtn.disabled = true;
+      var progress = document.getElementById('bulk-progress');
+      progress.hidden = false;
+      var total = toSave.length;
+      var saved = 0;
+      var k = 0;
+
+      function saveNext() {
+        if (k >= total) {
+          saveBtn.disabled = false;
+          progress.textContent = saved + '/' + total + '件 保存しました';
+          if (saved === total) {
+            setTimeout(function() { closeManualBulkSection(); loadManualReservations(); }, 800);
+          } else {
+            toast(saved + '件保存済み。失敗した行を確認してください。');
+          }
+          return;
+        }
+        progress.textContent = (k + 1) + '/' + total + '件 保存中…';
+        var rowIdx = toSave[k];
+        var row = S.bulkRows[rowIdx];
+        k++;
+        callApi({
+          action: 'saveManualReservation', kind: 'MANUAL_ADD',
+          propertyName: propName, dtstart: row.dtstart, dtend: row.dtend,
+          sameDay: row.sameDay ? 'Yes' : 'No', guestName: '', memo: '', isSpot: false
+        }).then(function(result) {
+          S.bulkRows[rowIdx].status = result.ok ? 'ok' : 'fail';
+          if (result.ok) saved++;
+          renderBulkRows();
+          saveNext();
+        }).catch(function() {
+          S.bulkRows[rowIdx].status = 'fail';
+          renderBulkRows();
+          saveNext();
+        });
+      }
+      saveNext();
     }
 
     function updateSameDayToggle() {
@@ -3234,6 +3449,39 @@
       document.getElementById('btn-manual-form-cancel').addEventListener('click', closeManualAddSection);
       document.getElementById('btn-manual-save').addEventListener('click', function() { submitManualAdd(false); });
       document.getElementById('btn-manual-save-cont').addEventListener('click', function() { submitManualAdd(true); });
+      document.getElementById('btn-manual-bulk').addEventListener('click', openManualBulkSection);
+      document.getElementById('btn-bulk-cancel').addEventListener('click', closeManualBulkSection);
+      document.getElementById('btn-bulk-save').addEventListener('click', submitBulkSave);
+      document.getElementById('btn-bulk-add-row').addEventListener('click', function() {
+        if (S.bulkRows.length >= BULK_MAX_ROWS) return;
+        S.bulkRows.push({ dtstart: '', dtend: '', sameDay: false, status: null, includeDup: false });
+        renderBulkRows();
+      });
+      document.getElementById('bulk-rows-container').addEventListener('change', function(e) {
+        var rowEl = e.target.closest('.bulk-row');
+        if (!rowEl) return;
+        var idx = parseInt(rowEl.dataset.rowIdx, 10);
+        if (isNaN(idx) || !S.bulkRows[idx]) return;
+        if (e.target.classList.contains('bulk-dtstart')) { S.bulkRows[idx].dtstart = e.target.value; renderBulkRows(); }
+        if (e.target.classList.contains('bulk-dtend'))   { S.bulkRows[idx].dtend   = e.target.value; renderBulkRows(); }
+        if (e.target.classList.contains('bulk-dup-check')) { S.bulkRows[idx].includeDup = e.target.checked; }
+      });
+      document.getElementById('bulk-rows-container').addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        var rowEl = btn.closest('.bulk-row');
+        if (!rowEl) return;
+        var idx = parseInt(rowEl.dataset.rowIdx, 10);
+        if (isNaN(idx) || !S.bulkRows[idx]) return;
+        if (btn.dataset.action === 'sameday') {
+          S.bulkRows[idx].sameDay = !S.bulkRows[idx].sameDay;
+          renderBulkRows();
+        }
+        if (btn.dataset.action === 'del') {
+          S.bulkRows.splice(idx, 1);
+          renderBulkRows();
+        }
+      });
       document.getElementById('manual-form-sameday').addEventListener('click', function() {
         S.manualSameDay = !S.manualSameDay;
         updateSameDayToggle();
