@@ -730,6 +730,14 @@
     .bulk-progress { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.5rem; text-align: center; }
     .btn-bulk-add-row { display: block; width: 100%; margin: 0.4rem 0; padding: 0.4rem; border: 1px dashed var(--border); border-radius: 6px; background: var(--card); color: var(--fg); font-size: 0.82rem; font-family: inherit; cursor: pointer; text-align: center; box-sizing: border-box; }
     .btn-bulk-add-row:active { opacity: 0.75; }
+    /* アルバムURL再送 */
+    .album-resend-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .btn-album-resend {
+      padding: 0.3rem 0.8rem; border: 1px solid #1976d2; border-radius: 6px;
+      background: #e3f2fd; color: #1976d2; font-size: 0.82rem; font-family: inherit; cursor: pointer;
+    }
+    .btn-album-resend:active { opacity: 0.75; }
+    .btn-album-resend:disabled { opacity: 0.5; cursor: default; }
   </style>
 </head>
 
@@ -798,6 +806,10 @@
       <div class="sched-grouping-bar" id="sched-grouping-bar" hidden>
         <button class="sched-grouping-btn active" id="btn-group-area">エリア別</button>
         <button class="sched-grouping-btn"        id="btn-group-staff">担当別</button>
+      </div>
+      <!-- アルバムURL再送バー（今日の日程のときのみ表示） -->
+      <div id="album-resend-bar" class="album-resend-bar" hidden>
+        <button id="btn-album-resend" class="btn-album-resend">アルバムURL再送</button>
       </div>
       <div id="order-mode-bar" hidden>
         <button id="btn-order-mode" class="btn-order-mode">順番を決める</button>
@@ -1132,6 +1144,9 @@
       // 順番を決めるボタン: ADMIN + 単日モード + モード外
       document.getElementById('order-mode-bar').hidden =
         !S.isAdmin || isSearch || S.orderMode;
+      // アルバムURL再送バー: ADMIN + 今日の単日表示のときのみ
+      document.getElementById('album-resend-bar').hidden =
+        !S.isAdmin || isSearch || !loaded || S.boardDate !== today();
     }
 
     // ── タップ順モード ────────────────────────────────────────────────
@@ -3714,6 +3729,27 @@
       });
 
       // 画面が隠れているあいだは自動更新を止める
+      document.getElementById('btn-album-resend').addEventListener('click', function() {
+        if (!confirm('今日担当の全清掃員に、アルバムURLを再送します。よろしいですか？')) return;
+        var btn = document.getElementById('btn-album-resend');
+        btn.disabled = true;
+        callApi({ action: 'enqueueAlbumResendAll' }).then(function(data) {
+          btn.disabled = false;
+          if (!data.ok) {
+            if (data.error === 'already_pending') {
+              toast('10分以内に再送済みです。しばらく待ってから再度お試しください。');
+            } else {
+              toast('再送エラー: ' + (data.error || '不明'));
+            }
+            return;
+          }
+          toast('再送をリクエストしました。5分以内に送信されます。');
+        }).catch(function(e) {
+          btn.disabled = false;
+          toast('再送エラー: ' + e.message);
+        });
+      });
+
       document.addEventListener('visibilitychange', function() {
         if (document.hidden) {
           stopBoardTimer();
