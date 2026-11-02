@@ -694,6 +694,15 @@
     }
     .btn-manual-form-cancel:active { opacity: 0.75; }
     .manual-prop-toggle { font-size: 0.78rem; color: #1976d2; cursor: pointer; text-decoration: underline; margin-top: 0.25rem; display: inline-block; }
+    .manual-filter-bar { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.6rem; }
+    .manual-filter-range { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+    .manual-range-btn {
+      padding: 0.25rem 0.65rem; border: 1px solid var(--border); border-radius: 5px;
+      background: var(--card); font-size: 0.8rem; font-family: inherit; color: var(--fg); cursor: pointer;
+    }
+    .manual-range-btn.active { background: #1976d2; color: #fff; border-color: #1976d2; }
+    .manual-range-btn:active { opacity: 0.75; }
+    .manual-filter-count { font-size: 0.8rem; color: var(--muted); }
     .manual-dup-warning {
       background: #fff8e1; border: 1px solid #ffd54f; border-radius: 6px;
       padding: 0.5rem 0.7rem; font-size: 0.82rem; margin: 0.4rem 0;
@@ -857,6 +866,16 @@
           <button id="btn-manual-save-cont" class="btn-manual-save-cont">保存して続けて追加</button>
           <button id="btn-manual-form-cancel" class="btn-manual-form-cancel">キャンセル</button>
         </div>
+      </div>
+      <!-- 絞り込みバー -->
+      <div id="manual-filter-bar" class="manual-filter-bar" hidden>
+        <select id="manual-filter-prop" class="manual-form-sel"></select>
+        <div class="manual-filter-range">
+          <button class="manual-range-btn active" data-range="all">すべて</button>
+          <button class="manual-range-btn" data-range="this-month">今月</button>
+          <button class="manual-range-btn" data-range="next-month">来月</button>
+        </div>
+        <div id="manual-filter-count" class="manual-filter-count"></div>
       </div>
       <!-- 追加ボタン（フォームが閉じているとき表示） -->
       <button id="btn-manual-add" class="btn-manual-add">＋ 手入力で追加</button>
@@ -1032,7 +1051,9 @@
       manualShowAllProps: false,   // true = 全物件表示モード
       manualSameDay: false,        // フォームの同日イン状態
       manualIsSpot: false,         // スポットモード
-      manualChangeUid: null        // インライン変更中の UID
+      manualChangeUid: null,       // インライン変更中の UID
+      manualFilterProp: '',        // 絞り込み物件（'' = すべて）
+      manualFilterRange: 'all'     // 'all' | 'this-month' | 'next-month'
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -1565,9 +1586,68 @@
       return '';
     }
 
+    function getFilteredManualList() {
+      var all = (S.manualReservations || []).slice();
+      if (S.manualFilterProp) {
+        all = all.filter(function(r) { return r.propName === S.manualFilterProp; });
+      }
+      if (S.manualFilterRange === 'this-month' || S.manualFilterRange === 'next-month') {
+        var now = new Date();
+        // 来月は必ず翌月1日から求める（月末で setMonth すると翌々月になるバグを防ぐ）
+        var base = (S.manualFilterRange === 'next-month')
+          ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
+          : now;
+        var ym = base.getFullYear() + '-' + String(base.getMonth() + 1).padStart(2, '0');
+        all = all.filter(function(r) { return r.dtend.slice(0, 7) === ym; });
+      }
+      return all;
+    }
+
+    function renderManualFilterBar() {
+      var bar = document.getElementById('manual-filter-bar');
+      if (!bar) return;
+      var reservations = S.manualReservations || [];
+      var formOpen = !document.getElementById('manual-add-section').hidden;
+      if (!reservations.length || formOpen) { bar.hidden = true; return; }
+      bar.hidden = false;
+
+      // 物件 select を再生成
+      var sel = document.getElementById('manual-filter-prop');
+      if (sel) {
+        var props = [];
+        reservations.forEach(function(r) {
+          if (props.indexOf(r.propName) < 0) props.push(r.propName);
+        });
+        props.sort();
+        // 選択中の物件が消えた場合はリセット
+        if (S.manualFilterProp && props.indexOf(S.manualFilterProp) < 0) {
+          S.manualFilterProp = '';
+        }
+        var cur = S.manualFilterProp;
+        sel.innerHTML = '<option value="">すべての物件</option>' +
+          props.map(function(p) {
+            return '<option value="' + esc(p) + '"' + (p === cur ? ' selected' : '') + '>' + esc(p) + '</option>';
+          }).join('');
+      }
+
+      // 件数ラベル
+      var countEl = document.getElementById('manual-filter-count');
+      if (countEl) {
+        var filtered = getFilteredManualList();
+        var label = S.manualFilterProp ? S.manualFilterProp + ': ' : '全 ';
+        countEl.textContent = label + filtered.length + '件';
+      }
+
+      // 範囲ボタンの active 状態
+      bar.querySelectorAll('.manual-range-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.range === S.manualFilterRange);
+      });
+    }
+
     function renderManualList() {
       var el = document.getElementById('manual-list');
       if (!el) return;
+      renderManualFilterBar();
       if (S.manualLoading) {
         el.innerHTML = '<div class="manual-loading"><span class="spin">↻</span> 読み込み中…</div>';
         return;
@@ -1580,8 +1660,13 @@
         el.innerHTML = '<div class="manual-empty">手入力予約はありません</div>';
         return;
       }
+      var list = getFilteredManualList();
+      if (!list.length) {
+        el.innerHTML = '<div class="manual-empty">この条件に一致する予約はありません</div>';
+        return;
+      }
       var html = '';
-      S.manualReservations.forEach(function(r) {
+      list.forEach(function(r) {
         var isSpotRow  = !!(r.note && r.note.startsWith('[SPOT]'));
         var chkin      = (!isSpotRow && r.dtstart) ? 'チェックイン: ' + esc(r.dtstart) : '';
         var chkout     = (isSpotRow ? '清掃日: ' : 'チェックアウト: ') + esc(r.dtend);
@@ -1673,11 +1758,13 @@
       updateSameDayToggle();
       setManualType(false);
       loadManualPropertyCandidates();
+      renderManualFilterBar();
     }
 
     function closeManualAddSection() {
       document.getElementById('manual-add-section').hidden = true;
       document.getElementById('btn-manual-add').hidden     = false;
+      renderManualFilterBar();
     }
 
     function updateSameDayToggle() {
@@ -3159,6 +3246,16 @@
       document.getElementById('manual-type-spot').addEventListener('click',   function() { setManualType(true); });
       document.getElementById('manual-form-prop').addEventListener('change', updateSpotPreview);
       document.getElementById('manual-form-title').addEventListener('input',  updateSpotPreview);
+      document.getElementById('manual-filter-prop').addEventListener('change', function() {
+        S.manualFilterProp = this.value;
+        renderManualList();
+      });
+      document.getElementById('manual-filter-bar').querySelectorAll('.manual-range-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          S.manualFilterRange = this.dataset.range;
+          renderManualList();
+        });
+      });
       document.getElementById('btn-dup-cancel').addEventListener('click', function() {
         document.getElementById('manual-dup-warning').hidden = true;
       });
