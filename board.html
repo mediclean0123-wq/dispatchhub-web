@@ -1592,9 +1592,12 @@
         all = all.filter(function(r) { return r.propName === S.manualFilterProp; });
       }
       if (S.manualFilterRange === 'this-month' || S.manualFilterRange === 'next-month') {
-        var d = new Date();
-        if (S.manualFilterRange === 'next-month') d.setMonth(d.getMonth() + 1);
-        var ym = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        var now = new Date();
+        // 来月は必ず翌月1日から求める（月末で setMonth すると翌々月になるバグを防ぐ）
+        var base = (S.manualFilterRange === 'next-month')
+          ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
+          : now;
+        var ym = base.getFullYear() + '-' + String(base.getMonth() + 1).padStart(2, '0');
         all = all.filter(function(r) { return r.dtend.slice(0, 7) === ym; });
       }
       return all;
