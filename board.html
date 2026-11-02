@@ -298,7 +298,7 @@
 
     /* ── タイルグリッド ── */
     .prog-tiles-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.3rem; }
-    .prog-tiles-staff { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.3rem; }
+    .prog-tiles-staff { display: grid; grid-template-columns: 1fr; gap: 0.25rem; }
     .prog-tile {
       background: var(--card); border-radius: 6px; padding: 0.4rem 0.45rem;
       min-height: 56px; cursor: pointer; border: 1px solid var(--border);
@@ -306,6 +306,21 @@
       display: flex; flex-direction: column; gap: 0.1rem;
       text-align: left; font-family: inherit; width: 100%;
     }
+    /* スタッフ別：横長1行カード */
+    .prog-tiles-staff .prog-tile {
+      flex-direction: row; align-items: center; min-height: auto;
+      padding: 0.28rem 0.5rem; gap: 0.4rem;
+    }
+    .prog-tiles-staff .prog-tile-nameline {
+      flex: 1; min-width: 0; align-items: center;
+    }
+    .prog-tiles-staff .prog-tile-name {
+      display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+      -webkit-line-clamp: unset; -webkit-box-orient: unset;
+    }
+    .prog-tiles-staff .prog-tile-stage { display: none; }
+    .prog-tiles-staff .prog-tile-staff { flex-shrink: 0; max-width: 5.5em; font-size: 0.62rem; }
+    .prog-tiles-staff .prog-tile-marks { margin-top: 0; flex-shrink: 0; flex-wrap: nowrap; }
     .prog-tile.doing       { background: #e3f2fd; border-color: #90caf9; }
     .prog-tile.done        { background: #f0f0f0; border-color: #ccc; }
     .prog-tile.linen-stage { background: #fffde7; border-color: #ffe082; }
@@ -329,10 +344,10 @@
     }
     .prog-tile.done .prog-tile-name { color: #777; }
     .prog-tile-staff {
-      font-size: 0.65rem; color: var(--muted);
+      font-size: 0.65rem; color: #1976d2;
       overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
     }
-    .prog-tile-staff.unset { color: #c62828; font-weight: bold; }
+    .prog-tile-staff.unset { color: #999; font-weight: normal; }
     .prog-tile-marks { display: flex; gap: 0.2rem; flex-wrap: wrap; margin-top: 0.05rem; }
     .prog-mark {
       font-size: 0.6rem; padding: 0.05rem 0.22rem; border-radius: 3px;
@@ -480,10 +495,10 @@
       white-space: nowrap; flex-shrink: 0;
     }
     .sched-staff {
-      font-size: 0.75rem; color: var(--muted); white-space: nowrap; flex-shrink: 0; max-width: 80px;
+      font-size: 0.75rem; color: #1976d2; white-space: nowrap; flex-shrink: 0; max-width: 80px;
       overflow: hidden; text-overflow: ellipsis;
     }
-    .sched-staff.unassigned { color: #c62828; font-weight: bold; }
+    .sched-staff.unassigned { color: #999; font-weight: normal; }
     .sched-task-cnt {
       font-size: 0.68rem; font-weight: bold; color: #e65100; background: #fff3e0;
       border: 1px solid #ffcc80; border-radius: 10px; padding: 0.1rem 0.4rem;
@@ -730,6 +745,28 @@
     .bulk-progress { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.5rem; text-align: center; }
     .btn-bulk-add-row { display: block; width: 100%; margin: 0.4rem 0; padding: 0.4rem; border: 1px dashed var(--border); border-radius: 6px; background: var(--card); color: var(--fg); font-size: 0.82rem; font-family: inherit; cursor: pointer; text-align: center; box-sizing: border-box; }
     .btn-bulk-add-row:active { opacity: 0.75; }
+    /* リネン表示切り替え */
+    .linen-toggle-row { margin-bottom: 0.5rem; }
+    .btn-linen-toggle {
+      padding: 0.28rem 0.75rem; border-radius: 6px;
+      border: 1.5px solid var(--border); background: var(--bg);
+      font-size: 0.8rem; cursor: pointer; font-family: inherit; color: var(--muted);
+    }
+    .btn-linen-toggle.on { border-color: #ffd54f; background: #fffde7; color: #f57f17; font-weight: bold; }
+    .btn-linen-toggle:active { opacity: 0.75; }
+    /* リネンバッジを非表示にするクラス（#panel-progress に付与） */
+    .linen-hidden .prog-mark-linen,
+    .linen-hidden .prog-mark-linen-done,
+    .linen-hidden .prog-tile-stage { display: none; }
+
+    /* アルバムURL再送 */
+    .album-resend-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .btn-album-resend {
+      padding: 0.3rem 0.8rem; border: 1px solid #1976d2; border-radius: 6px;
+      background: #e3f2fd; color: #1976d2; font-size: 0.82rem; font-family: inherit; cursor: pointer;
+    }
+    .btn-album-resend:active { opacity: 0.75; }
+    .btn-album-resend:disabled { opacity: 0.5; cursor: default; }
   </style>
 </head>
 
@@ -751,7 +788,7 @@
     </nav>
 
     <!-- 進捗確認タブ -->
-    <div id="panel-progress" class="panel">
+    <div id="panel-progress" class="panel linen-hidden">
       <div class="date-row">
         <label for="progress-date-sel">日付</label>
         <input type="date" id="progress-date-sel">
@@ -773,6 +810,9 @@
       <div class="view-toggle">
         <button class="view-btn active" id="vbtn-staff" data-view="staff">スタッフ別</button>
         <button class="view-btn"        id="vbtn-board" data-view="board">進捗ボード</button>
+      </div>
+      <div class="linen-toggle-row">
+        <button id="btn-linen-toggle" class="btn-linen-toggle">リネン表示</button>
       </div>
       <div id="progress-staff-view"></div>
       <div id="progress-board-view" hidden></div>
@@ -798,6 +838,10 @@
       <div class="sched-grouping-bar" id="sched-grouping-bar" hidden>
         <button class="sched-grouping-btn active" id="btn-group-area">エリア別</button>
         <button class="sched-grouping-btn"        id="btn-group-staff">担当別</button>
+      </div>
+      <!-- アルバムURL再送バー（今日の日程のときのみ表示） -->
+      <div id="album-resend-bar" class="album-resend-bar" hidden>
+        <button id="btn-album-resend" class="btn-album-resend">アルバムURL再送</button>
       </div>
       <div id="order-mode-bar" hidden>
         <button id="btn-order-mode" class="btn-order-mode">順番を決める</button>
@@ -1132,6 +1176,9 @@
       // 順番を決めるボタン: ADMIN + 単日モード + モード外
       document.getElementById('order-mode-bar').hidden =
         !S.isAdmin || isSearch || S.orderMode;
+      // アルバムURL再送バー: ADMIN + 今日の単日表示のときのみ
+      document.getElementById('album-resend-bar').hidden =
+        !S.isAdmin || isSearch || !loaded || S.boardDate !== today();
     }
 
     // ── タップ順モード ────────────────────────────────────────────────
@@ -3366,6 +3413,16 @@
         document.getElementById('progress-staff-view').hidden = true;
       });
 
+      // リネン表示トグル
+      document.getElementById('btn-linen-toggle').addEventListener('click', function() {
+        var panel = document.getElementById('panel-progress');
+        var on = panel.classList.toggle('linen-hidden');
+        // toggle() returns true if added; we want "on" = NOT hidden
+        var showing = !on;
+        this.textContent = showing ? 'リネン非表示' : 'リネン表示';
+        this.classList.toggle('on', showing);
+      });
+
       // 進捗確認パネル：タイルタップで編集ドロワーを開く
       document.getElementById('panel-progress').addEventListener('click', function(e) {
         var tile = e.target.closest('[data-tile-prop]');
@@ -3714,6 +3771,27 @@
       });
 
       // 画面が隠れているあいだは自動更新を止める
+      document.getElementById('btn-album-resend').addEventListener('click', function() {
+        if (!confirm('今日担当の全清掃員に、アルバムURLを再送します。よろしいですか？')) return;
+        var btn = document.getElementById('btn-album-resend');
+        btn.disabled = true;
+        callApi({ action: 'enqueueAlbumResendAll' }).then(function(data) {
+          btn.disabled = false;
+          if (!data.ok) {
+            if (data.error === 'already_pending') {
+              toast('10分以内に再送済みです。しばらく待ってから再度お試しください。');
+            } else {
+              toast('再送エラー: ' + (data.error || '不明'));
+            }
+            return;
+          }
+          toast('再送をリクエストしました。5分以内に送信されます。');
+        }).catch(function(e) {
+          btn.disabled = false;
+          toast('再送エラー: ' + e.message);
+        });
+      });
+
       document.addEventListener('visibilitychange', function() {
         if (document.hidden) {
           stopBoardTimer();
