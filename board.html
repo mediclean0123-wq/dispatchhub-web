@@ -323,6 +323,16 @@
     .prog-tiles-staff .prog-tile-stage { display: none; }
     .prog-tiles-staff .prog-tile-staff { flex-shrink: 0; max-width: 5.5em; font-size: 0.62rem; }
     .prog-tiles-staff .prog-tile-marks { margin-top: 0; flex-shrink: 0; flex-wrap: nowrap; }
+    /* 並び順▲▼ボタン */
+    .prog-tile-row { display: flex; align-items: stretch; gap: 0.2rem; min-width: 0; }
+    .prog-tile-row .prog-tile { flex: 1; min-width: 0; }
+    .prog-tile-reorder-btns { display: flex; flex-direction: column; gap: 0.1rem; flex-shrink: 0; }
+    .prog-tile-reorder-btn {
+      background: none; border: 1px solid #bbb; border-radius: 3px;
+      font-size: 0.6rem; padding: 0 0.18rem; cursor: pointer; flex-shrink: 0;
+      line-height: 1.15; color: #555; font-family: inherit; flex: 1;
+    }
+    .prog-tile-reorder-btn:disabled { opacity: 0.35; cursor: default; }
     .prog-tile.doing       { background: #e3f2fd; border-color: #90caf9; }
     .prog-tile.done        { background: #f0f0f0; border-color: #ccc; }
     .prog-tile.linen-stage { background: #fffde7; border-color: #ffe082; }
@@ -1069,6 +1079,7 @@
     var _progressPending      = {};   // { [propName]: true } — updateProgressField 中
     var _staffPendingProgress = false;  // changeProgressStaff 中
     var _staffPendingSchedule = false;  // changeScheduleStaff 中
+    var _reorderPending       = false;  // reorderStaffTile 中
 
     // ── 状態 ──────────────────────────────────────────────────────────
     var S = {
@@ -2851,8 +2862,23 @@
         var numMap = {};
         forNum.forEach(function(it, i) { numMap[it.propertyName] = i + 1; });
 
-        sItems.forEach(function(item) {
-          html += buildProgTile(item, 'staff', numMap[item.propertyName]);
+        var totalSItems = sItems.length;
+        sItems.forEach(function(item, tileIdx) {
+          var isDone  = getEffectiveProgress(item.propertyName).status === 'DONE';
+          var isFirst = tileIdx === 0;
+          var isLast  = tileIdx === totalSItems - 1;
+          var upDis   = (isDone || isFirst) ? ' disabled' : '';
+          var downDis = (isDone || isLast)  ? ' disabled' : '';
+          var uidAttr   = esc(item.uid || '');
+          var staffAttr = esc(staffName || '');
+          html +=
+            '<div class="prog-tile-row">' +
+              '<div class="prog-tile-reorder-btns">' +
+                '<button class="prog-tile-reorder-btn" data-dir="up"   data-uid="' + uidAttr + '" data-staff="' + staffAttr + '"' + upDis   + '>▲</button>' +
+                '<button class="prog-tile-reorder-btn" data-dir="down" data-uid="' + uidAttr + '" data-staff="' + staffAttr + '"' + downDis + '>▼</button>' +
+              '</div>' +
+              buildProgTile(item, 'staff', numMap[item.propertyName]) +
+            '</div>';
         });
         html += '</div></div>';
       });
@@ -3125,6 +3151,88 @@
         rerenderProgress();
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('担当変更エラー: ' + e.message);
+      });
+    }
+
+    // ── 進捗確認 並び順変更（▲▼ボタン）────────────────────────────────
+    function reorderStaffTile(uid, direction) {
+      if (_reorderPending) return;
+
+      // そのスタッフの progressItems を特定
+      var targetItem = null;
+      S.progressItems.forEach(function(i) { if (i.uid === uid) targetItem = i; });
+      if (!targetItem) return;
+      var staffName = targetItem.staff || '';
+
+      // 同スタッフの行だけを order でソート
+      var sItems = S.progressItems.filter(function(i) {
+        return (i.staff || '') === staffName;
+      }).slice().sort(function(a, b) {
+        return (a.order || 9999) - (b.order || 9999);
+      });
+
+      var idx = sItems.findIndex ? sItems.findIndex(function(i) { return i.uid === uid; })
+                                 : (function() { for (var k = 0; k < sItems.length; k++) { if (sItems[k].uid === uid) return k; } return -1; })();
+      if (idx < 0) return;
+
+      var swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= sItems.length) return;
+
+      // order が同じ場合は連番で振り直してから swap
+      var orders = sItems.map(function(i, k) { return i.order || (k + 1); });
+      var uniqueOrders = {};
+      var hasDup = false;
+      orders.forEach(function(o) { if (uniqueOrders[o]) hasDup = true; uniqueOrders[o] = true; });
+      if (hasDup) {
+        sItems.forEach(function(i, k) { i.order = k + 1; });
+      }
+
+      // swap
+      var oldOrderA = sItems[idx].order     || 0;
+      var oldOrderB = sItems[swapIdx].order || 0;
+      sItems[idx].order     = oldOrderB;
+      sItems[swapIdx].order = oldOrderA;
+
+      // S.progressItems の元のオブジェクトにも反映（sItems は参照コピー）
+      _reorderPending = true;
+      var oldUpdatedAt = S.progressAssignUpdatedAt;
+
+      rerenderProgress();
+
+      var rows = S.progressItems.map(function(i) {
+        return { propertyName: i.propertyName, uid: i.uid || '', staff: i.staff || '', order: i.order || 0 };
+      });
+
+      callApi({
+        action:         'saveAssignments',
+        date:           S.progressDate,
+        rows:           rows,
+        knownUpdatedAt: oldUpdatedAt || ''
+      }).then(function(r) {
+        _reorderPending = false;
+        if (r.ok) {
+          if (r.latestUpdatedAt) S.progressAssignUpdatedAt = r.latestUpdatedAt;
+          return;
+        }
+        // ロールバック
+        sItems[idx].order     = oldOrderA;
+        sItems[swapIdx].order = oldOrderB;
+        S.progressAssignUpdatedAt = oldUpdatedAt;
+        rerenderProgress();
+        if (r.error === 'conflict') {
+          toast('他の人が先に保存しました。再読込します');
+          loadProgress();
+        } else {
+          toast('並び替えに失敗しました。もう一度お試しください。');
+        }
+      }).catch(function(e) {
+        _reorderPending = false;
+        sItems[idx].order     = oldOrderA;
+        sItems[swapIdx].order = oldOrderB;
+        S.progressAssignUpdatedAt = oldUpdatedAt;
+        rerenderProgress();
+        if (e.isUnauthorized) { handleUnauthorized(); return; }
+        toast('並び替えに失敗しました。もう一度お試しください。');
       });
     }
 
@@ -3425,8 +3533,14 @@
         this.classList.toggle('on', showing);
       });
 
-      // 進捗確認パネル：タイルタップで編集ドロワーを開く
+      // 進捗確認パネル：タイルタップで編集ドロワーを開く / ▲▼で並び順変更
       document.getElementById('panel-progress').addEventListener('click', function(e) {
+        var reorderBtn = e.target.closest('.prog-tile-reorder-btn');
+        if (reorderBtn && !reorderBtn.disabled) {
+          e.stopPropagation();
+          reorderStaffTile(reorderBtn.dataset.uid, reorderBtn.dataset.dir);
+          return;
+        }
         var tile = e.target.closest('[data-tile-prop]');
         if (tile) {
           openEditDrawer(tile.dataset.tileProp, tile.dataset.tileView);
