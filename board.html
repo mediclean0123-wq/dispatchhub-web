@@ -735,6 +735,10 @@
       padding: 0.5rem 0.7rem; font-size: 0.82rem; margin: 0.4rem 0;
     }
     .manual-dup-warning-btns { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
+    /* 続けて追加の成功・失敗ログ */
+    .manual-add-log { margin: 0 0 0.5rem 0; padding: 0; list-style: none; font-size: 0.82rem; }
+    .manual-add-log li { padding: 0.1rem 0; color: #2e7d32; }
+    .manual-add-log li.log-error { color: #c62828; }
     .manual-type-row { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; }
     .manual-type-btn { flex: 1; padding: 0.45rem 0; border: 1.5px solid var(--muted); border-radius: 6px; background: var(--card); color: var(--fg); font-size: 0.9rem; cursor: pointer; }
     .manual-type-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
@@ -885,6 +889,7 @@
       <!-- 追加フォーム -->
       <div id="manual-add-section" class="manual-add-section" hidden>
         <h3>手入力で追加</h3>
+        <ul id="manual-add-log" class="manual-add-log" hidden></ul>
         <div class="manual-type-row">
           <button id="manual-type-normal" class="manual-type-btn active">通常</button>
           <button id="manual-type-spot"   class="manual-type-btn">スポット</button>
@@ -1131,6 +1136,7 @@
       // 手入力予約パネル
       manualReservations: [],
       manualPendingRequests: [],
+      manualLocalAdds: [],  // 今のフォームセッションで追加した行（loadManualReservations で消えない）
       manualLoading: false,
       manualCandidates: null,      // getManualPropertyCandidates で取得した候補
       manualAllProperties: [],     // 全物件（すべて表示モード）
@@ -1857,9 +1863,29 @@
       renderManualFilterBar();
     }
 
+    function clearManualAddLog() {
+      var ul = document.getElementById('manual-add-log');
+      if (!ul) return;
+      ul.hidden = true;
+      ul.innerHTML = '';
+    }
+
+    function appendManualAddLog(msg, isError) {
+      var ul = document.getElementById('manual-add-log');
+      if (!ul) return;
+      ul.hidden = false;
+      var li = document.createElement('li');
+      if (isError) li.className = 'log-error';
+      li.textContent = msg;
+      ul.insertBefore(li, ul.firstChild);
+      while (ul.children.length > 10) ul.removeChild(ul.lastChild);
+    }
+
     function closeManualAddSection() {
       document.getElementById('manual-add-section').hidden = true;
       document.getElementById('btn-manual-add').hidden     = false;
+      clearManualAddLog();
+      S.manualLocalAdds = [];
       renderManualFilterBar();
     }
 
@@ -2030,7 +2056,12 @@
           sameDay: row.sameDay ? 'Yes' : 'No', guestName: '', memo: '', isSpot: false
         }).then(function(result) {
           S.bulkRows[rowIdx].status = result.ok ? 'ok' : 'fail';
-          if (result.ok) saved++;
+          if (result.ok) {
+            saved++;
+            // 成功行を即時重複判定に反映（bulkRows の兄弟行チェックを有効にする）
+            if (!S.manualPendingRequests) S.manualPendingRequests = [];
+            S.manualPendingRequests.push({ kind: 'MANUAL_ADD', propName: propName, dtend: row.dtend });
+          }
           renderBulkRows();
           saveNext();
         }).catch(function() {
@@ -2061,6 +2092,11 @@
         var p = pending[j];
         if (p.kind !== 'MANUAL_ADD') continue;
         if (p.propName === propName && p.dtend === dtend) return true;
+      }
+      // 今のセッションで保存成功した行（loadManualReservations で消えない）
+      var localAdds = S.manualLocalAdds || [];
+      for (var k = 0; k < localAdds.length; k++) {
+        if (localAdds[k].propName === propName && localAdds[k].dtend === dtend) return true;
       }
       return false;
     }
@@ -2119,23 +2155,41 @@
         sameDay: sameDay, guestName: guestName, memo: memo,
         isSpot: !!isSpot
       }).then(function(data) {
-        if (!data.ok) { toast('保存エラー: ' + (data.error || '不明')); return; }
-        toast('登録しました。この一覧への反映には最大5分かかります。清掃スケジュールへの反映には最大1時間かかります。', 5000);
+        if (!data.ok) {
+          if (continueAdding) {
+            appendManualAddLog('✗ 保存に失敗しました: ' + (data.error || '不明'), true);
+          } else {
+            toast('保存エラー: ' + (data.error || '不明'));
+          }
+          return;
+        }
+        // 保存成功直後にローカルリストに追加して重複判定をすぐ有効にする（loadManualReservations で消えない）
+        if (!S.manualLocalAdds) S.manualLocalAdds = [];
+        S.manualLocalAdds.push({ propName: propName, dtend: dtend });
+
         if (continueAdding) {
-          if (!isSpot) {
-            document.getElementById('manual-form-dtstart').value = dtend;
-          }
-          document.getElementById('manual-form-dtend').value = '';
-          if (isSpot) {
-            document.getElementById('manual-form-title').value = '';
-          }
+          var dateLabel = dtend.slice(5, 10).replace('-', '/');
+          appendManualAddLog('✓ ' + propName + ' ' + dateLabel + ' を追加しました（反映待ち）');
+          // 物件名以外をすべてクリア
+          document.getElementById('manual-form-dtstart').value = '';
+          document.getElementById('manual-form-dtend').value   = '';
+          document.getElementById('manual-form-title').value   = '';
+          document.getElementById('manual-form-guest').value   = '';
+          document.getElementById('manual-form-memo').value    = '';
+          S.manualSameDay = false;
+          updateSameDayToggle();
           document.getElementById('manual-dup-warning-cont').hidden = true;
         } else {
+          toast('登録しました。この一覧への反映には最大5分かかります。清掃スケジュールへの反映には最大1時間かかります。', 5000);
           closeManualAddSection();
         }
         loadManualReservations();
       }).catch(function(e) {
-        toast('保存エラー: ' + e.message);
+        if (continueAdding) {
+          appendManualAddLog('✗ 保存エラー: ' + e.message, true);
+        } else {
+          toast('保存エラー: ' + e.message);
+        }
       });
     }
 
