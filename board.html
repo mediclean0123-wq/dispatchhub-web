@@ -2867,8 +2867,10 @@
           var isDone  = getEffectiveProgress(item.propertyName).status === 'DONE';
           var isFirst = tileIdx === 0;
           var isLast  = tileIdx === totalSItems - 1;
-          var upDis   = (isDone || isFirst) ? ' disabled' : '';
-          var downDis = (isDone || isLast)  ? ' disabled' : '';
+          var prevIsDone = !isFirst && (getEffectiveProgress(sItems[tileIdx - 1].propertyName).status === 'DONE');
+          var nextIsDone = !isLast  && (getEffectiveProgress(sItems[tileIdx + 1].propertyName).status === 'DONE');
+          var upDis   = (isDone || isFirst || prevIsDone) ? ' disabled' : '';
+          var downDis = (isDone || isLast  || nextIsDone) ? ' disabled' : '';
           var uidAttr   = esc(item.uid || '');
           var staffAttr = esc(staffName || '');
           html +=
@@ -3178,20 +3180,22 @@
       var swapIdx = direction === 'up' ? idx - 1 : idx + 1;
       if (swapIdx < 0 || swapIdx >= sItems.length) return;
 
-      // order が同じ場合は連番で振り直してから swap
-      var orders = sItems.map(function(i, k) { return i.order || (k + 1); });
-      var uniqueOrders = {};
-      var hasDup = false;
-      orders.forEach(function(o) { if (uniqueOrders[o]) hasDup = true; uniqueOrders[o] = true; });
-      if (hasDup) {
-        sItems.forEach(function(i, k) { i.order = k + 1; });
-      }
+      // 完了済みの隣は動かさない（disabled と同じガード）
+      if (direction === 'up'   && getEffectiveProgress(sItems[swapIdx].propertyName).status === 'DONE') return;
+      if (direction === 'down' && getEffectiveProgress(sItems[swapIdx].propertyName).status === 'DONE') return;
+
+      // ロールバック用に全スタッフ行の元 order を保存
+      var origOrders = {};
+      sItems.forEach(function(i) { origOrders[i.uid] = i.order || 0; });
+
+      // 毎回、表示順に 1,2,3... を振り直す（order=0・重複・空でも正しく動く）
+      sItems.forEach(function(i, k) { i.order = k + 1; });
 
       // swap
-      var oldOrderA = sItems[idx].order     || 0;
-      var oldOrderB = sItems[swapIdx].order || 0;
-      sItems[idx].order     = oldOrderB;
-      sItems[swapIdx].order = oldOrderA;
+      var normalOrderA = sItems[idx].order;
+      var normalOrderB = sItems[swapIdx].order;
+      sItems[idx].order     = normalOrderB;
+      sItems[swapIdx].order = normalOrderA;
 
       // S.progressItems の元のオブジェクトにも反映（sItems は参照コピー）
       _reorderPending = true;
@@ -3214,9 +3218,8 @@
           if (r.latestUpdatedAt) S.progressAssignUpdatedAt = r.latestUpdatedAt;
           return;
         }
-        // ロールバック
-        sItems[idx].order     = oldOrderA;
-        sItems[swapIdx].order = oldOrderB;
+        // ロールバック（正規化前の order に戻す）
+        sItems.forEach(function(i) { i.order = origOrders[i.uid] !== undefined ? origOrders[i.uid] : 0; });
         S.progressAssignUpdatedAt = oldUpdatedAt;
         rerenderProgress();
         if (r.error === 'conflict') {
@@ -3227,8 +3230,7 @@
         }
       }).catch(function(e) {
         _reorderPending = false;
-        sItems[idx].order     = oldOrderA;
-        sItems[swapIdx].order = oldOrderB;
+        sItems.forEach(function(i) { i.order = origOrders[i.uid] !== undefined ? origOrders[i.uid] : 0; });
         S.progressAssignUpdatedAt = oldUpdatedAt;
         rerenderProgress();
         if (e.isUnauthorized) { handleUnauthorized(); return; }
