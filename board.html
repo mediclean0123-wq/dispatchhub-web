@@ -11,6 +11,8 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --green:  #00a84f;
+      --accent: #00a84f;
+      --fg:     #222;
       --bg:     #f4f4f4;
       --card:   #fff;
       --border: #e0e0e0;
@@ -281,12 +283,12 @@
     .view-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
     .view-btn {
       flex: 1; padding: 0.55rem; border-radius: 6px;
-      border: 1.5px solid var(--border); background: var(--bg);
-      font-size: 0.88rem; cursor: pointer; font-family: inherit;
+      border: 1.5px solid #bbb; background: #fff;
+      font-size: 0.88rem; cursor: pointer; font-family: inherit; color: #333;
     }
     .view-btn.active {
-      border-color: var(--green); color: var(--green);
-      background: #e8f5e9; font-weight: bold;
+      border-color: var(--green); background: var(--green);
+      color: #fff; font-weight: bold;
     }
     .prog-section { margin-bottom: 0.75rem; }
     .prog-section-header {
@@ -389,6 +391,14 @@
     .prog-mark-check      { background: #fff9c4; color: #f57f17; }
     .prog-mark-check-done { background: #c8e6c9; color: #2e7d32; }
 
+    /* ── 進捗確認スタッフ別 同日イン／インなしバッジ ── */
+    .prog-checkin-badge {
+      font-size: 0.6rem; font-weight: bold; padding: 0.05rem 0.22rem;
+      border-radius: 3px; flex-shrink: 0; line-height: 1.4; white-space: nowrap;
+    }
+    .prog-checkin-badge-in  { background: #e3f2fd; color: #1565c0; }
+    .prog-checkin-badge-out { background: #eeeeee; color: #888; }
+
     /* ── 進捗編集ドロワー ── */
     .ped-header {
       display: flex; align-items: flex-start; justify-content: space-between;
@@ -452,10 +462,10 @@
     .sched-grouping-bar { display: flex; gap: 0.4rem; margin-bottom: 0.5rem; }
     .sched-grouping-btn {
       flex: 1; padding: 0.35rem 0; border-radius: 6px;
-      border: 1.5px solid var(--border); background: var(--bg);
-      font-size: 0.82rem; font-family: inherit; cursor: pointer; text-align: center; color: var(--muted);
+      border: 1.5px solid #bbb; background: #fff;
+      font-size: 0.82rem; font-family: inherit; cursor: pointer; text-align: center; color: #333;
     }
-    .sched-grouping-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .sched-grouping-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
     .sched-grouping-btn:active:not(.active) { background: var(--border); }
     .sched-staff-label {
       padding: 0.3rem 0.75rem; font-size: 0.8rem; font-weight: bold;
@@ -469,11 +479,11 @@
     /* ── タップ順モード ── */
     .btn-order-mode {
       width: 100%; padding: 0.45rem; border-radius: 6px;
-      border: 1.5px solid var(--accent); background: var(--bg);
-      font-size: 0.85rem; font-family: inherit; cursor: pointer; color: var(--accent);
+      border: 1.5px solid #5c6bc0; background: #e8eaf6;
+      font-size: 0.85rem; font-family: inherit; cursor: pointer; color: #3949ab;
       margin-bottom: 0.5rem;
     }
-    .btn-order-mode:active { background: #e8eaf6; }
+    .btn-order-mode:active { background: #c5cae9; }
     .order-mode-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
     .order-mode-title { font-weight: bold; font-size: 0.9rem; flex-shrink: 0; }
     .order-mode-staff-sel {
@@ -698,7 +708,7 @@
       padding: 0.6rem 0.75rem; margin-top: 0.4rem; font-size: 0.85rem;
     }
     .manual-inline-change label { display: block; margin-bottom: 0.3rem; font-size: 0.8rem; color: var(--muted); }
-    .manual-inline-change input { font-family: inherit; font-size: 0.88rem; padding: 0.25rem 0.4rem; border: 1px solid var(--border); border-radius: 5px; }
+    .manual-inline-change input { font-family: inherit; font-size: 0.88rem; padding: 0.25rem 0.4rem; border: 1px solid var(--border); border-radius: 5px; width: 100%; box-sizing: border-box; min-width: 0; max-width: 100%; }
     .manual-inline-change-btns { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
 
     .manual-add-section {
@@ -741,10 +751,10 @@
     .manual-filter-bar { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.6rem; }
     .manual-filter-range { display: flex; gap: 0.3rem; flex-wrap: wrap; }
     .manual-range-btn {
-      padding: 0.25rem 0.65rem; border: 1px solid var(--border); border-radius: 5px;
-      background: var(--card); font-size: 0.8rem; font-family: inherit; color: var(--fg); cursor: pointer;
+      padding: 0.25rem 0.65rem; border: 1.5px solid #bbb; border-radius: 5px;
+      background: #fff; font-size: 0.8rem; font-family: inherit; color: #333; cursor: pointer;
     }
-    .manual-range-btn.active { background: #1976d2; color: #fff; border-color: #1976d2; }
+    .manual-range-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
     .manual-range-btn:active { opacity: 0.75; }
     .manual-filter-count { font-size: 0.8rem; color: var(--muted); }
     .manual-dup-warning {
@@ -2904,9 +2914,19 @@
       var numBadge = (typeof num !== 'undefined') ? '<span class="prog-tile-num">' + num + '</span>' : '';
       var stageLbl = isLinenStage ? '<div class="prog-tile-stage">リネン搬入済み</div>' : '';
 
+      var checkinBadge = '';
+      if (view === 'staff') {
+        if (item.isSameDayIn) {
+          checkinBadge = '<span class="prog-checkin-badge prog-checkin-badge-in">イン</span>';
+        } else {
+          checkinBadge = '<span class="prog-checkin-badge prog-checkin-badge-out">イン無</span>';
+        }
+      }
+
       return '<button class="' + tileCls + '" data-tile-prop="' + pnEsc + '" data-tile-view="' + view + '" data-tile-uid="' + esc(item.uid || '') + '" data-tile-staff="' + esc(item.staff || '') + '">' +
         '<div class="prog-tile-nameline">' + numBadge + '<div class="prog-tile-name">' + pnEsc + '</div></div>' +
         stageLbl +
+        checkinBadge +
         '<div class="' + staffCls + '">' + esc(staffDisp) + '</div>' +
         '<div class="prog-tile-marks">' + marks + '</div>' +
       '</button>';
@@ -2926,8 +2946,8 @@
         groups[s].push(item);
       });
       staffOrder.sort(function(a, b) {
-        if (a === '') return -1;
-        if (b === '') return 1;
+        if (a === '') return 1;   // 未担当（未設定）は最後
+        if (b === '') return -1;
         return a < b ? -1 : a > b ? 1 : 0;
       });
 
@@ -2997,9 +3017,13 @@
             var staffCls  = staffText ? 'prog-tile-staff' : 'prog-tile-staff unset';
             var staffDisp = staffText || '未設定';
             var marks = buildProgTileMarks(pd);
+            var checkinBadgeOm = item.isSameDayIn
+              ? '<span class="prog-checkin-badge prog-checkin-badge-in">イン</span>'
+              : '<span class="prog-checkin-badge prog-checkin-badge-out">イン無</span>';
             html += '<button class="' + tileCls + '" data-tile-prop="' + esc(item.propertyName) + '" data-tile-view="staff" data-tile-uid="' + esc(uid) + '" data-tile-staff="' + esc(staffName) + '">' +
               '<div class="prog-tile-nameline">' + badgeHtml + '<div class="prog-tile-name">' + esc(item.propertyName) + '</div></div>' +
               (isLinenStage ? '<div class="prog-tile-stage">リネン搬入済み</div>' : '') +
+              checkinBadgeOm +
               '<div class="' + staffCls + '">' + esc(staffDisp) + '</div>' +
               '<div class="prog-tile-marks">' + marks + '</div>' +
             '</button>';
@@ -3020,34 +3044,30 @@
         return;
       }
 
-      function sortByStatusOrder(arr) {
-        return arr.slice().sort(function(a, b) {
-          return (a.order || 9999) - (b.order || 9999);
-        });
-      }
+      // スタッフ別表示と同じ順: 担当者をアルファベット順・未設定を最後
+      var staffSet = {}, staffOrder = [];
+      items.forEach(function(item) {
+        var s = item.staff || '';
+        if (!staffSet[s]) { staffSet[s] = true; staffOrder.push(s); }
+      });
+      staffOrder.sort(function(a, b) {
+        if (a === '') return 1;
+        if (b === '') return -1;
+        return a < b ? -1 : a > b ? 1 : 0;
+      });
 
-      function sectionHtml(sectionItems, title) {
-        if (!sectionItems.length) return '';
-        var total  = sectionItems.length;
-        var done   = sectionItems.filter(function(i) {
-          return getEffectiveProgress(i.propertyName).status === 'DONE';
-        }).length;
-        var remain = total - done;
-        var h = '<div class="prog-section">' +
-          '<div class="prog-section-header">' +
-            '<span class="prog-section-title">' + esc(title) + '</span>' +
-            '<span class="prog-section-remain">残り' + remain + '件（完了 ' + done + '/' + total + '）</span>' +
-          '</div>' +
-          '<div class="prog-tiles prog-tiles-board">';
-        sectionItems.forEach(function(item) { h += buildProgTile(item, 'board'); });
-        h += '</div></div>';
-        return h;
-      }
+      // 担当順→同担当内は item.order 順でソート
+      var sorted = items.slice().sort(function(a, b) {
+        var ai = staffOrder.indexOf(a.staff || '');
+        var bi = staffOrder.indexOf(b.staff || '');
+        if (ai !== bi) return ai - bi;
+        return (a.order || 9999) - (b.order || 9999);
+      });
 
-      var sameDayItems = sortByStatusOrder(items.filter(function(i) { return i.isSameDayIn; }));
-      var notInItems   = sortByStatusOrder(items.filter(function(i) { return !i.isSameDayIn; }));
-
-      container.innerHTML = sectionHtml(sameDayItems, '同日イン') + sectionHtml(notInItems, 'インなし');
+      var html = '<div class="prog-tiles prog-tiles-board">';
+      sorted.forEach(function(item) { html += buildProgTile(item, 'board'); });
+      html += '</div>';
+      container.innerHTML = html;
     }
 
     // ── 進捗編集ドロワー ──────────────────────────────────────────────
@@ -3332,6 +3352,8 @@
       }).filter(Boolean);
       var untapped = unfinished.filter(function(i) {
         return S.progTapList.indexOf(i.uid) < 0;
+      }).sort(function(a, b) {
+        return (a.order || 9999) - (b.order || 9999);
       });
 
       var ordered = tapped.concat(untapped);
