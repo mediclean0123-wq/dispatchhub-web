@@ -323,16 +323,33 @@
     .prog-tiles-staff .prog-tile-stage { display: none; }
     .prog-tiles-staff .prog-tile-staff { flex-shrink: 0; max-width: 5.5em; font-size: 0.62rem; }
     .prog-tiles-staff .prog-tile-marks { margin-top: 0; flex-shrink: 0; flex-wrap: nowrap; }
-    /* 並び順▲▼ボタン */
-    .prog-tile-row { display: flex; align-items: stretch; gap: 0.2rem; min-width: 0; }
-    .prog-tile-row .prog-tile { flex: 1; min-width: 0; }
-    .prog-tile-reorder-btns { display: flex; flex-direction: column; gap: 0.1rem; flex-shrink: 0; }
-    .prog-tile-reorder-btn {
-      background: none; border: 1px solid #bbb; border-radius: 3px;
-      font-size: 0.6rem; padding: 0 0.18rem; cursor: pointer; flex-shrink: 0;
-      line-height: 1.15; color: #555; font-family: inherit; flex: 1;
+    /* 進捗確認 タップ順番モード */
+    .btn-prog-order {
+      font-size: 0.72rem; padding: 0.15rem 0.5rem; border: 1px solid #1976d2;
+      border-radius: 5px; background: #e3f2fd; color: #1976d2; cursor: pointer;
+      font-family: inherit; flex-shrink: 0;
     }
-    .prog-tile-reorder-btn:disabled { opacity: 0.35; cursor: default; }
+    .btn-prog-order:active { opacity: 0.75; }
+    .prog-order-bar {
+      display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+      padding: 0.3rem 0.4rem; margin-bottom: 0.3rem;
+      background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 6px;
+      font-size: 0.8rem;
+    }
+    .prog-order-bar button {
+      font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 4px;
+      border: 1px solid #aaa; background: #fff; cursor: pointer; font-family: inherit;
+    }
+    .prog-order-bar .btn-complete {
+      background: #1976d2; color: #fff; border-color: #1565c0; font-weight: bold;
+    }
+    .prog-tile-orderable { cursor: pointer; }
+    .prog-tile-orderable:active { opacity: 0.7; background: #f0f4ff !important; }
+    .prog-tile-tap-badge {
+      flex-shrink: 0; font-size: 0.58rem; font-weight: bold;
+      line-height: 1.7; background: #1976d2; color: #fff;
+      border-radius: 2px; padding: 0 0.2rem; margin-top: 0.02rem;
+    }
     .prog-tile.doing       { background: #e3f2fd; border-color: #90caf9; }
     .prog-tile.done        { background: #f0f0f0; border-color: #ccc; }
     .prog-tile.linen-stage { background: #fffde7; border-color: #ffe082; }
@@ -1084,7 +1101,7 @@
     var _progressPending      = {};   // { [propName]: true } — updateProgressField 中
     var _staffPendingProgress = false;  // changeProgressStaff 中
     var _staffPendingSchedule = false;  // changeScheduleStaff 中
-    var _reorderPending       = false;  // reorderStaffTile 中
+    var _progOrderPending     = false;  // completeProgOrderMode 中
 
     // ── 状態 ──────────────────────────────────────────────────────────
     var S = {
@@ -1127,6 +1144,9 @@
       orderModeStaff:          '',     // 選択スタッフ
       orderModeTaps:           [],     // タップした uid 順リスト
       isAdmin:                 false,  // saveAssignments 権限あり
+      // 進捗確認タップ順番モード
+      progOrderMode:           null,   // null=通常 / string=順番モード中のスタッフ名
+      progTapList:             [],     // タップ済み uid のリスト
       // 進捗編集ドロワー
       editDrawerProp: null,   // 編集中の propertyName
       editDrawerView: null,   // 'board' or 'staff'
@@ -2681,7 +2701,7 @@
       if (S.sessionExpired) return;
       if (silent) {
         var _anyPend = Object.keys(_progressPending).some(function(k) { return _progressPending[k]; });
-        if (_anyPend || _reorderPending || _staffPendingProgress ||
+        if (_anyPend || _progOrderPending || _staffPendingProgress || S.progOrderMode ||
             S.editDrawerProp ||
             !document.getElementById('task-modal').hidden ||
             !document.getElementById('task-drawer').hidden) return;
@@ -2708,6 +2728,7 @@
         var sr = res[0], pr = res[1], cr = res[2];
         if (cr && cr.ok) S.cleaners = cr.cleaners;
         if (!sr.ok) { toast('進捗確認の読み込みに失敗しました'); return; }
+        S.isAdmin = true;
         S.taskCounts = sr.taskCounts || {};
 
         // CleanProgress データをキーマップに
@@ -2829,6 +2850,26 @@
       };
     }
 
+    function buildProgTileMarks(pd) {
+      var marks = '';
+      if (pd.linen === 'DONE') {
+        marks += '<span class="prog-mark prog-mark-linen-done">リ✓</span>';
+      } else {
+        marks += '<span class="prog-mark prog-mark-linen">リ</span>';
+      }
+      if (pd.trash === 'DONE') {
+        marks += '<span class="prog-mark prog-mark-trash-done">ゴ✓</span>';
+      } else if (pd.trash === 'NEED') {
+        marks += '<span class="prog-mark prog-mark-trash">ゴ</span>';
+      }
+      if (pd.check === 'DONE') {
+        marks += '<span class="prog-mark prog-mark-check-done">チ✓</span>';
+      } else if (pd.check === 'NEED') {
+        marks += '<span class="prog-mark prog-mark-check">チ</span>';
+      }
+      return marks;
+    }
+
     function buildProgTile(item, view, num) {
       var pd     = getEffectiveProgress(item.propertyName);
       var status = pd.status || 'TODO';
@@ -2863,7 +2904,7 @@
       var numBadge = (typeof num !== 'undefined') ? '<span class="prog-tile-num">' + num + '</span>' : '';
       var stageLbl = isLinenStage ? '<div class="prog-tile-stage">リネン搬入済み</div>' : '';
 
-      return '<button class="' + tileCls + '" data-tile-prop="' + pnEsc + '" data-tile-view="' + view + '">' +
+      return '<button class="' + tileCls + '" data-tile-prop="' + pnEsc + '" data-tile-view="' + view + '" data-tile-uid="' + esc(item.uid || '') + '" data-tile-staff="' + esc(item.staff || '') + '">' +
         '<div class="prog-tile-nameline">' + numBadge + '<div class="prog-tile-name">' + pnEsc + '</div></div>' +
         stageLbl +
         '<div class="' + staffCls + '">' + esc(staffDisp) + '</div>' +
@@ -2891,6 +2932,8 @@
       });
 
       var html = '';
+      var inOrderMode  = !!S.progOrderMode;
+      var orderStaff   = S.progOrderMode || '';
       staffOrder.forEach(function(staffName) {
         var sItems = groups[staffName].slice().sort(function(a, b) {
           return (a.order || 9999) - (b.order || 9999);
@@ -2901,40 +2944,68 @@
           return getEffectiveProgress(i.propertyName).status === 'DONE';
         }).length;
         var remain = total - done;
+        var undone = total - done;
+
+        // 「順番を決める」ボタン: ADMIN、スタッフ担当あり、順番モード中は他スタッフへ非表示
+        var showOrderBtn = S.isAdmin && staffName && (!inOrderMode || orderStaff === staffName);
+        var orderBtnHtml = showOrderBtn
+          ? '<button class="btn-prog-order" onclick="enterProgOrderMode(\'' + staffName.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">順番を決める</button>'
+          : '';
 
         html += '<div class="prog-section">' +
           '<div class="prog-section-header">' +
             '<span class="prog-section-title">' + esc(staffName || '未担当') + '</span>' +
             '<span class="prog-section-remain">残り' + remain + '件（完了 ' + done + '/' + total + '）</span>' +
-          '</div>' +
-          '<div class="prog-tiles prog-tiles-staff">';
+            orderBtnHtml +
+          '</div>';
 
-        // 清掃順（item.order）で番号を割り当て。order=0 は末尾
-        var forNum = sItems.slice().sort(function(a, b) {
-          return (a.order || 9999) - (b.order || 9999);
-        });
+        // 順番モード中のスタッフに操作バーを表示
+        if (inOrderMode && orderStaff === staffName) {
+          var tapped = S.progTapList.length;
+          html += '<div class="prog-order-bar">' +
+            '<button onclick="resetProgOrderMode()">全部やり直し</button>' +
+            '<span>' + tapped + ' / ' + undone + ' 件</span>' +
+            '<button onclick="cancelProgOrderMode()">キャンセル</button>' +
+            '<button class="btn-complete" onclick="completeProgOrderMode()"' + (_progOrderPending ? ' disabled' : '') + '>完了</button>' +
+          '</div>';
+        }
+
+        html += '<div class="prog-tiles prog-tiles-staff">';
+
+        // 清掃順（item.order）で番号を割り当て
         var numMap = {};
-        forNum.forEach(function(it, i) { numMap[it.propertyName] = i + 1; });
+        sItems.forEach(function(it, i) { numMap[it.propertyName] = i + 1; });
 
-        var totalSItems = sItems.length;
-        sItems.forEach(function(item, tileIdx) {
-          var isDone  = getEffectiveProgress(item.propertyName).status === 'DONE';
-          var isFirst = tileIdx === 0;
-          var isLast  = tileIdx === totalSItems - 1;
-          var prevIsDone = !isFirst && (getEffectiveProgress(sItems[tileIdx - 1].propertyName).status === 'DONE');
-          var nextIsDone = !isLast  && (getEffectiveProgress(sItems[tileIdx + 1].propertyName).status === 'DONE');
-          var upDis   = (isDone || isFirst || prevIsDone) ? ' disabled' : '';
-          var downDis = (isDone || isLast  || nextIsDone) ? ' disabled' : '';
-          var uidAttr   = esc(item.uid || '');
-          var staffAttr = esc(staffName || '');
-          html +=
-            '<div class="prog-tile-row">' +
-              '<div class="prog-tile-reorder-btns">' +
-                '<button class="prog-tile-reorder-btn" data-dir="up"   data-uid="' + uidAttr + '" data-staff="' + staffAttr + '"' + upDis   + '>▲</button>' +
-                '<button class="prog-tile-reorder-btn" data-dir="down" data-uid="' + uidAttr + '" data-staff="' + staffAttr + '"' + downDis + '>▼</button>' +
-              '</div>' +
-              buildProgTile(item, 'staff', numMap[item.propertyName]) +
-            '</div>';
+        var isThisOrderMode = inOrderMode && orderStaff === staffName;
+        sItems.forEach(function(item) {
+          var isDone = getEffectiveProgress(item.propertyName).status === 'DONE';
+          var uid    = item.uid || '';
+
+          if (isThisOrderMode && !isDone) {
+            // タップ順番モード: バッジを tap 番号 or 空、タイルをタップ可能に
+            var tapIdx = S.progTapList.indexOf(uid);
+            var isTapped = tapIdx >= 0;
+            var badgeHtml = isTapped
+              ? '<span class="prog-tile-tap-badge">' + (tapIdx + 1) + '</span>'
+              : '<span class="prog-tile-tap-badge" style="background:#ccc;color:#555">·</span>';
+            var pd = getEffectiveProgress(item.propertyName);
+            var status = pd.status || 'TODO';
+            var isLinenStage = (status === 'TODO' && pd.linen === 'DONE');
+            var tileCls = 'prog-tile prog-tile-orderable' +
+              (isTapped ? ' doing' : isLinenStage ? ' linen-stage' : '');
+            var staffText = item.staff || '';
+            var staffCls  = staffText ? 'prog-tile-staff' : 'prog-tile-staff unset';
+            var staffDisp = staffText || '未設定';
+            var marks = buildProgTileMarks(pd);
+            html += '<button class="' + tileCls + '" data-tile-prop="' + esc(item.propertyName) + '" data-tile-view="staff" data-tile-uid="' + esc(uid) + '" data-tile-staff="' + esc(staffName) + '">' +
+              '<div class="prog-tile-nameline">' + badgeHtml + '<div class="prog-tile-name">' + esc(item.propertyName) + '</div></div>' +
+              (isLinenStage ? '<div class="prog-tile-stage">リネン搬入済み</div>' : '') +
+              '<div class="' + staffCls + '">' + esc(staffDisp) + '</div>' +
+              '<div class="prog-tile-marks">' + marks + '</div>' +
+            '</button>';
+          } else {
+            html += buildProgTile(item, 'staff', numMap[item.propertyName]);
+          }
         });
         html += '</div></div>';
       });
@@ -3210,51 +3281,73 @@
       });
     }
 
-    // ── 進捗確認 並び順変更（▲▼ボタン）────────────────────────────────
-    function reorderStaffTile(uid, direction) {
-      if (_reorderPending) return;
+    // ── 進捗確認 タップ順番モード ─────────────────────────────────────────
+    function enterProgOrderMode(staffName) {
+      if (_progOrderPending) return;
+      S.progOrderMode = staffName;
+      S.progTapList   = [];
+      rerenderProgress();
+    }
 
-      // そのスタッフの progressItems を特定
-      var targetItem = null;
-      S.progressItems.forEach(function(i) { if (i.uid === uid) targetItem = i; });
-      if (!targetItem) return;
-      var staffName = targetItem.staff || '';
+    function cancelProgOrderMode() {
+      S.progOrderMode = null;
+      S.progTapList   = [];
+      rerenderProgress();
+    }
 
-      // 同スタッフの行だけを order でソート
-      var sItems = S.progressItems.filter(function(i) {
-        return (i.staff || '') === staffName;
-      }).slice().sort(function(a, b) {
-        return (a.order || 9999) - (b.order || 9999);
+    function resetProgOrderMode() {
+      S.progTapList = [];
+      rerenderProgress();
+    }
+
+    function onProgTileTap(uid, staffName) {
+      if (S.progOrderMode !== staffName) return;
+      var item = null;
+      S.progressItems.forEach(function(i) { if (i.uid === uid) item = i; });
+      if (!item) return;
+      if (getEffectiveProgress(item.propertyName).status === 'DONE') return;
+      var idx = S.progTapList.indexOf(uid);
+      if (idx >= 0) {
+        S.progTapList.splice(idx, 1);
+      } else {
+        S.progTapList.push(uid);
+      }
+      rerenderProgress();
+    }
+
+    function completeProgOrderMode() {
+      if (_progOrderPending) return;
+      var staffName = S.progOrderMode;
+      if (!staffName) return;
+
+      var unfinished = S.progressItems.filter(function(i) {
+        return (i.staff || '') === staffName && getEffectiveProgress(i.propertyName).status !== 'DONE';
+      });
+      var finished = S.progressItems.filter(function(i) {
+        return (i.staff || '') === staffName && getEffectiveProgress(i.propertyName).status === 'DONE';
       });
 
-      var idx = sItems.findIndex ? sItems.findIndex(function(i) { return i.uid === uid; })
-                                 : (function() { for (var k = 0; k < sItems.length; k++) { if (sItems[k].uid === uid) return k; } return -1; })();
-      if (idx < 0) return;
+      var tapped   = S.progTapList.map(function(uid) {
+        return unfinished.find(function(i) { return i.uid === uid; });
+      }).filter(Boolean);
+      var untapped = unfinished.filter(function(i) {
+        return S.progTapList.indexOf(i.uid) < 0;
+      });
 
-      var swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-      if (swapIdx < 0 || swapIdx >= sItems.length) return;
+      var ordered = tapped.concat(untapped);
 
-      // 完了済みの隣は動かさない（disabled と同じガード）
-      if (direction === 'up'   && getEffectiveProgress(sItems[swapIdx].propertyName).status === 'DONE') return;
-      if (direction === 'down' && getEffectiveProgress(sItems[swapIdx].propertyName).status === 'DONE') return;
-
-      // ロールバック用に全スタッフ行の元 order を保存
+      // ロールバック用バックアップ
       var origOrders = {};
-      sItems.forEach(function(i) { origOrders[i.uid] = i.order || 0; });
+      S.progressItems.forEach(function(i) { origOrders[i.uid] = i.order || 0; });
 
-      // 毎回、表示順に 1,2,3... を振り直す（order=0・重複・空でも正しく動く）
-      sItems.forEach(function(i, k) { i.order = k + 1; });
+      // 未完了行に 1,2,3... を割り当て。完了済みは末尾に続く
+      ordered.forEach(function(i, k) { i.order = k + 1; });
+      finished.forEach(function(i, k) { i.order = ordered.length + k + 1; });
 
-      // swap
-      var normalOrderA = sItems[idx].order;
-      var normalOrderB = sItems[swapIdx].order;
-      sItems[idx].order     = normalOrderB;
-      sItems[swapIdx].order = normalOrderA;
-
-      // S.progressItems の元のオブジェクトにも反映（sItems は参照コピー）
-      _reorderPending = true;
       var oldUpdatedAt = S.progressAssignUpdatedAt;
-
+      S.progOrderMode = null;
+      S.progTapList   = [];
+      _progOrderPending = true;
       rerenderProgress();
 
       var rows = S.progressItems.map(function(i) {
@@ -3262,33 +3355,38 @@
       });
 
       callApi({
-        action:         'saveAssignments',
-        date:           S.progressDate,
-        rows:           rows,
+        action: 'saveAssignments',
+        date: S.progressDate,
+        rows: rows,
         knownUpdatedAt: oldUpdatedAt || ''
       }).then(function(r) {
-        _reorderPending = false;
+        _progOrderPending = false;
         if (r.ok) {
           if (r.latestUpdatedAt) S.progressAssignUpdatedAt = r.latestUpdatedAt;
+          toast('順番を保存しました。反映まで最大5分かかります');
           return;
         }
-        // ロールバック（正規化前の order に戻す）
-        sItems.forEach(function(i) { i.order = origOrders[i.uid] !== undefined ? origOrders[i.uid] : 0; });
+        // ロールバック
+        S.progressItems.forEach(function(i) {
+          if (origOrders[i.uid] !== undefined) i.order = origOrders[i.uid];
+        });
         S.progressAssignUpdatedAt = oldUpdatedAt;
         rerenderProgress();
         if (r.error === 'conflict') {
           toast('他の人が先に保存しました。再読込します');
           loadProgress();
         } else {
-          toast('並び替えに失敗しました。もう一度お試しください。');
+          toast('順番の保存エラー: ' + (r.error || '不明'));
         }
       }).catch(function(e) {
-        _reorderPending = false;
-        sItems.forEach(function(i) { i.order = origOrders[i.uid] !== undefined ? origOrders[i.uid] : 0; });
+        _progOrderPending = false;
+        S.progressItems.forEach(function(i) {
+          if (origOrders[i.uid] !== undefined) i.order = origOrders[i.uid];
+        });
         S.progressAssignUpdatedAt = oldUpdatedAt;
         rerenderProgress();
         if (e.isUnauthorized) { handleUnauthorized(); return; }
-        toast('並び替えに失敗しました。もう一度お試しください。');
+        toast('順番の保存エラー: ' + e.message);
       });
     }
 
@@ -3589,16 +3687,17 @@
         this.classList.toggle('on', showing);
       });
 
-      // 進捗確認パネル：タイルタップで編集ドロワーを開く / ▲▼で並び順変更
+      // 進捗確認パネル：タイルタップで編集ドロワー or 順番モードのタップ処理
       document.getElementById('panel-progress').addEventListener('click', function(e) {
-        var reorderBtn = e.target.closest('.prog-tile-reorder-btn');
-        if (reorderBtn && !reorderBtn.disabled) {
-          e.stopPropagation();
-          reorderStaffTile(reorderBtn.dataset.uid, reorderBtn.dataset.dir);
+        var tile = e.target.closest('[data-tile-prop]');
+        if (!tile) return;
+        var tileUid   = tile.dataset.tileUid   || '';
+        var tileStaff = tile.dataset.tileStaff || '';
+        if (S.progOrderMode && S.progOrderMode === tileStaff) {
+          onProgTileTap(tileUid, tileStaff);
           return;
         }
-        var tile = e.target.closest('[data-tile-prop]');
-        if (tile) {
+        if (!S.progOrderMode) {
           openEditDrawer(tile.dataset.tileProp, tile.dataset.tileView);
         }
       });
