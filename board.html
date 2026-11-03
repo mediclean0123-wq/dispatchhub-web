@@ -298,7 +298,7 @@
 
     /* ── タイルグリッド ── */
     .prog-tiles-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.3rem; }
-    .prog-tiles-staff { display: grid; grid-template-columns: 1fr; gap: 0.25rem; }
+    .prog-tiles-staff { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
     .prog-tile {
       background: var(--card); border-radius: 6px; padding: 0.4rem 0.45rem;
       min-height: 56px; cursor: pointer; border: 1px solid var(--border);
@@ -309,7 +309,8 @@
     /* スタッフ別：横長1行カード */
     .prog-tiles-staff .prog-tile {
       flex-direction: row; align-items: center; min-height: auto;
-      padding: 0.28rem 0.5rem; gap: 0.4rem;
+      padding: 0.2rem 0.4rem; gap: 0.35rem;
+      min-width: 0; overflow: hidden;
     }
     .prog-tiles-staff .prog-tile-nameline {
       flex: 1; min-width: 0; align-items: center;
@@ -317,6 +318,7 @@
     .prog-tiles-staff .prog-tile-name {
       display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
       -webkit-line-clamp: unset; -webkit-box-orient: unset;
+      font-size: 0.75rem; font-weight: normal; color: inherit;
     }
     .prog-tiles-staff .prog-tile-stage { display: none; }
     .prog-tiles-staff .prog-tile-staff { flex-shrink: 0; max-width: 5.5em; font-size: 0.62rem; }
