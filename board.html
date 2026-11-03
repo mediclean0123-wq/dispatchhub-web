@@ -2408,7 +2408,7 @@
         html += buildSchedItemHtml(item, {
           isExpanded: isExpanded, isDetail: isDetail,
           showDateLabel: isSearchMode, showResend: showResend,
-          pendingByUid: pendingByUid, areaInline: ''
+          pendingByUid: pendingByUid, areaInline: '', showOrderNum: false
         });
       });
 
@@ -2461,7 +2461,7 @@
           ? '<span class="sched-date-label">' + esc(fmtDate(item.date)) + '</span>'
           : '';
 
-        var orderNum = (item.order > 0)
+        var orderNum = (opts.showOrderNum !== false && item.order > 0)
           ? '<span class="sched-order-num">' + item.order + '</span>'
           : '';
 
