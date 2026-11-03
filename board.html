@@ -1448,14 +1448,11 @@
             var key = item.propertyName + '\t' + item.date;
             var isExpanded = (S.scheduleExpandedKey === key);
             var isDetail   = (S.scheduleDetailKey   === key);
-            var areaInline = item.area
-              ? '<span class="sched-area-inline">エリア ' + esc(item.area) + '</span>'
-              : '';
             html += buildSchedItemHtml(item, {
               isExpanded: isExpanded, isDetail: isDetail,
               showDateLabel: false,
               showResend: !isSearchMode && (dt === today() || dt === tomorrow()),
-              pendingByUid: pendingByUid, areaInline: areaInline
+              pendingByUid: pendingByUid, areaInline: ''
             });
           });
         });
@@ -2917,9 +2914,9 @@
       var checkinBadge = '';
       if (view === 'staff') {
         if (item.isSameDayIn) {
-          checkinBadge = '<span class="prog-checkin-badge prog-checkin-badge-in">イン</span>';
+          checkinBadge = '<span class="prog-checkin-badge prog-checkin-badge-in">同日イン</span>';
         } else {
-          checkinBadge = '<span class="prog-checkin-badge prog-checkin-badge-out">イン無</span>';
+          checkinBadge = '<span class="prog-checkin-badge prog-checkin-badge-out">インなし</span>';
         }
       }
 
@@ -3018,8 +3015,8 @@
             var staffDisp = staffText || '未設定';
             var marks = buildProgTileMarks(pd);
             var checkinBadgeOm = item.isSameDayIn
-              ? '<span class="prog-checkin-badge prog-checkin-badge-in">イン</span>'
-              : '<span class="prog-checkin-badge prog-checkin-badge-out">イン無</span>';
+              ? '<span class="prog-checkin-badge prog-checkin-badge-in">同日イン</span>'
+              : '<span class="prog-checkin-badge prog-checkin-badge-out">インなし</span>';
             html += '<button class="' + tileCls + '" data-tile-prop="' + esc(item.propertyName) + '" data-tile-view="staff" data-tile-uid="' + esc(uid) + '" data-tile-staff="' + esc(staffName) + '">' +
               '<div class="prog-tile-nameline">' + badgeHtml + '<div class="prog-tile-name">' + esc(item.propertyName) + '</div></div>' +
               (isLinenStage ? '<div class="prog-tile-stage">リネン搬入済み</div>' : '') +
@@ -3044,7 +3041,7 @@
         return;
       }
 
-      // スタッフ別表示と同じ順: 担当者をアルファベット順・未設定を最後
+      // スタッフ別表示と同じ順: 名前順・未設定を最後
       var staffSet = {}, staffOrder = [];
       items.forEach(function(item) {
         var s = item.staff || '';
@@ -3056,18 +3053,37 @@
         return a < b ? -1 : a > b ? 1 : 0;
       });
 
-      // 担当順→同担当内は item.order 順でソート
-      var sorted = items.slice().sort(function(a, b) {
-        var ai = staffOrder.indexOf(a.staff || '');
-        var bi = staffOrder.indexOf(b.staff || '');
-        if (ai !== bi) return ai - bi;
-        return (a.order || 9999) - (b.order || 9999);
-      });
+      function sortByStaffOrder(arr) {
+        return arr.slice().sort(function(a, b) {
+          var ai = staffOrder.indexOf(a.staff || '');
+          var bi = staffOrder.indexOf(b.staff || '');
+          if (ai !== bi) return ai - bi;
+          return (a.order || 9999) - (b.order || 9999);
+        });
+      }
 
-      var html = '<div class="prog-tiles prog-tiles-board">';
-      sorted.forEach(function(item) { html += buildProgTile(item, 'board'); });
-      html += '</div>';
-      container.innerHTML = html;
+      function sectionHtml(sectionItems, title) {
+        if (!sectionItems.length) return '';
+        var total  = sectionItems.length;
+        var done   = sectionItems.filter(function(i) {
+          return getEffectiveProgress(i.propertyName).status === 'DONE';
+        }).length;
+        var remain = total - done;
+        var h = '<div class="prog-section">' +
+          '<div class="prog-section-header">' +
+            '<span class="prog-section-title">' + esc(title) + '</span>' +
+            '<span class="prog-section-remain">残り' + remain + '件（完了 ' + done + '/' + total + '）</span>' +
+          '</div>' +
+          '<div class="prog-tiles prog-tiles-board">';
+        sectionItems.forEach(function(item) { h += buildProgTile(item, 'board'); });
+        h += '</div></div>';
+        return h;
+      }
+
+      var sameDayItems = sortByStaffOrder(items.filter(function(i) { return i.isSameDayIn; }));
+      var notInItems   = sortByStaffOrder(items.filter(function(i) { return !i.isSameDayIn; }));
+
+      container.innerHTML = sectionHtml(sameDayItems, '同日イン') + sectionHtml(notInItems, 'インなし');
     }
 
     // ── 進捗編集ドロワー ──────────────────────────────────────────────
