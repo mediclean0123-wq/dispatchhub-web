@@ -1060,15 +1060,15 @@
       <button id="btn-manual-add" class="btn-manual-add">＋ 手入力で追加</button>
       <div id="manual-list" class="manual-list"></div>
     </div>
-  </div>
 
-  <!-- 部屋割り振りパネル -->
-  <div id="panel-room-assign" class="panel" hidden>
-    <div class="ra-header-row">
-      <button id="btn-room-assign-back" class="btn-room-assign-back">← 今後の清掃予定</button>
-      <span class="ra-title">部屋の振り分け</span>
+    <!-- 部屋割り振りパネル -->
+    <div id="panel-room-assign" class="panel" hidden>
+      <div class="ra-header-row">
+        <button id="btn-room-assign-back" class="btn-room-assign-back">← 今後の清掃予定</button>
+        <span class="ra-title">部屋の振り分け</span>
+      </div>
+      <div id="ra-list"></div>
     </div>
-    <div id="ra-list"></div>
   </div>
 
   <!-- タスク登録モーダル -->
@@ -1745,12 +1745,14 @@
     function openRoomAssignPanel() {
       document.getElementById('panel-schedule').hidden    = true;
       document.getElementById('panel-room-assign').hidden = false;
+      window.scrollTo(0, 0);
       loadRoomAssignData();
     }
 
     function closeRoomAssignPanel() {
       document.getElementById('panel-room-assign').hidden = true;
       document.getElementById('panel-schedule').hidden    = false;
+      window.scrollTo(0, 0);
     }
 
     function loadRoomAssignData() {
@@ -3965,9 +3967,10 @@
           document.querySelectorAll('.tab-btn').forEach(function(b) {
             b.classList.toggle('active', b === btn);
           });
-          document.getElementById('panel-progress').hidden = (tab !== 'progress');
-          document.getElementById('panel-schedule').hidden = (tab !== 'schedule');
-          document.getElementById('panel-manual').hidden   = true;
+          document.getElementById('panel-progress').hidden    = (tab !== 'progress');
+          document.getElementById('panel-schedule').hidden    = (tab !== 'schedule');
+          document.getElementById('panel-manual').hidden      = true;
+          document.getElementById('panel-room-assign').hidden = true;
           stopBoardTimer();
           stopProgressTimer();
           if (tab === 'progress') {
