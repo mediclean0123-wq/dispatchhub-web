@@ -861,8 +861,9 @@
     .linen-hidden .prog-mark-linen,
     .linen-hidden .prog-mark-linen-done,
     .linen-hidden .prog-tile-stage { display: none; }
-    /* アルバムURL再送 */
-    .album-resend-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    /* アルバムURL再送・順番を決める 横並び */
+    .sched-action-bar { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .album-resend-bar { display: flex; align-items: center; gap: 0.5rem; }
     .btn-album-resend {
       padding: 0.3rem 0.8rem; border: 1px solid #1976d2; border-radius: 6px;
       background: #e3f2fd; color: #1976d2; font-size: 0.82rem; font-family: inherit; cursor: pointer;
@@ -886,8 +887,8 @@
     </div>
 
     <nav class="tabs">
-      <button class="tab-btn active" data-tab="progress">進捗確認</button>
-      <button class="tab-btn"        data-tab="schedule">今後の清掃予定</button>
+      <button class="tab-btn active" data-tab="progress">今日の進捗確認</button>
+      <button class="tab-btn"        data-tab="schedule">清掃スケジュール</button>
     </nav>
 
     <!-- 進捗確認タブ -->
@@ -924,10 +925,6 @@
 
     <!-- 今後の清掃予定タブ -->
     <div id="panel-schedule" class="panel" hidden>
-      <div class="manual-open-row">
-        <button id="btn-open-manual" class="btn-open-manual">手入力予約</button>
-        <button id="btn-open-room-assign" class="btn-open-room-assign" hidden>部屋の振り分け<span id="room-assign-badge" class="room-assign-badge" hidden></span></button>
-      </div>
       <div class="date-row">
         <label for="board-date-sel">日付</label>
         <input type="date" id="board-date-sel">
@@ -939,16 +936,21 @@
         <div class="bstat"><span class="bstat-n" id="s-notin">-</span><span class="bstat-l">インなし</span></div>
         <div class="bstat"><span class="bstat-n" id="s-tasks">-</span><span class="bstat-l">対応予定</span></div>
       </div>
+      <div class="manual-open-row">
+        <button id="btn-open-manual" class="btn-open-manual">手入力予約</button>
+        <button id="btn-open-room-assign" class="btn-open-room-assign" hidden>部屋の振り分け<span id="room-assign-badge" class="room-assign-badge" hidden></span></button>
+      </div>
       <div class="sched-grouping-bar" id="sched-grouping-bar" hidden>
         <button class="sched-grouping-btn active" id="btn-group-area">エリア別</button>
         <button class="sched-grouping-btn"        id="btn-group-staff">担当別</button>
       </div>
-      <!-- アルバムURL再送バー（今日の日程のときのみ表示） -->
-      <div id="album-resend-bar" class="album-resend-bar" hidden>
-        <button id="btn-album-resend" class="btn-album-resend">アルバムURL再送</button>
-      </div>
-      <div id="order-mode-bar" hidden>
-        <button id="btn-order-mode" class="btn-order-mode">順番を決める</button>
+      <div class="sched-action-bar">
+        <div id="album-resend-bar" class="album-resend-bar" hidden>
+          <button id="btn-album-resend" class="btn-album-resend">アルバムURL再送</button>
+        </div>
+        <div id="order-mode-bar" hidden>
+          <button id="btn-order-mode" class="btn-order-mode">順番を決める</button>
+        </div>
       </div>
       <div id="order-mode-panel" hidden>
         <div class="order-mode-header">
@@ -971,7 +973,7 @@
     <!-- 手入力予約パネル -->
     <div id="panel-manual" class="panel" hidden>
       <div class="manual-header-row">
-        <button id="btn-manual-back" class="btn-manual-back">← 今後の清掃予定</button>
+        <button id="btn-manual-back" class="btn-manual-back">← 清掃スケジュール</button>
         <span class="manual-title">手入力予約</span>
       </div>
       <!-- 追加フォーム -->
@@ -1064,7 +1066,7 @@
     <!-- 部屋割り振りパネル -->
     <div id="panel-room-assign" class="panel" hidden>
       <div class="ra-header-row">
-        <button id="btn-room-assign-back" class="btn-room-assign-back">← 今後の清掃予定</button>
+        <button id="btn-room-assign-back" class="btn-room-assign-back">← 清掃スケジュール</button>
         <span class="ra-title">部屋の振り分け</span>
       </div>
       <div id="ra-list"></div>
@@ -4436,17 +4438,29 @@
       loadProgress();
       startProgressTimer();
 
-      // RoomList が空でなければ getRoomAssignStatus を取得してバッジを出す
-      callApi({ action: 'getRoomList' }).then(function(rl) {
-        if (!rl.ok || !rl.rooms || Object.keys(rl.rooms).length === 0) return;
-        S.roomList = rl.rooms;
-        callApi({ action: 'getRoomAssignStatus' }).then(function(ras) {
-          if (!ras.ok) return;
-          S.raRows           = ras.rows   || [];
-          S.raAssignedByDate = ras.assignedRoomsByDate || {};
-          updateRoomAssignBadge();
-        }).catch(function() {});
-      }).catch(function() {});
+      // 案A: ボタンを先に表示（データ取得後に再判定）
+      document.getElementById('btn-open-room-assign').hidden = false;
+      // 案B: getRoomList と getRoomAssignStatus を並行取得
+      Promise.all([
+        callApi({ action: 'getRoomList' }),
+        callApi({ action: 'getRoomAssignStatus' })
+      ]).then(function(results) {
+        var rl = results[0], ras = results[1];
+        if (!rl.ok || !rl.rooms || Object.keys(rl.rooms).length === 0) {
+          document.getElementById('btn-open-room-assign').hidden = true;
+          return;
+        }
+        if (!ras.ok) {
+          document.getElementById('btn-open-room-assign').hidden = true;
+          return;
+        }
+        S.roomList         = rl.rooms;
+        S.raRows           = ras.rows || [];
+        S.raAssignedByDate = ras.assignedRoomsByDate || {};
+        updateRoomAssignBadge();
+      }).catch(function() {
+        document.getElementById('btn-open-room-assign').hidden = true;
+      });
     }).catch(function(e) {
       document.getElementById('loading').hidden = true;
       var el = document.getElementById('error');
