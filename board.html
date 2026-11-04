@@ -662,6 +662,66 @@
     }
     .btn-manual-back:active { opacity: 0.75; }
     .manual-title { font-size: 1rem; font-weight: bold; }
+
+    /* ── 部屋の振り分けパネル ── */
+    .btn-open-room-assign {
+      padding: 0.35rem 0.9rem; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--card); color: var(--fg); font-size: 0.82rem;
+      font-family: inherit; cursor: pointer; position: relative;
+    }
+    .btn-open-room-assign:active { opacity: 0.75; }
+    .room-assign-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 1.2em; height: 1.2em; padding: 0 0.3em;
+      background: #e53935; color: #fff; font-size: 0.7rem; font-weight: bold;
+      border-radius: 999px; margin-left: 0.3rem; vertical-align: middle;
+    }
+    .ra-header-row {
+      display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;
+    }
+    .btn-room-assign-back {
+      padding: 0.35rem 0.7rem; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--card); color: var(--fg); font-size: 0.82rem;
+      font-family: inherit; cursor: pointer;
+    }
+    .btn-room-assign-back:active { opacity: 0.75; }
+    .ra-title { font-size: 1rem; font-weight: bold; }
+    .ra-loading, .ra-empty { text-align: center; color: var(--muted); padding: 2rem 0; font-size: 0.9rem; }
+    .ra-section-date {
+      font-size: 0.78rem; font-weight: bold; color: var(--muted);
+      padding: 0.5rem 0 0.25rem; border-bottom: 1px solid var(--border);
+      margin-bottom: 0.4rem;
+    }
+    .ra-row {
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.6rem 0.75rem; margin-bottom: 0.5rem;
+    }
+    .ra-row--locked { opacity: 0.65; }
+    .ra-row-header {
+      display: flex; gap: 0.5rem; align-items: baseline;
+      flex-wrap: wrap; margin-bottom: 0.4rem;
+    }
+    .ra-building { font-size: 0.95rem; font-weight: bold; }
+    .ra-staff    { font-size: 0.82rem; color: var(--muted); }
+    .ra-date     { font-size: 0.78rem; color: var(--muted); margin-left: auto; }
+    .ra-chips    { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .ra-chip {
+      padding: 0.28rem 0.65rem; border: 1px solid var(--accent); border-radius: 999px;
+      font-size: 0.82rem; cursor: pointer; background: var(--card); color: var(--accent);
+      font-family: inherit; white-space: nowrap;
+    }
+    .ra-chip:active { opacity: 0.75; }
+    .ra-chip--current {
+      border-color: var(--muted); color: var(--muted); cursor: default;
+      background: var(--bg);
+    }
+    .ra-chip--taken {
+      border-color: var(--border); color: var(--muted); cursor: default;
+      background: var(--bg); opacity: 0.6;
+    }
+    .ra-lock-label    { font-size: 0.82rem; color: var(--muted); padding: 0.1rem 0; }
+    .ra-pending-label { font-size: 0.82rem; color: #f57c00; padding: 0.1rem 0; }
+    .ra-last-error    { font-size: 0.75rem; color: #c62828; margin-top: 0.3rem; }
     .manual-list { display: flex; flex-direction: column; gap: 0.5rem; }
     .manual-row {
       background: var(--card); border: 1px solid var(--border); border-radius: 8px;
@@ -866,6 +926,7 @@
     <div id="panel-schedule" class="panel" hidden>
       <div class="manual-open-row">
         <button id="btn-open-manual" class="btn-open-manual">手入力予約</button>
+        <button id="btn-open-room-assign" class="btn-open-room-assign" hidden>部屋の振り分け<span id="room-assign-badge" class="room-assign-badge" hidden></span></button>
       </div>
       <div class="date-row">
         <label for="board-date-sel">日付</label>
@@ -1001,6 +1062,15 @@
     </div>
   </div>
 
+  <!-- 部屋割り振りパネル -->
+  <div id="panel-room-assign" class="panel" hidden>
+    <div class="ra-header-row">
+      <button id="btn-room-assign-back" class="btn-room-assign-back">← 今後の清掃予定</button>
+      <span class="ra-title">部屋の振り分け</span>
+    </div>
+    <div id="ra-list"></div>
+  </div>
+
   <!-- タスク登録モーダル -->
   <div id="task-modal" class="modal-overlay" hidden>
     <div class="task-modal-box">
@@ -1053,6 +1123,18 @@
       <div class="modal-actions">
         <button id="modal-cancel" class="btn btn-import">キャンセル</button>
         <button id="modal-reload" class="btn btn-save">再読込</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 部屋割り振り確認モーダル -->
+  <div id="room-assign-modal" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <p id="room-assign-modal-msg"></p>
+      <p id="room-assign-modal-warn" style="font-size:0.82rem;color:#c0392b;" hidden></p>
+      <div class="modal-actions">
+        <button id="room-assign-modal-cancel" class="btn btn-import">キャンセル</button>
+        <button id="room-assign-modal-ok"     class="btn btn-save">確定</button>
       </div>
     </div>
   </div>
@@ -1177,7 +1259,13 @@
       manualChangeUid: null,       // インライン変更中の UID
       manualFilterProp: '',        // 絞り込み物件（'' = すべて）
       manualFilterRange: 'all',    // 'all' | 'this-month' | 'next-month'
-      bulkRows: []                 // まとめて追加の行データ
+      bulkRows: [],                // まとめて追加の行データ
+      // 部屋割り振りパネル
+      roomList:         null,  // { "PropA": ["101","201"], ... } | null（未取得）
+      raRows:           [],    // getRoomAssignStatus の rows
+      raAssignedByDate: {},    // getRoomAssignStatus の assignedRoomsByDate
+      raPendingUids:    {},    // { uid: true } 操作後に画面上で pending 扱いにした行
+      raLoading:        false
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -1651,6 +1739,206 @@
     function closeManualPanel() {
       document.getElementById('panel-manual').hidden   = true;
       document.getElementById('panel-schedule').hidden = false;
+    }
+
+    // ── 部屋割り振りパネル ─────────────────────────────────────────────
+    function openRoomAssignPanel() {
+      document.getElementById('panel-schedule').hidden    = true;
+      document.getElementById('panel-room-assign').hidden = false;
+      loadRoomAssignData();
+    }
+
+    function closeRoomAssignPanel() {
+      document.getElementById('panel-room-assign').hidden = true;
+      document.getElementById('panel-schedule').hidden    = false;
+    }
+
+    function loadRoomAssignData() {
+      if (S.raLoading) return;
+      S.raLoading = true;
+      renderRoomAssignList();
+      Promise.all([
+        callApi({ action: 'getRoomList' }),
+        callApi({ action: 'getRoomAssignStatus' })
+      ]).then(function(results) {
+        S.raLoading = false;
+        var rl  = results[0];
+        var ras = results[1];
+        if (!rl.ok || !ras.ok) { renderRoomAssignList(); return; }
+        S.roomList         = rl.rooms   || {};
+        S.raRows           = ras.rows   || [];
+        S.raAssignedByDate = ras.assignedRoomsByDate || {};
+        renderRoomAssignList();
+        updateRoomAssignBadge();
+      }).catch(function() {
+        S.raLoading = false;
+        renderRoomAssignList();
+      });
+    }
+
+    function updateRoomAssignBadge() {
+      var btn   = document.getElementById('btn-open-room-assign');
+      var badge = document.getElementById('room-assign-badge');
+      if (!S.roomList || Object.keys(S.roomList).length === 0) {
+        btn.hidden = true;
+        return;
+      }
+      var unassigned = (S.raRows || []).filter(function(r) {
+        return !r.locked && !r.pending && !S.raPendingUids[r.uid] && r.assignedRoom === '';
+      });
+      if (unassigned.length === 0) {
+        btn.hidden = true;
+        return;
+      }
+      btn.hidden       = false;
+      badge.hidden     = false;
+      badge.textContent = String(unassigned.length);
+    }
+
+    function renderRoomAssignList() {
+      var el = document.getElementById('ra-list');
+      if (S.raLoading) {
+        el.innerHTML = '<div class="ra-loading">読み込み中…</div>';
+        return;
+      }
+      if (!S.roomList) {
+        el.innerHTML = '<div class="ra-loading">データを取得できませんでした</div>';
+        return;
+      }
+      var rows = S.raRows || [];
+      if (rows.length === 0) {
+        el.innerHTML = '<div class="ra-empty">振り分け対象の行はありません</div>';
+        return;
+      }
+      // 日付でグループ化し、日付→buildingCode の順にソート
+      var byDate = {};
+      rows.forEach(function(r) {
+        if (!byDate[r.date]) byDate[r.date] = [];
+        byDate[r.date].push(r);
+      });
+      var dates = Object.keys(byDate).sort();
+      dates.forEach(function(d) {
+        byDate[d].sort(function(a, b) {
+          var ka = a.buildingCode || a.assignedRoom || '';
+          var kb = b.buildingCode || b.assignedRoom || '';
+          return ka < kb ? -1 : ka > kb ? 1 : 0;
+        });
+      });
+
+      var html = '';
+      dates.forEach(function(d) {
+        html += '<div class="ra-section-date">' + esc(d) + '</div>';
+        byDate[d].forEach(function(r) {
+          var isServerPending = r.pending === true;
+          var isLocalPending  = S.raPendingUids[r.uid] === true;
+          var isPending = isServerPending || isLocalPending;
+          var rowClass = 'ra-row' +
+            (r.locked  ? ' ra-row--locked'  : '') +
+            (isPending ? ' ra-row--pending'  : '');
+          var displayCode = r.buildingCode || r.assignedRoom || '';
+          var staffLabel  = r.staff || '未割当';
+          html += '<div class="' + rowClass + '">';
+          html += '<div class="ra-row-header">';
+          html += '<span class="ra-building">' + esc(displayCode) + '</span>';
+          html += '<span class="ra-staff">' + esc(staffLabel) + '</span>';
+          html += '<span class="ra-date">' + esc(r.date) + '</span>';
+          html += '</div>';
+          if (r.locked) {
+            var lockMsg = r.lockReason === 'done'
+              ? '🔒 清掃済みのため変更できません'
+              : '⚠️ 建物コードが曖昧です。スプレッドシートを確認してください';
+            html += '<div class="ra-lock-label">' + esc(lockMsg) + '</div>';
+          } else if (isPending) {
+            html += '<div class="ra-pending-label">⏳ 反映待ち（約5〜10分）</div>';
+          } else {
+            // チップを描画
+            var rooms = (S.roomList && S.roomList[r.buildingCode]) || [];
+            var takenList = S.raAssignedByDate[r.date] || [];
+            html += '<div class="ra-chips">';
+            rooms.forEach(function(roomNum) {
+              var fullRoom = r.buildingCode + roomNum;
+              var isCurrent = (fullRoom === r.assignedRoom);
+              var isTaken   = !isCurrent && takenList.indexOf(fullRoom) >= 0;
+              var chipClass = 'ra-chip' +
+                (isCurrent ? ' ra-chip--current' : '') +
+                (isTaken   ? ' ra-chip--taken'   : '');
+              var chipAttr = (isCurrent || isTaken) ? '' :
+                ' data-ra-uid="' + esc(r.uid) + '"' +
+                ' data-ra-bc="'  + esc(r.buildingCode) + '"' +
+                ' data-ra-room="' + esc(roomNum) + '"' +
+                ' data-ra-is-change="' + (r.assignedRoom !== '' ? '1' : '0') + '"';
+              var chipText = esc(roomNum) + (isCurrent ? ' <small>現在</small>' : '');
+              html += '<button class="' + chipClass + '"' + chipAttr + '>' + chipText + '</button>';
+            });
+            html += '</div>';
+          }
+          if (r.lastError) {
+            html += '<div class="ra-last-error">前回の振り分けは失敗しました：' + esc(r.lastError) + '</div>';
+          }
+          html += '</div>';
+        });
+      });
+      el.innerHTML = html;
+
+      // チップのクリックイベント
+      el.querySelectorAll('.ra-chip[data-ra-uid]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          showRoomAssignConfirm(
+            this.dataset.raUid,
+            this.dataset.raBc,
+            this.dataset.raRoom,
+            this.dataset.raIsChange === '1'
+          );
+        });
+      });
+    }
+
+    function showRoomAssignConfirm(uid, buildingCode, roomNum, isChange) {
+      var msg = buildingCode + ' の ' + roomNum + ' 号室に振り分けますか？\n約5〜10分で、担当者にアルバムが届きます。';
+      document.getElementById('room-assign-modal-msg').textContent = msg;
+      var warnEl = document.getElementById('room-assign-modal-warn');
+      warnEl.hidden = !isChange;
+      if (isChange) {
+        warnEl.textContent = '変更すると、前のアルバム URL は使えなくなります。';
+      }
+      var okBtn = document.getElementById('room-assign-modal-ok');
+      okBtn.dataset.raUid  = uid;
+      okBtn.dataset.raRoom = roomNum;
+      document.getElementById('room-assign-modal').hidden = false;
+    }
+
+    function submitRoomAssign(uid, roomNum) {
+      document.getElementById('room-assign-modal').hidden = true;
+      callApi({ action: 'roomAssign', uid: uid, roomNumber: roomNum })
+        .then(function(r) {
+          if (r.ok) {
+            S.raPendingUids[uid] = true;
+            renderRoomAssignList();
+            updateRoomAssignBadge();
+          } else {
+            toast(roomAssignErrorMsg(r.error));
+          }
+        })
+        .catch(function() {
+          toast('通信エラーが発生しました。もう一度お試しください');
+        });
+    }
+
+    function roomAssignErrorMsg(errorCode) {
+      var msgs = {
+        room_already_assigned:        'この部屋はすでに別の行に割り当て済みです',
+        row_is_done:                  '清掃済みの行は変更できません',
+        pending_exists:               '前の振り分けがまだ反映待ちです。しばらく後に再試行してください',
+        room_not_in_list:             'この部屋番号はリストにありません',
+        ambiguous_building:           '建物コードが曖昧です。スプレッドシートを確認してください',
+        linerequests_columns_missing: 'シートの列が不足しています。管理者に問い合わせてください',
+        uid_not_found:                '対象の行が見つかりません。画面を更新してください',
+        schedule_header_invalid:      'スケジュールシートの形式が不正です',
+        invalid_property:             '建物コードが見つかりません',
+        lock_timeout:                 'サーバーが混雑しています。しばらくしてから再試行してください',
+        unauthorized:                 'ログインし直してください'
+      };
+      return msgs[errorCode] || '通信エラーが発生しました。もう一度お試しください';
     }
 
     function loadManualReservations() {
@@ -3810,6 +4098,19 @@
       document.getElementById('btn-open-manual').addEventListener('click', openManualPanel);
       document.getElementById('btn-manual-back').addEventListener('click', closeManualPanel);
 
+      // 部屋割り振りパネル：開く / 戻る / モーダル
+      document.getElementById('btn-open-room-assign').addEventListener('click', openRoomAssignPanel);
+      document.getElementById('btn-room-assign-back').addEventListener('click', closeRoomAssignPanel);
+      document.getElementById('room-assign-modal-cancel').addEventListener('click', function() {
+        document.getElementById('room-assign-modal').hidden = true;
+      });
+      document.getElementById('room-assign-modal').addEventListener('click', function(e) {
+        if (e.target === this) this.hidden = true;
+      });
+      document.getElementById('room-assign-modal-ok').addEventListener('click', function() {
+        submitRoomAssign(this.dataset.raUid, this.dataset.raRoom);
+      });
+
       // 追加フォーム
       document.getElementById('btn-manual-add').addEventListener('click', openManualAddSection);
       document.getElementById('btn-manual-form-cancel').addEventListener('click', closeManualAddSection);
@@ -4131,6 +4432,18 @@
 
       loadProgress();
       startProgressTimer();
+
+      // RoomList が空でなければ getRoomAssignStatus を取得してバッジを出す
+      callApi({ action: 'getRoomList' }).then(function(rl) {
+        if (!rl.ok || !rl.rooms || Object.keys(rl.rooms).length === 0) return;
+        S.roomList = rl.rooms;
+        callApi({ action: 'getRoomAssignStatus' }).then(function(ras) {
+          if (!ras.ok) return;
+          S.raRows           = ras.rows   || [];
+          S.raAssignedByDate = ras.assignedRoomsByDate || {};
+          updateRoomAssignBadge();
+        }).catch(function() {});
+      }).catch(function() {});
     }).catch(function(e) {
       document.getElementById('loading').hidden = true;
       var el = document.getElementById('error');
