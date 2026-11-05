@@ -487,15 +487,6 @@
     }
 
     /* ── 今後の清掃予定タブ：行リスト ── */
-    /* ── 担当別 / エリア別 切り替え ── */
-    .sched-grouping-bar { display: flex; gap: 0.4rem; margin-bottom: 0.5rem; }
-    .sched-grouping-btn {
-      flex: 1; padding: 0.35rem 0; border-radius: 6px;
-      border: 1.5px solid #bbb; background: #fff;
-      font-size: 0.82rem; font-family: inherit; cursor: pointer; text-align: center; color: #333;
-    }
-    .sched-grouping-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
-    .sched-grouping-btn:active:not(.active) { background: var(--border); }
     .sched-staff-label {
       padding: 0.3rem 0.75rem; font-size: 0.8rem; font-weight: bold;
       color: #555; background: #e8eaf6; border-bottom: 1px solid var(--border);
@@ -592,14 +583,7 @@
       font-size: 0.82rem; font-family: inherit; background: var(--card); color: #333;
     }
     .sched-staff-sel:disabled { background: var(--bg); color: var(--muted); }
-    .sched-detail-btn {
-      background: transparent; border: none; color: var(--green); font-size: 0.82rem;
-      font-family: inherit; cursor: pointer; padding: 0.3rem 0; font-weight: bold;
-      display: block; width: 100%; text-align: left;
-    }
-    .sched-detail-btn:active { opacity: 0.7; }
-
-    /* 詳細設定エリア（タスク） */
+    /* 展開コンテンツ（タスク・日程変更） */
     .sched-tasks-section { padding-top: 0.55rem; border-top: 1px solid var(--border); margin-top: 0.4rem; }
     .sched-task-item {
       border: 1px solid var(--border); border-radius: 7px;
@@ -613,26 +597,6 @@
       font-family: inherit; cursor: pointer; margin-top: 0.4rem;
     }
     .btn-sched-add-task:active { opacity: 0.75; }
-    .btn-sched-resend {
-      display: inline-flex; align-items: center; justify-content: center;
-      background: transparent; color: var(--green); border: 1px solid var(--green);
-      border-radius: 5px; padding: 0.4rem 0.7rem; font-size: 0.8rem; font-weight: bold;
-      font-family: inherit; cursor: pointer; margin-top: 0.4rem; margin-left: 0.4rem;
-    }
-    .btn-sched-resend:active { opacity: 0.75; }
-    .sched-default-section {
-      border-top: 1px solid var(--border); margin-top: 0.5rem; padding-top: 0.45rem;
-    }
-    .sched-default-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.3rem; }
-    .sched-default-row { display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.25rem; }
-    .sched-default-name { font-size: 0.78rem; width: 5.5em; flex-shrink: 0; }
-    .btn-sched-default {
-      padding: 0.28rem 0.6rem; border-radius: 5px;
-      border: 1.5px solid var(--border); background: var(--bg);
-      font-size: 0.78rem; font-family: inherit; cursor: pointer; color: var(--muted);
-    }
-    .btn-sched-default.is-on { background: #fffde7; color: #f57f17; border-color: #fff176; }
-    .btn-sched-default:active { opacity: 0.75; }
 
     /* ── 検索モード：日付ラベル・件数超過 ── */
     .sched-date-label {
@@ -958,9 +922,9 @@
         <div class="bstat"><span class="bstat-n" id="s-notin">-</span><span class="bstat-l">インなし</span></div>
         <div class="bstat"><span class="bstat-n" id="s-tasks">-</span><span class="bstat-l">対応予定</span></div>
       </div>
-      <div class="sched-grouping-bar" id="sched-grouping-bar" hidden>
-        <button class="sched-grouping-btn active" id="btn-group-area">エリア別</button>
-        <button class="sched-grouping-btn"        id="btn-group-staff">担当別</button>
+      <div class="view-toggle" id="sched-grouping-bar" hidden>
+        <button class="view-btn"        id="btn-group-staff">スタッフ別</button>
+        <button class="view-btn active" id="btn-group-area">エリア別</button>
       </div>
       <div class="manual-open-row">
         <button id="btn-open-manual" class="btn-open-manual">手入力予約</button>
@@ -1109,7 +1073,7 @@
         <textarea id="task-content" class="form-textarea" placeholder="内容を入力（必須・200文字以内）" maxlength="200"></textarea>
       </div>
       <div class="form-row">
-        <label class="form-label">写真</label>
+        <label class="form-label">写真報告</label>
         <div class="toggle-row">
           <button class="toggle-btn" data-val="false" id="photo-no">不要</button>
           <button class="toggle-btn" data-val="true"  id="photo-yes">必要</button>
@@ -1241,7 +1205,6 @@
       scheduleAssignUpdatedAt: null, // saveAssignments の衝突検知
       scheduleProgressData:    {},   // boardDate===today のときの progressData（DONE チェック用）
       scheduleExpandedKey:     null, // 展開中の行キー（"propName\tdate"）
-      scheduleDetailKey:       null, // 詳細設定が開いている行キー
       scheduleTasks:           {},   // {[propName]: tasks[]} lazy キャッシュ
       scheduleSearchText:      '',   // 検索テキスト
       // 複数日検索
@@ -1551,11 +1514,9 @@
           sItems.forEach(function(item) {
             var key = item.propertyName + '\t' + item.date;
             var isExpanded = (S.scheduleExpandedKey === key);
-            var isDetail   = (S.scheduleDetailKey   === key);
             html += buildSchedItemHtml(item, {
-              isExpanded: isExpanded, isDetail: isDetail,
+              isExpanded: isExpanded,
               showDateLabel: false,
-              showResend: !isSearchMode && (dt === today() || dt === tomorrow()),
               pendingByUid: pendingByUid, areaInline: ''
             });
           });
@@ -2572,7 +2533,7 @@
     function loadScheduleTab(silent) {
       if (S.sessionExpired) return;
       if (silent) {
-        if (_staffPendingSchedule || S.scheduleDetailKey ||
+        if (_staffPendingSchedule || S.scheduleExpandedKey ||
             !document.getElementById('task-modal').hidden ||
             !document.getElementById('task-drawer').hidden) return;
       } else {
@@ -2691,7 +2652,6 @@
 
       var moreCount   = isSearchMode ? Math.max(0, items.length - SEARCH_MAX) : 0;
       var displayItems = isSearchMode ? items.slice(0, SEARCH_MAX) : items;
-      var showResend  = isSearchMode ? false : (S.boardDate === today() || S.boardDate === tomorrow());
 
       var pendingByUid = {};
       (S.lineRequests || []).forEach(function(lr) { if (lr.uid) pendingByUid[lr.uid] = lr; });
@@ -2702,7 +2662,6 @@
         var pn     = item.propertyName;
         var key    = pn + '\t' + item.date;
         var isExpanded = (S.scheduleExpandedKey === key);
-        var isDetail   = (S.scheduleDetailKey   === key);
 
         var itemDate = isSearchMode ? item.date : null;
         if (item.area !== _curArea || itemDate !== _curAreaDate) {
@@ -2713,8 +2672,8 @@
         }
 
         html += buildSchedItemHtml(item, {
-          isExpanded: isExpanded, isDetail: isDetail,
-          showDateLabel: isSearchMode, showResend: showResend,
+          isExpanded: isExpanded,
+          showDateLabel: isSearchMode,
           pendingByUid: pendingByUid, areaInline: '', showOrderNum: false
         });
       });
@@ -2728,9 +2687,7 @@
 
     function buildSchedItemHtml(item, opts) {
       var isExpanded    = opts.isExpanded;
-      var isDetail      = opts.isDetail;
       var showDateLabel = opts.showDateLabel;
-      var showResend    = opts.showResend;
       var pendingByUid  = opts.pendingByUid || {};
       var areaInline    = opts.areaInline   || '';
 
@@ -2800,106 +2757,78 @@
             '<select class="sched-staff-sel" data-sched-assign-key="' + keyEsc + '"' +
               (isDone ? ' disabled' : '') + '>' + selOpts + '</select>' +
           '</div>';
-          h += '<button class="sched-detail-btn" data-sched-detail-key="' + keyEsc + '">' +
-            (isDetail ? '▲ 詳細設定を閉じる' : '▼ 詳細設定') +
-          '</button>';
 
-          if (isDetail) {
-            h += '<div class="sched-tasks-section">';
-            var tasks = S.scheduleTasks[pn];
-            if (!tasks) {
-              h += '<div class="sched-tasks-empty">読み込み中…</div>';
-            } else if (!tasks.length) {
-              h += '<div class="sched-tasks-empty">OPEN の対応はありません</div>';
-            } else {
-              var todayYmd = today();
-              tasks.forEach(function(t) {
-                var dateLabel = t.targetMode === 'NEXT'
-                  ? '次回清掃' + (t.boundDate ? '（' + t.boundDate + '）' : '')
-                  : (t.targetDate || '');
-                var expired = t.targetMode === 'DATE' && t.targetDate && t.targetDate < todayYmd;
-                h += '<div class="sched-task-item">' +
-                  '<div class="task-item-header">' +
-                    '<span class="task-type-badge">' + esc(t.type) + '</span>' +
-                    '<span class="task-date-label">' + esc(dateLabel) + '</span>' +
-                    (expired ? '<span class="task-expired-label">期限切れ</span>' : '') +
-                  '</div>' +
-                  '<div class="task-content">' + esc(t.content) + '</div>' +
-                  (t.photoRequired ? '<div class="task-photo-tag">📷 写真必要</div>' : '') +
-                  '<div class="task-actions">' +
-                    '<button class="btn-task-done" data-sched-tid="' + esc(t.taskId) + '" data-sched-prop="' + pnEsc + '">完了</button>' +
-                    '<button class="btn-task-cancel" data-sched-tid="' + esc(t.taskId) + '" data-sched-prop="' + pnEsc + '">取消</button>' +
-                  '</div>' +
-                '</div>';
-              });
-            }
-            h += '<button class="btn-sched-add-task" data-sched-add-prop="' + pnEsc + '" data-sched-add-date="' + esc(item.date) + '">＋ 対応追加</button>';
-            if (showResend) {
-              h += '<button class="btn-sched-resend" data-sched-resend-prop="' + pnEsc + '">再送</button>';
-            }
-            var defs = S.progressDefaults[pn] || {};
-            var checkIsOn = defs.checkDefault === 'NEED';
-            var trashIsOn = defs.trashDefault === 'NEED';
-            h += '<div class="sched-default-section">' +
-              '<div class="sched-default-label">初期値（清掃開始時の既定）</div>' +
-              '<div class="sched-default-row">' +
-                '<span class="sched-default-name">チェック要</span>' +
-                '<button class="btn-sched-default' + (checkIsOn ? ' is-on' : '') + '"' +
-                  ' data-sched-default-prop="' + pnEsc + '" data-sched-default-field="checkDefault"' +
-                  ' data-sched-default-val="' + (checkIsOn ? 'NEED' : '') + '">' +
-                  (checkIsOn ? 'ON' : 'OFF') +
-                '</button>' +
-              '</div>' +
-              '<div class="sched-default-row">' +
-                '<span class="sched-default-name">ゴミ要回収</span>' +
-                '<button class="btn-sched-default' + (trashIsOn ? ' is-on' : '') + '"' +
-                  ' data-sched-default-prop="' + pnEsc + '" data-sched-default-field="trashDefault"' +
-                  ' data-sched-default-val="' + (trashIsOn ? 'NEED' : '') + '">' +
-                  (trashIsOn ? 'ON' : 'OFF') +
-                '</button>' +
-              '</div>' +
-            '</div>';
-            // 日程変更セクション（iCal 予約のみ）
-            if (item.source !== 'MANUAL') {
-              var tomorrowYmd = tomorrow();
-              var canChange = item.autoDate && item.autoDate >= tomorrowYmd;
-              h += '<div class="sched-date-change-section">' +
-                '<div class="sched-date-change-label">日程変更</div>';
-              if (canChange) {
+          // 対応一覧・追加・再送（タスクデータは openScheduleDetail でロード済み）
+          h += '<div class="sched-tasks-section">';
+          var tasks = S.scheduleTasks[pn];
+          if (!tasks) {
+            h += '<div class="sched-tasks-empty">読み込み中…</div>';
+          } else if (!tasks.length) {
+            h += '<div class="sched-tasks-empty">OPEN の対応はありません</div>';
+          } else {
+            var todayYmd = today();
+            tasks.forEach(function(t) {
+              var taskDateLabel = t.targetMode === 'NEXT'
+                ? '次回清掃' + (t.boundDate ? '（' + t.boundDate + '）' : '')
+                : (t.targetDate || '');
+              var expired = t.targetMode === 'DATE' && t.targetDate && t.targetDate < todayYmd;
+              h += '<div class="sched-task-item">' +
+                '<div class="task-item-header">' +
+                  '<span class="task-type-badge">' + esc(t.type) + '</span>' +
+                  '<span class="task-date-label">' + esc(taskDateLabel) + '</span>' +
+                  (expired ? '<span class="task-expired-label">期限切れ</span>' : '') +
+                '</div>' +
+                '<div class="task-content">' + esc(t.content) + '</div>' +
+                (t.photoRequired ? '<div class="task-photo-tag">📷 写真必要</div>' : '') +
+                '<div class="task-actions">' +
+                  '<button class="btn-task-done" data-sched-tid="' + esc(t.taskId) + '" data-sched-prop="' + pnEsc + '">完了</button>' +
+                  '<button class="btn-task-cancel" data-sched-tid="' + esc(t.taskId) + '" data-sched-prop="' + pnEsc + '">取消</button>' +
+                '</div>' +
+              '</div>';
+            });
+          }
+          h += '<button class="btn-sched-add-task" data-sched-add-prop="' + pnEsc + '" data-sched-add-date="' + esc(item.date) + '">＋ 対応追加</button>';
+          h += '</div>';
+
+          // 日程変更セクション（iCal 予約のみ）
+          if (item.source !== 'MANUAL') {
+            var tomorrowYmd = tomorrow();
+            var canChange = item.autoDate && item.autoDate >= tomorrowYmd;
+            h += '<div class="sched-date-change-section">' +
+              '<div class="sched-date-change-label">日程変更</div>';
+            if (canChange) {
+              h += '<div class="sched-date-change-row">' +
+                '<label>ICS 日付</label>' +
+                '<span>' + esc(fmtDate(item.autoDate)) + '</span>' +
+              '</div>';
+              if (item.manualDate) {
                 h += '<div class="sched-date-change-row">' +
-                  '<label>ICS 日付</label>' +
-                  '<span>' + esc(fmtDate(item.autoDate)) + '</span>' +
-                '</div>';
-                if (item.manualDate) {
-                  h += '<div class="sched-date-change-row">' +
-                    '<label>現在の設定</label>' +
-                    '<span>' + esc(fmtDate(item.manualDate)) + '</span>' +
-                    '<button class="btn-sched-clear-date"' +
-                      ' data-sched-uid="' + esc(uid) + '"' +
-                      ' data-sched-pn="' + pnEsc + '"' +
-                      ' data-sched-old="' + esc(item.manualDate) + '">' +
-                      '元に戻す' +
-                    '</button>' +
-                  '</div>';
-                }
-                h += '<div class="sched-date-change-row">' +
-                  '<label>変更後の日付</label>' +
-                  '<input type="date" class="sched-new-date-input"' +
-                    ' data-sched-uid="' + esc(uid) + '"' +
-                    ' min="' + esc(tomorrowYmd) + '">' +
-                  '<button class="btn-sched-change-date"' +
+                  '<label>現在の設定</label>' +
+                  '<span>' + esc(fmtDate(item.manualDate)) + '</span>' +
+                  '<button class="btn-sched-clear-date"' +
                     ' data-sched-uid="' + esc(uid) + '"' +
                     ' data-sched-pn="' + pnEsc + '"' +
-                    ' data-sched-old="' + esc(item.autoDate) + '">' +
-                    '変更する' +
+                    ' data-sched-old="' + esc(item.manualDate) + '">' +
+                    '元に戻す' +
                   '</button>' +
                 '</div>';
-              } else {
-                h += '<div class="sched-date-change-row">' +
-                  '<span style="font-size:0.8rem;color:var(--muted)">日程変更は明日以降の清掃のみ可能です</span>' +
-                '</div>';
               }
-              h += '</div>';
+              h += '<div class="sched-date-change-row">' +
+                '<label>変更後の日付</label>' +
+                '<input type="date" class="sched-new-date-input"' +
+                  ' data-sched-uid="' + esc(uid) + '"' +
+                  ' min="' + esc(tomorrowYmd) + '">' +
+                '<button class="btn-sched-change-date"' +
+                  ' data-sched-uid="' + esc(uid) + '"' +
+                  ' data-sched-pn="' + pnEsc + '"' +
+                  ' data-sched-old="' + esc(item.autoDate) + '">' +
+                  '変更する' +
+                '</button>' +
+              '</div>';
+            } else {
+              h += '<div class="sched-date-change-row">' +
+                '<span style="font-size:0.8rem;color:var(--muted)">日程変更は明日以降の清掃のみ可能です</span>' +
+              '</div>';
             }
             h += '</div>';
           }
@@ -3860,9 +3789,9 @@
               if (i.propertyName === propName) { i.taskCount++; S.taskCounts[propName] = (S.taskCounts[propName] || 0) + 1; }
             });
           }
-          if (S.scheduleDetailKey) {
-            delete S.scheduleTasks[S.scheduleDetailKey.split('\t')[0]];
-            openScheduleDetail(S.scheduleDetailKey.split('\t')[0]);
+          if (S.scheduleExpandedKey) {
+            delete S.scheduleTasks[S.scheduleExpandedKey.split('\t')[0]];
+            openScheduleDetail(S.scheduleExpandedKey.split('\t')[0]);
           }
           renderScheduleList();
         } else {
@@ -4007,27 +3936,6 @@
         });
     }
 
-    // ── 再送 ─────────────────────────────────────────────────────────
-    function resendBlock(propName) {
-      if (!confirm('この物件の今の担当と対応を、全体グループに送ります。よろしいですか')) return;
-      var RESEND_ERRORS = {
-        already_pending:  '再送は既に依頼済みです（最大5分で届きます）',
-        invalid_property: '物件名が無効です',
-        invalid_date:     '今日か明日の日付のみ再送できます'
-      };
-      callApi({ action: 'resendPropertyBlock', propertyName: propName, date: S.boardDate })
-        .then(function(r) {
-          if (!r.ok) {
-            toast(RESEND_ERRORS[r.error] || ('エラー: ' + (r.error || '不明')));
-            return;
-          }
-          toast('再送を依頼しました。最大5分で届きます');
-        })
-        .catch(function(e) {
-          if (e.isUnauthorized) { handleUnauthorized(); return; }
-          toast('再送エラー: ' + e.message);
-        });
-    }
 
     // ── イベント ──────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', function() {
@@ -4252,7 +4160,6 @@
         if (S.orderMode) exitOrderMode();
         S.boardDate = this.value;
         S.scheduleExpandedKey = null;
-        S.scheduleDetailKey   = null;
         if (S.scheduleSearchFetched) {
           // 範囲データ取得済み：API コールなしに切替
           applyScheduleDate(S.boardDate);
@@ -4294,7 +4201,7 @@
         }
       });
 
-      // 今後の清掃予定タブ：グループ切り替え（エリア別 / 担当別）
+      // 今後の清掃予定タブ：グループ切り替え（スタッフ別 / エリア別）
       document.getElementById('btn-group-area').addEventListener('click', function() {
         if (S.scheduleGrouping === 'area') return;
         S.scheduleGrouping = 'area';
@@ -4345,24 +4252,11 @@
           var k = toggle.dataset.schedToggle;
           if (S.scheduleExpandedKey === k) {
             S.scheduleExpandedKey = null;
-            S.scheduleDetailKey   = null;
-          } else {
-            S.scheduleExpandedKey = k;
-            S.scheduleDetailKey   = null;
-          }
-          renderScheduleList();
-          return;
-        }
-        // 詳細設定ボタン
-        var detailBtn = e.target.closest('[data-sched-detail-key]');
-        if (detailBtn) {
-          var dk = detailBtn.dataset.schedDetailKey;
-          if (S.scheduleDetailKey === dk) {
-            S.scheduleDetailKey = null;
             renderScheduleList();
           } else {
-            S.scheduleDetailKey = dk;
-            openScheduleDetail(dk.split('\t')[0]);
+            S.scheduleExpandedKey = k;
+            renderScheduleList();
+            openScheduleDetail(k.split('\t')[0]);
           }
           return;
         }
@@ -4398,9 +4292,6 @@
         // 対応追加
         var addBtn = e.target.closest('[data-sched-add-prop]');
         if (addBtn) { openTaskModal(addBtn.dataset.schedAddProp, addBtn.dataset.schedAddDate); return; }
-        // 再送
-        var resendBtn = e.target.closest('[data-sched-resend-prop]');
-        if (resendBtn) { resendBlock(resendBtn.dataset.schedResendProp); return; }
         // 既定値トグル
         var defBtn = e.target.closest('[data-sched-default-prop]');
         if (defBtn) {
