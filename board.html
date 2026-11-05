@@ -1408,7 +1408,9 @@
       cancelLastErrorByUid:   {},  // { uid: 'error_code' }
       // 次回メモ
       supplyMasterItems: null,  // null=未取得 / []=失敗/空 / [...]=取得済み
-      nmActiveCategory:  null   // 次回メモドロワーの選択中カテゴリ
+      nmActiveCategory:  null,  // 次回メモドロワーの選択中カテゴリ
+      // エリア設定
+      areaSettings: []          // [{ area, displayName, group, sortOrder }] 起動時に1回取得
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -1441,8 +1443,22 @@
       return (parts[1] | 0) + '/' + (parts[2] | 0);
     }
 
-    var AREA_RANK = { '①': 1, '②': 2, '③': 3, '④': 4, '⑤': 5 };
-    function areaRank(a) { return AREA_RANK[String(a || '').trim()] || 99; }
+    var AREA_RANK_FALLBACK = { '①': 1, '②': 2, '③': 3, '④': 4, '⑤': 5, '⑥': 6, '⑦': 7, '⑧': 8 };
+    var AREA_RANK = {};  // 起動時に getAreaSettings で上書き。空のままならフォールバックを使う
+    function areaRank(a) {
+      var key = String(a || '').trim();
+      var r = AREA_RANK[key];
+      if (r !== undefined) return r;
+      return AREA_RANK_FALLBACK[key] || 99;
+    }
+    function areaDisplayName(a) {
+      var key = String(a || '').trim();
+      if (!key) return 'エリア未設定';
+      for (var i = 0; i < S.areaSettings.length; i++) {
+        if (S.areaSettings[i].area === key) return S.areaSettings[i].displayName;
+      }
+      return 'エリア ' + key;
+    }
 
     var STATUS_RANK = { 'DONE': 0, 'DOING': 1, 'TODO': 2 };
     function statusRank(s) { return STATUS_RANK[s] !== undefined ? STATUS_RANK[s] : 2; }
@@ -1477,7 +1493,7 @@
       items.forEach(function(item) {
         if (item.area !== _curArea) {
           html += '<div class="area-label">' +
-            esc(item.area ? 'エリア ' + item.area : 'エリア未設定') + '</div>';
+            esc(areaDisplayName(item.area)) + '</div>';
           _curArea = item.area;
         }
         var tapIdx = taps.indexOf(item.uid);
@@ -2839,7 +2855,7 @@
         var itemDate = isSearchMode ? item.date : null;
         if (item.area !== _curArea || itemDate !== _curAreaDate) {
           html += '<div class="area-label">' +
-            esc(item.area ? 'エリア ' + item.area : 'エリア未設定') + '</div>';
+            esc(areaDisplayName(item.area)) + '</div>';
           _curArea = item.area;
           _curAreaDate = itemDate;
         }
@@ -3541,7 +3557,7 @@
         return;
       }
 
-      // エリアでグループ化（アルファベット順、空文字は最後）
+      // エリアでグループ化（areaRank 順、空文字は最後）
       var areaGroups = {}, areaOrder = [];
       items.forEach(function(item) {
         var a = item.area || '';
@@ -3551,6 +3567,8 @@
       areaOrder.sort(function(a, b) {
         if (a === '') return 1;
         if (b === '') return -1;
+        var ra = areaRank(a), rb = areaRank(b);
+        if (ra !== rb) return ra - rb;
         return a < b ? -1 : a > b ? 1 : 0;
       });
 
@@ -3576,7 +3594,7 @@
 
         html += '<div class="prog-area-section">';
         html += '<div class="prog-area-header">' +
-          esc(areaName || 'エリア未設定') +
+          esc(areaDisplayName(areaName)) +
           '<span class="prog-section-remain">残り' + remain + '件（完了 ' + done + '/' + total + '）</span>' +
         '</div>';
         html += areaSubSection(sameDayItems, '同日イン');
@@ -5141,6 +5159,15 @@
 
       loadProgress();
       startProgressTimer();
+
+      // エリア設定を起動時に1回だけ取得（失敗してもボードは動く）
+      callApi({ action: 'getAreaSettings' }).then(function(r) {
+        if (r.ok && r.areas && r.areas.length) {
+          S.areaSettings = r.areas;
+          AREA_RANK = {};
+          r.areas.forEach(function(a) { AREA_RANK[a.area] = a.sortOrder; });
+        }
+      }).catch(function() {});
 
       // 案A: ボタンを先に表示（データ取得後に再判定）
       document.getElementById('btn-open-room-assign').hidden = false;
