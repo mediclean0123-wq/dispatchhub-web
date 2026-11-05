@@ -683,6 +683,59 @@
     .btn-cancel-confirm:not(:disabled):active { opacity: 0.75; }
     .btn-cancel-confirm:disabled { opacity: 0.45; cursor: default; }
 
+    /* ── 次回メモドロワー ── */
+    .nm-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 0.75rem; gap: 0.5rem;
+    }
+    .nm-title { font-size: 0.95rem; font-weight: bold; }
+    .nm-prop  { font-size: 0.82rem; color: var(--muted); margin-top: 0.1rem; }
+    .nm-cat-tabs {
+      display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.3rem;
+      margin-bottom: 0.5rem; -webkit-overflow-scrolling: touch;
+    }
+    .nm-cat-tab {
+      flex-shrink: 0; padding: 0.3rem 0.7rem; border-radius: 20px;
+      border: 1.5px solid var(--border); background: var(--bg);
+      font-size: 0.8rem; font-family: inherit; cursor: pointer; color: #555; white-space: nowrap;
+    }
+    .nm-cat-tab.active {
+      border-color: var(--green); background: #e8f5e9; color: var(--green); font-weight: bold;
+    }
+    .nm-subcat-label {
+      font-size: 0.72rem; font-weight: bold; color: var(--muted);
+      padding: 0.2rem 0; margin: 0.4rem 0 0.2rem; border-bottom: 1px solid var(--border);
+    }
+    .nm-items-grid { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.5rem; }
+    .nm-item-btn {
+      padding: 0.4rem 0.6rem; border-radius: 6px;
+      border: 1.5px solid var(--border); background: var(--bg);
+      font-size: 0.82rem; font-family: inherit; cursor: pointer; color: #333; white-space: nowrap;
+    }
+    .nm-item-btn.selected {
+      border-color: var(--green); background: #e8f5e9; color: var(--green); font-weight: bold;
+    }
+    .nm-item-btn:active { opacity: 0.75; }
+    .nm-fallback-msg { font-size: 0.82rem; color: var(--muted); padding: 0.4rem 0 0.6rem; }
+    .nm-selected-row {
+      display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem;
+      padding: 0.35rem 0.6rem; background: #e8f5e9; border: 1px solid #a5d6a7;
+      border-radius: 6px; font-size: 0.85rem;
+    }
+    .nm-selected-label { flex: 1; font-weight: bold; color: #2e7d32; }
+    .nm-clear-btn {
+      background: transparent; border: none; color: #888; cursor: pointer;
+      font-size: 0.85rem; padding: 0 0.2rem; line-height: 1;
+    }
+    .nm-unit-label { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
+    .btn-sched-next-memo {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7;
+      border-radius: 5px; padding: 0.4rem 0.7rem; font-size: 0.8rem; font-weight: bold;
+      font-family: inherit; cursor: pointer; margin-top: 0.4rem; width: 100%;
+    }
+    .btn-sched-next-memo:active { opacity: 0.75; }
+
     /* ── 手入力予約ボタン（手入力予約タブ入口）── */
     .manual-open-row {
       display: flex; gap: 0.5rem; margin-bottom: 0.5rem;
@@ -1168,6 +1221,39 @@
     </div>
   </div>
 
+  <!-- 次回メモドロワー -->
+  <div id="next-memo-drawer" class="drawer-overlay" hidden>
+    <div class="drawer-box">
+      <div class="nm-header">
+        <div>
+          <div class="nm-title">次回メモ追加</div>
+          <div class="nm-prop" id="nm-prop-name"></div>
+        </div>
+        <button class="ped-close-btn" id="nm-close">✕</button>
+      </div>
+      <div id="nm-items-area"></div>
+      <div id="nm-selected-row" class="nm-selected-row" hidden>
+        <span id="nm-selected-label" class="nm-selected-label"></span>
+        <button class="nm-clear-btn" id="nm-clear-item">✕</button>
+      </div>
+      <div id="nm-qty-row" class="form-row">
+        <label class="form-label">数量 <span id="nm-qty-unit" class="nm-unit-label"></span> <span class="char-count">（任意・1〜999）</span></label>
+        <input type="number" id="nm-qty" class="form-input" min="1" max="999" placeholder="数量を入力">
+        <div id="nm-qty-error" class="cc-error" hidden></div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">メモ <span id="nm-memo-count" class="char-count">0 / 90</span></label>
+        <textarea id="nm-memo" class="form-textarea" placeholder="（任意・90文字以内）"></textarea>
+        <div id="nm-memo-error" class="cc-error" hidden></div>
+      </div>
+      <div id="nm-error-msg" class="cc-error" hidden></div>
+      <div class="modal-actions">
+        <button class="btn btn-import" id="nm-back">閉じる</button>
+        <button class="btn btn-save"   id="nm-submit" disabled>追加</button>
+      </div>
+    </div>
+  </div>
+
   <!-- タスク一覧ドロワー -->
   <div id="task-drawer" class="drawer-overlay" hidden>
     <div class="drawer-box">
@@ -1329,7 +1415,10 @@
       // 清掃キャンセル
       cancelPendingByUid:     {},  // { uid: true } CLEAN_CANCEL PENDING
       cancelUndoPendingByUid: {},  // { uid: true } CLEAN_CANCEL_UNDO PENDING
-      cancelLastErrorByUid:   {}   // { uid: 'error_code' }
+      cancelLastErrorByUid:   {},  // { uid: 'error_code' }
+      // 次回メモ
+      supplyMasterItems: null,  // null=未取得 / []=失敗/空 / [...]=取得済み
+      nmActiveCategory:  null   // 次回メモドロワーの選択中カテゴリ
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -2619,7 +2708,8 @@
         if (_staffPendingSchedule || S.scheduleExpandedKey ||
             !document.getElementById('task-modal').hidden ||
             !document.getElementById('task-drawer').hidden ||
-            !document.getElementById('clean-cancel-modal').hidden) return;
+            !document.getElementById('clean-cancel-modal').hidden ||
+            !document.getElementById('next-memo-drawer').hidden) return;
       } else {
         var _sc = lsGet('dh_schedule_range');
         if (_sc) {
@@ -2899,7 +2989,7 @@
                     '<span class="task-date-label">' + esc(taskDateLabel) + '</span>' +
                     (expired ? '<span class="task-expired-label">期限切れ</span>' : '') +
                   '</div>' +
-                  '<div class="task-content">' + esc(t.content) + '</div>' +
+                  '<div class="task-content">' + (t.type === 'CARRY' ? '📦 ' : '') + esc(t.content) + '</div>' +
                   (t.photoRequired ? '<div class="task-photo-tag">📷 写真必要</div>' : '') +
                   '<div class="task-actions">' +
                     '<button class="btn-task-done" data-sched-tid="' + esc(t.taskId) + '" data-sched-prop="' + pnEsc + '">完了</button>' +
@@ -2961,6 +3051,14 @@
                 ' data-sched-cancel-pn="' + pnEsc + '"' +
                 ' data-sched-cancel-date="' + esc(item.date) + '">' +
                 '清掃キャンセル' +
+              '</button>';
+            }
+
+            // 次回メモボタン（管理者のみ）
+            if (S.isAdmin) {
+              h += '<button class="btn-sched-next-memo"' +
+                ' data-sched-next-memo-prop="' + pnEsc + '">' +
+                '📦 次回メモ' +
               '</button>';
             }
           }
@@ -4006,6 +4104,247 @@
     }
     // ────────────────────────────────────────────────────────
 
+    // ── 次回メモドロワー ───────────────────────────────────────
+    var _nmDrawerPn   = '';
+    var _nmSubmitting = false;
+    var _nmSelectedItem = null; // { displayName, unit, defaultQty }
+
+    var NM_ERROR_MSG = {
+      unauthorized:  '管理者のみ操作できます',
+      item_required: '品目を選択してください',
+      invalid_qty:   '数量は1〜999で入力してください',
+      invalid_memo:  'メモに改行を含めることはできません',
+      memo_too_long: 'メモは90文字以内にしてください'
+    };
+    function nmErrMsg(code) {
+      return NM_ERROR_MSG[code] || ('エラー: ' + (code || '不明'));
+    }
+
+    function openNextMemoDrawer(propName) {
+      _nmDrawerPn    = propName;
+      _nmSubmitting  = false;
+      _nmSelectedItem = null;
+      document.getElementById('nm-prop-name').textContent    = propName;
+      document.getElementById('nm-qty').value                = '';
+      document.getElementById('nm-memo').value               = '';
+      document.getElementById('nm-memo-count').textContent   = '0 / 90';
+      document.getElementById('nm-qty-unit').textContent     = '';
+      document.getElementById('nm-qty-error').hidden         = true;
+      document.getElementById('nm-memo-error').hidden        = true;
+      document.getElementById('nm-error-msg').hidden         = true;
+      document.getElementById('nm-selected-row').hidden      = true;
+      document.getElementById('nm-selected-label').textContent = '';
+      document.getElementById('nm-submit').disabled          = true;
+      document.getElementById('nm-back').disabled            = false;
+      document.getElementById('next-memo-drawer').hidden     = false;
+      loadSupplyMaster();
+    }
+
+    function closeNextMemoDrawer() {
+      document.getElementById('next-memo-drawer').hidden = true;
+    }
+
+    function loadSupplyMaster() {
+      if (S.supplyMasterItems !== null) {
+        renderSupplyMasterUI();
+        return;
+      }
+      document.getElementById('nm-items-area').innerHTML =
+        '<div class="nm-fallback-msg">読み込み中…</div>';
+      callApi({ action: 'getSupplyMasterItems' })
+        .then(function(r) {
+          S.supplyMasterItems = (r.ok && r.items && r.items.length) ? r.items : [];
+          renderSupplyMasterUI();
+        })
+        .catch(function() {
+          S.supplyMasterItems = [];
+          renderSupplyMasterUI();
+        });
+    }
+
+    function renderSupplyMasterUI() {
+      var area  = document.getElementById('nm-items-area');
+      var items = S.supplyMasterItems;
+      var qtyRow = document.getElementById('nm-qty-row');
+
+      if (!items || !items.length) {
+        area.innerHTML = '<div class="nm-fallback-msg">備品リストを読み込めません。メモだけで入力できます</div>';
+        qtyRow.hidden  = true;
+        validateNextMemoForm();
+        return;
+      }
+      qtyRow.hidden = false;
+
+      // カテゴリ一覧（順序保持）
+      var categories = [];
+      items.forEach(function(it) {
+        if (categories.indexOf(it.category) < 0) categories.push(it.category);
+      });
+      if (!S.nmActiveCategory || categories.indexOf(S.nmActiveCategory) < 0) {
+        S.nmActiveCategory = categories[0];
+      }
+      var cat = S.nmActiveCategory;
+
+      var h = '<div class="nm-cat-tabs">';
+      categories.forEach(function(c) {
+        h += '<button class="nm-cat-tab' + (c === cat ? ' active' : '') +
+          '" data-nm-cat="' + esc(c) + '">' + esc(c) + '</button>';
+      });
+      h += '</div>';
+
+      var catItems = items.filter(function(it) { return it.category === cat; });
+      var subCats  = [];
+      catItems.forEach(function(it) {
+        if (subCats.indexOf(it.subCategory) < 0) subCats.push(it.subCategory);
+      });
+      subCats.forEach(function(sc) {
+        h += '<div class="nm-subcat-label">' + esc(sc) + '</div>';
+        h += '<div class="nm-items-grid">';
+        catItems.filter(function(it) { return it.subCategory === sc; }).forEach(function(it) {
+          var isSel = _nmSelectedItem && _nmSelectedItem.displayName === it.displayName;
+          h += '<button class="nm-item-btn' + (isSel ? ' selected' : '') + '"' +
+            ' data-nm-item="' + esc(it.displayName) + '"' +
+            ' data-nm-unit="' + esc(it.unit) + '"' +
+            ' data-nm-defqty="' + (it.defaultQty != null ? it.defaultQty : '') + '">' +
+            esc(it.displayName) + '</button>';
+        });
+        h += '</div>';
+      });
+      area.innerHTML = h;
+      validateNextMemoForm();
+    }
+
+    function selectNextMemoItem(displayName, unit, defaultQty) {
+      if (_nmSelectedItem && _nmSelectedItem.displayName === displayName) {
+        _nmSelectedItem = null;
+        document.getElementById('nm-selected-row').hidden = true;
+        document.getElementById('nm-selected-label').textContent = '';
+        document.getElementById('nm-qty-unit').textContent = '';
+        document.getElementById('nm-qty').value = '';
+      } else {
+        _nmSelectedItem = { displayName: displayName, unit: unit, defaultQty: defaultQty };
+        document.getElementById('nm-selected-row').hidden = false;
+        document.getElementById('nm-selected-label').textContent =
+          displayName + (unit ? '（' + unit + '）' : '');
+        document.getElementById('nm-qty-unit').textContent = unit ? '（' + unit + '）' : '';
+        if (defaultQty != null) {
+          document.getElementById('nm-qty').value = defaultQty;
+        }
+      }
+      renderSupplyMasterUI();
+    }
+
+    function validateNextMemoForm() {
+      var items = S.supplyMasterItems;
+      // 備品リスト取得前は無効
+      if (items === null) { document.getElementById('nm-submit').disabled = true; return; }
+
+      var isFallback = !items.length;
+      if (!isFallback && !_nmSelectedItem) {
+        document.getElementById('nm-submit').disabled = true;
+        return;
+      }
+
+      var qtyEl  = document.getElementById('nm-qty');
+      var qtyErr = document.getElementById('nm-qty-error');
+      if (!isFallback && qtyEl.value.trim() !== '') {
+        var qtyNum = Number(qtyEl.value.trim());
+        if (!Number.isInteger(qtyNum) || qtyNum < 1 || qtyNum > 999) {
+          qtyErr.textContent = '数量は1〜999で入力してください';
+          qtyErr.hidden      = false;
+          document.getElementById('nm-submit').disabled = true;
+          return;
+        }
+      }
+      qtyErr.hidden = true;
+
+      var memo    = document.getElementById('nm-memo').value;
+      var memoErr = document.getElementById('nm-memo-error');
+      if (/[\r\n]/.test(memo)) {
+        memoErr.textContent = 'メモに改行を含めることはできません';
+        memoErr.hidden      = false;
+        document.getElementById('nm-submit').disabled = true;
+        return;
+      }
+      if (memo.length > 90) {
+        memoErr.textContent = 'メモは90文字以内にしてください';
+        memoErr.hidden      = false;
+        document.getElementById('nm-submit').disabled = true;
+        return;
+      }
+      memoErr.hidden = true;
+
+      if (isFallback && !memo.trim()) {
+        document.getElementById('nm-submit').disabled = true;
+        return;
+      }
+      document.getElementById('nm-submit').disabled = false;
+    }
+
+    function submitNextMemo() {
+      if (_nmSubmitting) return;
+      var items    = S.supplyMasterItems;
+      var memo     = document.getElementById('nm-memo').value;
+      var isFallback = !items || !items.length;
+
+      var apiReq = {
+        action:        'addCleanTask',
+        propertyName:  _nmDrawerPn,
+        type:          'CARRY',
+        targetMode:    'NEXT',
+        photoRequired: false
+      };
+
+      if (isFallback) {
+        var content = memo.trim();
+        if (!content) { toast('メモを入力してください'); return; }
+        apiReq.content = content;
+      } else {
+        if (!_nmSelectedItem) { toast('品目を選択してください'); return; }
+        apiReq.item = _nmSelectedItem.displayName;
+        var qtyVal = document.getElementById('nm-qty').value.trim();
+        if (qtyVal !== '') apiReq.qty = parseInt(qtyVal, 10);
+        if (memo) apiReq.memo = memo;
+      }
+
+      _nmSubmitting = true;
+      document.getElementById('nm-submit').disabled = true;
+      document.getElementById('nm-back').disabled   = true;
+      document.getElementById('nm-error-msg').hidden = true;
+
+      callApi(apiReq)
+        .then(function(r) {
+          _nmSubmitting = false;
+          document.getElementById('nm-back').disabled = false;
+          if (r.ok) {
+            closeNextMemoDrawer();
+            toast('次回メモを追加しました ✓');
+            delete S.scheduleTasks[_nmDrawerPn];
+            S.taskCounts[_nmDrawerPn] = (S.taskCounts[_nmDrawerPn] || 0) + 1;
+            S.scheduleItems.forEach(function(i) {
+              if (i.propertyName === _nmDrawerPn) i.taskCount = S.taskCounts[_nmDrawerPn];
+            });
+            if (S.scheduleExpandedKey && S.scheduleExpandedKey.split('\t')[0] === _nmDrawerPn) {
+              openScheduleDetail(_nmDrawerPn);
+            }
+            renderScheduleList();
+          } else {
+            document.getElementById('nm-error-msg').textContent = nmErrMsg(r.error);
+            document.getElementById('nm-error-msg').hidden      = false;
+            document.getElementById('nm-submit').disabled       = false;
+          }
+        })
+        .catch(function(err) {
+          _nmSubmitting = false;
+          document.getElementById('nm-back').disabled    = false;
+          document.getElementById('nm-submit').disabled  = false;
+          if (err.isUnauthorized) { handleUnauthorized(); return; }
+          document.getElementById('nm-error-msg').textContent = 'エラー: ' + err.message;
+          document.getElementById('nm-error-msg').hidden      = false;
+        });
+    }
+    // ────────────────────────────────────────────────────────
+
     function submitTask() {
       var propName   = taskModal.propName;
       var boundDate  = taskModal.boundDate;
@@ -4101,7 +4440,7 @@
             '<span class="task-date-label">' + esc(dateLabel) + '</span>' +
             (expired ? '<span class="task-expired-label">期限切れ</span>' : '') +
           '</div>' +
-          '<div class="task-content">' + esc(t.content) + '</div>' +
+          '<div class="task-content">' + (t.type === 'CARRY' ? '📦 ' : '') + esc(t.content) + '</div>' +
           (t.photoRequired ? '<div class="task-photo-tag">📷 写真必要</div>' : '') +
           '<div class="task-actions">' +
             '<button class="btn-task-done"   data-tid="' + esc(t.taskId) + '" data-prop="' + esc(propName) + '">完了</button>' +
@@ -4459,6 +4798,46 @@
         if (e.target === this) closeCleanCancelModal();
       });
 
+      // 次回メモドロワー内部イベント
+      document.getElementById('nm-close').addEventListener('click', closeNextMemoDrawer);
+      document.getElementById('nm-back').addEventListener('click', closeNextMemoDrawer);
+      document.getElementById('nm-submit').addEventListener('click', submitNextMemo);
+      document.getElementById('next-memo-drawer').addEventListener('click', function(e) {
+        if (e.target === this) closeNextMemoDrawer();
+      });
+      document.getElementById('nm-items-area').addEventListener('click', function(e) {
+        var catTab = e.target.closest('[data-nm-cat]');
+        if (catTab) {
+          S.nmActiveCategory = catTab.dataset.nmCat;
+          renderSupplyMasterUI();
+          return;
+        }
+        var itemBtn = e.target.closest('[data-nm-item]');
+        if (itemBtn) {
+          var defQtyStr = itemBtn.dataset.nmDefqty;
+          selectNextMemoItem(
+            itemBtn.dataset.nmItem,
+            itemBtn.dataset.nmUnit,
+            defQtyStr !== '' ? parseInt(defQtyStr, 10) : null
+          );
+          return;
+        }
+      });
+      document.getElementById('nm-clear-item').addEventListener('click', function() {
+        _nmSelectedItem = null;
+        document.getElementById('nm-selected-row').hidden = true;
+        document.getElementById('nm-selected-label').textContent = '';
+        document.getElementById('nm-qty-unit').textContent = '';
+        document.getElementById('nm-qty').value = '';
+        renderSupplyMasterUI();
+      });
+      document.getElementById('nm-qty').addEventListener('input', validateNextMemoForm);
+      document.getElementById('nm-memo').addEventListener('input', function() {
+        var len = this.value.length;
+        document.getElementById('nm-memo-count').textContent = len + ' / 90';
+        validateNextMemoForm();
+      });
+
       // ドロワー背景タップで閉じる
       document.getElementById('task-drawer').addEventListener('click', function(e) {
         if (e.target === this) closeTaskDrawer();
@@ -4620,6 +4999,12 @@
         var undoBtn = e.target.closest('[data-sched-undo-uid]');
         if (undoBtn) {
           submitCleanCancelUndo(undoBtn.dataset.schedUndoUid);
+          return;
+        }
+        // 次回メモボタン
+        var nmBtn = e.target.closest('[data-sched-next-memo-prop]');
+        if (nmBtn) {
+          openNextMemoDrawer(nmBtn.dataset.schedNextMemoProp);
           return;
         }
       });
