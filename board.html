@@ -717,24 +717,21 @@
     }
     .nm-item-btn:active { opacity: 0.75; }
     .nm-fallback-msg { font-size: 0.82rem; color: var(--muted); padding: 0.4rem 0 0.6rem; }
-    .nm-selected-row {
-      display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem;
-      padding: 0.35rem 0.6rem; background: #e8f5e9; border: 1px solid #a5d6a7;
-      border-radius: 6px; font-size: 0.85rem;
-    }
-    .nm-selected-label { flex: 1; font-weight: bold; color: #2e7d32; }
-    .nm-clear-btn {
-      background: transparent; border: none; color: #888; cursor: pointer;
-      font-size: 0.85rem; padding: 0 0.2rem; line-height: 1;
-    }
     .nm-unit-label { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
-    .btn-sched-next-memo {
-      display: inline-flex; align-items: center; justify-content: center;
-      background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7;
-      border-radius: 5px; padding: 0.4rem 0.7rem; font-size: 0.8rem; font-weight: bold;
-      font-family: inherit; cursor: pointer; margin-top: 0.4rem; width: 100%;
+    .nm-selected-list { margin-bottom: 0.4rem; }
+    .nm-sel-item {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.3rem 0; border-bottom: 1px solid var(--border);
     }
-    .btn-sched-next-memo:active { opacity: 0.75; }
+    .nm-sel-name { flex: 1; font-size: 0.85rem; }
+    .nm-sel-qty {
+      width: 4.2rem; padding: 0.25rem 0.4rem; border: 1px solid var(--border);
+      border-radius: 4px; font-size: 0.85rem; font-family: inherit;
+    }
+    .nm-sel-del {
+      flex-shrink: 0; border: none; background: none; cursor: pointer;
+      color: #999; font-size: 1rem; padding: 0.1rem 0.3rem;
+    }
 
     /* ── 手入力予約ボタン（手入力予約タブ入口）── */
     .manual-open-row {
@@ -1226,21 +1223,13 @@
     <div class="drawer-box">
       <div class="nm-header">
         <div>
-          <div class="nm-title">次回メモ追加</div>
+          <div class="nm-title">次回の補充備品を追加</div>
           <div class="nm-prop" id="nm-prop-name"></div>
         </div>
         <button class="ped-close-btn" id="nm-close">✕</button>
       </div>
       <div id="nm-items-area"></div>
-      <div id="nm-selected-row" class="nm-selected-row" hidden>
-        <span id="nm-selected-label" class="nm-selected-label"></span>
-        <button class="nm-clear-btn" id="nm-clear-item">✕</button>
-      </div>
-      <div id="nm-qty-row" class="form-row">
-        <label class="form-label">数量 <span id="nm-qty-unit" class="nm-unit-label"></span> <span class="char-count">（任意・1〜999）</span></label>
-        <input type="number" id="nm-qty" class="form-input" min="1" max="999" placeholder="数量を入力">
-        <div id="nm-qty-error" class="cc-error" hidden></div>
-      </div>
+      <div id="nm-selected-list" class="nm-selected-list"></div>
       <div class="form-row">
         <label class="form-label">メモ <span id="nm-memo-count" class="char-count">0 / 90</span></label>
         <textarea id="nm-memo" class="form-textarea" placeholder="（任意・90文字以内）"></textarea>
@@ -1327,7 +1316,7 @@
       </div>
       <div class="ped-section">
         <button id="ped-tasks-btn" class="btn-ped-tasks">対応を見る</button>
-        <button id="ped-next-memo-btn" class="btn-sched-next-memo" style="margin-top:0.4rem" hidden>📦 次回メモ</button>
+        <button id="ped-next-memo-btn" class="btn-ped-tasks" style="margin-top:0.4rem" hidden>次回の補充備品</button>
       </div>
     </div>
   </div>
@@ -4102,10 +4091,11 @@
     // ────────────────────────────────────────────────────────
 
     // ── 次回メモドロワー ───────────────────────────────────────
-    var _nmDrawerPn   = '';
-    var _nmAfterDate  = '';
-    var _nmSubmitting = false;
-    var _nmSelectedItem = null; // { displayName, unit, defaultQty }
+    var _nmDrawerPn    = '';
+    var _nmAfterDate   = '';
+    var _nmSubmitting  = false;
+    var _nmSelectedItems = []; // [{ displayName, unit, defaultQty, qty }]
+    var NM_MAX_ITEMS = 10;
 
     var NM_ERROR_MSG = {
       unauthorized:  '管理者のみ操作できます',
@@ -4119,23 +4109,19 @@
     }
 
     function openNextMemoDrawer(propName, afterDate) {
-      _nmDrawerPn    = propName;
-      _nmAfterDate   = afterDate || '';
-      _nmSubmitting  = false;
-      _nmSelectedItem = null;
-      document.getElementById('nm-prop-name').textContent    = propName;
-      document.getElementById('nm-qty').value                = '';
-      document.getElementById('nm-memo').value               = '';
-      document.getElementById('nm-memo-count').textContent   = '0 / 90';
-      document.getElementById('nm-qty-unit').textContent     = '';
-      document.getElementById('nm-qty-error').hidden         = true;
-      document.getElementById('nm-memo-error').hidden        = true;
-      document.getElementById('nm-error-msg').hidden         = true;
-      document.getElementById('nm-selected-row').hidden      = true;
-      document.getElementById('nm-selected-label').textContent = '';
-      document.getElementById('nm-submit').disabled          = true;
-      document.getElementById('nm-back').disabled            = false;
-      document.getElementById('next-memo-drawer').hidden     = false;
+      _nmDrawerPn      = propName;
+      _nmAfterDate     = afterDate || '';
+      _nmSubmitting    = false;
+      _nmSelectedItems = [];
+      document.getElementById('nm-prop-name').textContent  = propName;
+      document.getElementById('nm-memo').value             = '';
+      document.getElementById('nm-memo-count').textContent = '0 / 90';
+      document.getElementById('nm-memo-error').hidden      = true;
+      document.getElementById('nm-error-msg').hidden       = true;
+      document.getElementById('nm-selected-list').innerHTML = '';
+      document.getElementById('nm-submit').disabled        = true;
+      document.getElementById('nm-back').disabled          = false;
+      document.getElementById('next-memo-drawer').hidden   = false;
       loadSupplyMaster();
     }
 
@@ -4164,15 +4150,12 @@
     function renderSupplyMasterUI() {
       var area  = document.getElementById('nm-items-area');
       var items = S.supplyMasterItems;
-      var qtyRow = document.getElementById('nm-qty-row');
 
       if (!items || !items.length) {
         area.innerHTML = '<div class="nm-fallback-msg">備品リストを読み込めません。メモだけで入力できます</div>';
-        qtyRow.hidden  = true;
         validateNextMemoForm();
         return;
       }
-      qtyRow.hidden = false;
 
       // カテゴリ一覧（順序保持）
       var categories = [];
@@ -4200,7 +4183,7 @@
         h += '<div class="nm-subcat-label">' + esc(sc) + '</div>';
         h += '<div class="nm-items-grid">';
         catItems.filter(function(it) { return it.subCategory === sc; }).forEach(function(it) {
-          var isSel = _nmSelectedItem && _nmSelectedItem.displayName === it.displayName;
+          var isSel = _nmSelectedItems.some(function(si) { return si.displayName === it.displayName; });
           h += '<button class="nm-item-btn' + (isSel ? ' selected' : '') + '"' +
             ' data-nm-item="' + esc(it.displayName) + '"' +
             ' data-nm-unit="' + esc(it.unit) + '"' +
@@ -4213,52 +4196,76 @@
       validateNextMemoForm();
     }
 
-    function selectNextMemoItem(displayName, unit, defaultQty) {
-      if (_nmSelectedItem && _nmSelectedItem.displayName === displayName) {
-        _nmSelectedItem = null;
-        document.getElementById('nm-selected-row').hidden = true;
-        document.getElementById('nm-selected-label').textContent = '';
-        document.getElementById('nm-qty-unit').textContent = '';
-        document.getElementById('nm-qty').value = '';
+    function renderNmSelectedList() {
+      var list = document.getElementById('nm-selected-list');
+      if (!_nmSelectedItems.length) { list.innerHTML = ''; return; }
+      var h = '';
+      _nmSelectedItems.forEach(function(item, idx) {
+        var qtyStr = item.qty != null ? String(item.qty) : '';
+        h += '<div class="nm-sel-item">' +
+          '<span class="nm-sel-name">' + esc(item.displayName) +
+            (item.unit ? '<span class="nm-unit-label">（' + esc(item.unit) + '）</span>' : '') +
+          '</span>' +
+          '<input type="number" class="nm-sel-qty" data-nm-sel-qty="' + idx + '" min="1" max="999" placeholder="数量"' +
+            (qtyStr !== '' ? ' value="' + esc(qtyStr) + '"' : '') + '>' +
+          '<button class="nm-sel-del" data-nm-sel-del="' + idx + '">✕</button>' +
+          '</div>';
+      });
+      list.innerHTML = h;
+    }
+
+    function toggleNextMemoItem(displayName, unit, defaultQty) {
+      var existingIdx = -1;
+      _nmSelectedItems.forEach(function(si, i) {
+        if (si.displayName === displayName) existingIdx = i;
+      });
+      if (existingIdx >= 0) {
+        _nmSelectedItems.splice(existingIdx, 1);
+        document.getElementById('nm-error-msg').hidden = true;
       } else {
-        _nmSelectedItem = { displayName: displayName, unit: unit, defaultQty: defaultQty };
-        document.getElementById('nm-selected-row').hidden = false;
-        document.getElementById('nm-selected-label').textContent =
-          displayName + (unit ? '（' + unit + '）' : '');
-        document.getElementById('nm-qty-unit').textContent = unit ? '（' + unit + '）' : '';
-        if (defaultQty != null) {
-          document.getElementById('nm-qty').value = defaultQty;
+        if (_nmSelectedItems.length >= NM_MAX_ITEMS) {
+          document.getElementById('nm-error-msg').textContent = '一度に選べるのは' + NM_MAX_ITEMS + '品目までです';
+          document.getElementById('nm-error-msg').hidden = false;
+          return;
         }
+        _nmSelectedItems.push({
+          displayName: displayName,
+          unit: unit,
+          defaultQty: defaultQty,
+          qty: defaultQty != null ? String(defaultQty) : ''
+        });
       }
+      renderNmSelectedList();
       renderSupplyMasterUI();
     }
 
     function validateNextMemoForm() {
       var items = S.supplyMasterItems;
-      // 備品リスト取得前は無効
       if (items === null) { document.getElementById('nm-submit').disabled = true; return; }
 
       var isFallback = !items.length;
-      if (!isFallback && !_nmSelectedItem) {
+      var memo    = document.getElementById('nm-memo').value;
+      var memoErr = document.getElementById('nm-memo-error');
+
+      if (!isFallback && _nmSelectedItems.length === 0) {
         document.getElementById('nm-submit').disabled = true;
         return;
       }
 
-      var qtyEl  = document.getElementById('nm-qty');
-      var qtyErr = document.getElementById('nm-qty-error');
-      if (!isFallback && qtyEl.value.trim() !== '') {
-        var qtyNum = Number(qtyEl.value.trim());
-        if (!Number.isInteger(qtyNum) || qtyNum < 1 || qtyNum > 999) {
-          qtyErr.textContent = '数量は1〜999で入力してください';
-          qtyErr.hidden      = false;
-          document.getElementById('nm-submit').disabled = true;
-          return;
+      // 品目ごとの数量チェック
+      if (!isFallback) {
+        for (var i = 0; i < _nmSelectedItems.length; i++) {
+          var qtyStr = String(_nmSelectedItems[i].qty || '').trim();
+          if (qtyStr !== '') {
+            var qtyNum = Number(qtyStr);
+            if (!Number.isInteger(qtyNum) || qtyNum < 1 || qtyNum > 999) {
+              document.getElementById('nm-submit').disabled = true;
+              return;
+            }
+          }
         }
       }
-      qtyErr.hidden = true;
 
-      var memo    = document.getElementById('nm-memo').value;
-      var memoErr = document.getElementById('nm-memo-error');
       if (/[\r\n]/.test(memo)) {
         memoErr.textContent = 'メモに改行を含めることはできません';
         memoErr.hidden      = false;
@@ -4280,79 +4287,123 @@
       document.getElementById('nm-submit').disabled = false;
     }
 
+    function nmOnAllSuccess(successCount, allBoundDates) {
+      closeNextMemoDrawer();
+      var toastMsg;
+      if (_nmAfterDate) {
+        var sameDate = allBoundDates.length > 0 &&
+          allBoundDates.every(function(d) { return d === allBoundDates[0]; });
+        if (sameDate && allBoundDates[0]) {
+          var bd = allBoundDates[0].split('-');
+          toastMsg = '次の清掃（' + parseInt(bd[1], 10) + '/' + parseInt(bd[2], 10) + '）の対応に入ります ✓';
+        } else {
+          toastMsg = '次の清掃の予約が入ったら、その清掃の対応に入ります ✓';
+        }
+      } else {
+        toastMsg = '次回メモを追加しました ✓';
+      }
+      toast(toastMsg);
+      delete S.scheduleTasks[_nmDrawerPn];
+      S.taskCounts[_nmDrawerPn] = (S.taskCounts[_nmDrawerPn] || 0) + successCount;
+      S.scheduleItems.forEach(function(i) {
+        if (i.propertyName === _nmDrawerPn) i.taskCount = S.taskCounts[_nmDrawerPn];
+      });
+      if (S.scheduleExpandedKey && S.scheduleExpandedKey.split('\t')[0] === _nmDrawerPn) {
+        openScheduleDetail(_nmDrawerPn);
+      }
+      renderScheduleList();
+    }
+
     function submitNextMemo() {
       if (_nmSubmitting) return;
-      var items    = S.supplyMasterItems;
-      var memo     = document.getElementById('nm-memo').value;
+      var items      = S.supplyMasterItems;
+      var memo       = document.getElementById('nm-memo').value;
       var isFallback = !items || !items.length;
 
-      var apiReq = {
-        action:        'addCleanTask',
-        propertyName:  _nmDrawerPn,
-        type:          'CARRY',
-        targetMode:    'NEXT',
-        photoRequired: false
-      };
-      if (_nmAfterDate) apiReq.afterDate = _nmAfterDate;
+      _nmSubmitting = true;
+      document.getElementById('nm-submit').disabled  = true;
+      document.getElementById('nm-back').disabled    = true;
+      document.getElementById('nm-error-msg').hidden = true;
 
       if (isFallback) {
         var content = memo.trim();
-        if (!content) { toast('メモを入力してください'); return; }
-        apiReq.content = content;
-      } else {
-        if (!_nmSelectedItem) { toast('品目を選択してください'); return; }
-        apiReq.item = _nmSelectedItem.displayName;
-        var qtyVal = document.getElementById('nm-qty').value.trim();
-        if (qtyVal !== '') apiReq.qty = parseInt(qtyVal, 10);
-        if (memo) apiReq.memo = memo;
+        if (!content) { _nmSubmitting = false; document.getElementById('nm-submit').disabled = false; document.getElementById('nm-back').disabled = false; toast('メモを入力してください'); return; }
+        var fallbackReq = {
+          action: 'addCleanTask', propertyName: _nmDrawerPn,
+          type: 'CARRY', targetMode: 'NEXT', photoRequired: false, content: content
+        };
+        if (_nmAfterDate) fallbackReq.afterDate = _nmAfterDate;
+        callApi(fallbackReq)
+          .then(function(r) {
+            _nmSubmitting = false;
+            document.getElementById('nm-back').disabled = false;
+            if (r.ok) {
+              nmOnAllSuccess(1, [r.boundDate || '']);
+            } else {
+              document.getElementById('nm-error-msg').textContent = nmErrMsg(r.error);
+              document.getElementById('nm-error-msg').hidden      = false;
+              document.getElementById('nm-submit').disabled       = false;
+            }
+          })
+          .catch(function(err) {
+            _nmSubmitting = false;
+            document.getElementById('nm-back').disabled   = false;
+            document.getElementById('nm-submit').disabled = false;
+            if (err.isUnauthorized) { handleUnauthorized(); return; }
+            document.getElementById('nm-error-msg').textContent = 'エラー: ' + err.message;
+            document.getElementById('nm-error-msg').hidden      = false;
+          });
+        return;
       }
 
-      _nmSubmitting = true;
-      document.getElementById('nm-submit').disabled = true;
-      document.getElementById('nm-back').disabled   = true;
-      document.getElementById('nm-error-msg').hidden = true;
+      // 複数品目: 順番に送信
+      var snapshot     = _nmSelectedItems.map(function(si) { return Object.assign({}, si); });
+      var baseReq      = { action: 'addCleanTask', propertyName: _nmDrawerPn, type: 'CARRY', targetMode: 'NEXT', photoRequired: false };
+      if (_nmAfterDate) baseReq.afterDate = _nmAfterDate;
+      var successCount = 0;
+      var failedItems  = [];
+      var allBoundDates = [];
+      var idx = 0;
 
-      callApi(apiReq)
-        .then(function(r) {
+      function sendNext() {
+        if (idx >= snapshot.length) {
           _nmSubmitting = false;
           document.getElementById('nm-back').disabled = false;
-          if (r.ok) {
-            closeNextMemoDrawer();
-            var toastMsg;
-            if (_nmAfterDate) {
-              if (r.boundDate) {
-                var bd = r.boundDate.split('-');
-                toastMsg = '次の清掃（' + parseInt(bd[1], 10) + '/' + parseInt(bd[2], 10) + '）の対応に入ります ✓';
-              } else {
-                toastMsg = '次の清掃の予約が入ったら、その清掃の対応に入ります ✓';
-              }
-            } else {
-              toastMsg = '次回メモを追加しました ✓';
-            }
-            toast(toastMsg);
-            delete S.scheduleTasks[_nmDrawerPn];
-            S.taskCounts[_nmDrawerPn] = (S.taskCounts[_nmDrawerPn] || 0) + 1;
-            S.scheduleItems.forEach(function(i) {
-              if (i.propertyName === _nmDrawerPn) i.taskCount = S.taskCounts[_nmDrawerPn];
-            });
-            if (S.scheduleExpandedKey && S.scheduleExpandedKey.split('\t')[0] === _nmDrawerPn) {
-              openScheduleDetail(_nmDrawerPn);
-            }
-            renderScheduleList();
+          if (failedItems.length === 0) {
+            nmOnAllSuccess(successCount, allBoundDates);
           } else {
-            document.getElementById('nm-error-msg').textContent = nmErrMsg(r.error);
-            document.getElementById('nm-error-msg').hidden      = false;
-            document.getElementById('nm-submit').disabled       = false;
+            document.getElementById('nm-submit').disabled = false;
+            _nmSelectedItems = failedItems.map(function(fi) { return fi.item; });
+            renderNmSelectedList();
+            renderSupplyMasterUI();
+            var failNames = failedItems.map(function(fi) { return fi.item.displayName; }).join('、');
+            document.getElementById('nm-error-msg').textContent =
+              successCount + '件追加、' + failedItems.length + '件失敗（' + failNames + '）';
+            document.getElementById('nm-error-msg').hidden = false;
           }
-        })
-        .catch(function(err) {
-          _nmSubmitting = false;
-          document.getElementById('nm-back').disabled    = false;
-          document.getElementById('nm-submit').disabled  = false;
-          if (err.isUnauthorized) { handleUnauthorized(); return; }
-          document.getElementById('nm-error-msg').textContent = 'エラー: ' + err.message;
-          document.getElementById('nm-error-msg').hidden      = false;
-        });
+          return;
+        }
+        var item = snapshot[idx];
+        var req  = Object.assign({}, baseReq);
+        req.item = item.displayName;
+        var qtyStr = String(item.qty || '').trim();
+        if (qtyStr !== '') req.qty = parseInt(qtyStr, 10);
+        if (idx === 0 && memo.trim()) req.memo = memo.trim();
+        callApi(req)
+          .then(function(r) {
+            if (r.ok) { successCount++; allBoundDates.push(r.boundDate || ''); }
+            else       { failedItems.push({ item: item }); }
+            idx++;
+            sendNext();
+          })
+          .catch(function(err) {
+            if (err.isUnauthorized) { _nmSubmitting = false; handleUnauthorized(); return; }
+            failedItems.push({ item: item });
+            idx++;
+            sendNext();
+          });
+      }
+      sendNext();
     }
     // ────────────────────────────────────────────────────────
 
@@ -4833,7 +4884,7 @@
         var itemBtn = e.target.closest('[data-nm-item]');
         if (itemBtn) {
           var defQtyStr = itemBtn.dataset.nmDefqty;
-          selectNextMemoItem(
+          toggleNextMemoItem(
             itemBtn.dataset.nmItem,
             itemBtn.dataset.nmUnit,
             defQtyStr !== '' ? parseInt(defQtyStr, 10) : null
@@ -4841,15 +4892,26 @@
           return;
         }
       });
-      document.getElementById('nm-clear-item').addEventListener('click', function() {
-        _nmSelectedItem = null;
-        document.getElementById('nm-selected-row').hidden = true;
-        document.getElementById('nm-selected-label').textContent = '';
-        document.getElementById('nm-qty-unit').textContent = '';
-        document.getElementById('nm-qty').value = '';
-        renderSupplyMasterUI();
+      document.getElementById('nm-selected-list').addEventListener('click', function(e) {
+        var delBtn = e.target.closest('[data-nm-sel-del]');
+        if (delBtn) {
+          var idx = parseInt(delBtn.dataset.nmSelDel, 10);
+          _nmSelectedItems.splice(idx, 1);
+          renderNmSelectedList();
+          renderSupplyMasterUI();
+          validateNextMemoForm();
+        }
       });
-      document.getElementById('nm-qty').addEventListener('input', validateNextMemoForm);
+      document.getElementById('nm-selected-list').addEventListener('input', function(e) {
+        var qtyInput = e.target.closest('[data-nm-sel-qty]');
+        if (qtyInput) {
+          var idx = parseInt(qtyInput.dataset.nmSelQty, 10);
+          if (_nmSelectedItems[idx]) {
+            _nmSelectedItems[idx].qty = qtyInput.value;
+            validateNextMemoForm();
+          }
+        }
+      });
       document.getElementById('nm-memo').addEventListener('input', function() {
         var len = this.value.length;
         document.getElementById('nm-memo-count').textContent = len + ' / 90';
