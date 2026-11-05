@@ -1327,6 +1327,7 @@
       </div>
       <div class="ped-section">
         <button id="ped-tasks-btn" class="btn-ped-tasks">対応を見る</button>
+        <button id="ped-next-memo-btn" class="btn-sched-next-memo" style="margin-top:0.4rem" hidden>📦 次回メモ</button>
       </div>
     </div>
   </div>
@@ -3054,13 +3055,6 @@
               '</button>';
             }
 
-            // 次回メモボタン（管理者のみ）
-            if (S.isAdmin) {
-              h += '<button class="btn-sched-next-memo"' +
-                ' data-sched-next-memo-prop="' + pnEsc + '">' +
-                '📦 次回メモ' +
-              '</button>';
-            }
           }
 
           h += '</div>';
@@ -3698,6 +3692,9 @@
       var cnt = S.taskCounts[pn] || 0;
       document.getElementById('ped-tasks-btn').textContent =
         cnt > 0 ? '対応を見る（' + cnt + '件）' : '対応を見る';
+
+      // 次回メモボタン（管理者のみ表示）
+      document.getElementById('ped-next-memo-btn').hidden = !S.isAdmin;
     }
 
     // ── 進捗更新 ─────────────────────────────────────────────────────
@@ -4106,6 +4103,7 @@
 
     // ── 次回メモドロワー ───────────────────────────────────────
     var _nmDrawerPn   = '';
+    var _nmAfterDate  = '';
     var _nmSubmitting = false;
     var _nmSelectedItem = null; // { displayName, unit, defaultQty }
 
@@ -4120,8 +4118,9 @@
       return NM_ERROR_MSG[code] || ('エラー: ' + (code || '不明'));
     }
 
-    function openNextMemoDrawer(propName) {
+    function openNextMemoDrawer(propName, afterDate) {
       _nmDrawerPn    = propName;
+      _nmAfterDate   = afterDate || '';
       _nmSubmitting  = false;
       _nmSelectedItem = null;
       document.getElementById('nm-prop-name').textContent    = propName;
@@ -4294,6 +4293,7 @@
         targetMode:    'NEXT',
         photoRequired: false
       };
+      if (_nmAfterDate) apiReq.afterDate = _nmAfterDate;
 
       if (isFallback) {
         var content = memo.trim();
@@ -4318,7 +4318,18 @@
           document.getElementById('nm-back').disabled = false;
           if (r.ok) {
             closeNextMemoDrawer();
-            toast('次回メモを追加しました ✓');
+            var toastMsg;
+            if (_nmAfterDate) {
+              if (r.boundDate) {
+                var bd = r.boundDate.split('-');
+                toastMsg = '次の清掃（' + parseInt(bd[1], 10) + '/' + parseInt(bd[2], 10) + '）の対応に入ります ✓';
+              } else {
+                toastMsg = '次の清掃の予約が入ったら、その清掃の対応に入ります ✓';
+              }
+            } else {
+              toastMsg = '次回メモを追加しました ✓';
+            }
+            toast(toastMsg);
             delete S.scheduleTasks[_nmDrawerPn];
             S.taskCounts[_nmDrawerPn] = (S.taskCounts[_nmDrawerPn] || 0) + 1;
             S.scheduleItems.forEach(function(i) {
@@ -4647,6 +4658,13 @@
           var checkBackPd = getEffectiveProgress(S.editDrawerProp);
           var prevCheck = checkBackPd.check === 'DONE' ? 'NEED' : '';
           updateProgressField(S.editDrawerProp, { check: prevCheck });
+          return;
+        }
+
+        if (e.target.closest('#ped-next-memo-btn') && S.editDrawerProp) {
+          var pedNmProp = S.editDrawerProp;
+          closeEditDrawer();
+          openNextMemoDrawer(pedNmProp, S.progressDate);
           return;
         }
 
@@ -4999,12 +5017,6 @@
         var undoBtn = e.target.closest('[data-sched-undo-uid]');
         if (undoBtn) {
           submitCleanCancelUndo(undoBtn.dataset.schedUndoUid);
-          return;
-        }
-        // 次回メモボタン
-        var nmBtn = e.target.closest('[data-sched-next-memo-prop]');
-        if (nmBtn) {
-          openNextMemoDrawer(nmBtn.dataset.schedNextMemoProp);
           return;
         }
       });
