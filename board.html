@@ -637,6 +637,52 @@
     }
     .btn-sched-clear-date:active { opacity: 0.75; }
 
+    /* ── 清掃キャンセル ── */
+    .sched-row.cancelled { background: #f0f0f0 !important; border-color: #ccc !important; }
+    .sched-row.cancelled .sched-prop-name { text-decoration: line-through; color: #777; }
+    .sched-cancel-badge {
+      display: inline-flex; align-items: center;
+      background: #e0e0e0; color: #555; border: 1px solid #bbb;
+      border-radius: 4px; padding: 0 0.3rem; font-size: 0.7rem; white-space: nowrap; flex-shrink: 0;
+    }
+    .sched-cancel-reason {
+      font-size: 0.72rem; color: #777; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; max-width: 90px; flex-shrink: 1;
+    }
+    .sched-processing-badge {
+      display: inline-flex; align-items: center;
+      background: #fff3e0; color: #e65100; border: 1px solid #ffcc80;
+      border-radius: 4px; padding: 0 0.3rem; font-size: 0.7rem; white-space: nowrap; flex-shrink: 0;
+    }
+    .btn-sched-clean-cancel {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #fce4ec; color: #880e4f; border: 1px solid #f48fb1;
+      border-radius: 5px; padding: 0.4rem 0.7rem; font-size: 0.8rem; font-weight: bold;
+      font-family: inherit; cursor: pointer; margin-top: 0.4rem; width: 100%;
+    }
+    .btn-sched-clean-cancel:active { opacity: 0.75; }
+    .btn-sched-undo-cancel {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #fff3e0; color: #e65100; border: 1px solid #ffcc80;
+      border-radius: 5px; padding: 0.4rem 0.7rem; font-size: 0.8rem; font-weight: bold;
+      font-family: inherit; cursor: pointer; margin-top: 0.4rem; width: 100%;
+    }
+    .btn-sched-undo-cancel:active { opacity: 0.75; }
+    .cc-reason-options { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.3rem; }
+    .cc-reason-opt {
+      display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer;
+      padding: 0.1rem 0;
+    }
+    .cc-reason-opt input[type="radio"] {
+      accent-color: #880e4f; width: 1.1rem; height: 1.1rem; flex-shrink: 0; cursor: pointer;
+    }
+    .cc-error { font-size: 0.8rem; color: #c0392b; margin-top: 0.4rem; }
+    .btn-cancel-confirm {
+      background: #c0392b; color: #fff; border-color: #c0392b;
+    }
+    .btn-cancel-confirm:not(:disabled):active { opacity: 0.75; }
+    .btn-cancel-confirm:disabled { opacity: 0.45; cursor: default; }
+
     /* ── 手入力予約ボタン（手入力予約タブ入口）── */
     .manual-open-row {
       display: flex; gap: 0.5rem; margin-bottom: 0.5rem;
@@ -1090,6 +1136,38 @@
     </div>
   </div>
 
+  <!-- 清掃キャンセルモーダル -->
+  <div id="clean-cancel-modal" class="modal-overlay" hidden>
+    <div class="task-modal-box">
+      <div class="task-modal-title">清掃キャンセル</div>
+      <div class="task-modal-prop" id="cc-modal-prop"></div>
+      <div class="form-row">
+        <label class="form-label">キャンセル理由</label>
+        <div class="cc-reason-options">
+          <label class="cc-reason-opt">
+            <input type="radio" name="cc-reason" value="延泊（同一ゲスト）"> 延泊（同一ゲスト）
+          </label>
+          <label class="cc-reason-opt">
+            <input type="radio" name="cc-reason" value="ゲストの利用なし"> ゲストの利用なし
+          </label>
+          <label class="cc-reason-opt">
+            <input type="radio" name="cc-reason" value="その他"> その他
+          </label>
+        </div>
+      </div>
+      <div id="cc-memo-row" class="form-row" hidden>
+        <label class="form-label">メモ <span id="cc-char-count" class="char-count">0 / 90</span></label>
+        <textarea id="cc-memo" class="form-textarea" placeholder="理由を入力（必須・90文字以内・改行なし）"></textarea>
+        <div id="cc-memo-error" class="cc-error" hidden></div>
+      </div>
+      <div id="cc-error-msg" class="cc-error" hidden></div>
+      <div class="modal-actions">
+        <button class="btn btn-import" id="cc-modal-back">戻る</button>
+        <button class="btn btn-cancel-confirm" id="cc-modal-submit" disabled>キャンセルする</button>
+      </div>
+    </div>
+  </div>
+
   <!-- タスク一覧ドロワー -->
   <div id="task-drawer" class="drawer-overlay" hidden>
     <div class="drawer-box">
@@ -1247,7 +1325,11 @@
       raRows:           [],    // getRoomAssignStatus の rows
       raAssignedByDate: {},    // getRoomAssignStatus の assignedRoomsByDate
       raPendingUids:    {},    // { uid: true } 操作後に画面上で pending 扱いにした行
-      raLoading:        false
+      raLoading:        false,
+      // 清掃キャンセル
+      cancelPendingByUid:     {},  // { uid: true } CLEAN_CANCEL PENDING
+      cancelUndoPendingByUid: {},  // { uid: true } CLEAN_CANCEL_UNDO PENDING
+      cancelLastErrorByUid:   {}   // { uid: 'error_code' }
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -1303,7 +1385,7 @@
       var listEl = document.getElementById('order-mode-list');
       if (!staff) { listEl.innerHTML = ''; return; }
 
-      var items = S.scheduleItems.filter(function(i) { return (i.staff || '') === staff; });
+      var items = S.scheduleItems.filter(function(i) { return (i.staff || '') === staff && !i.cancelled; });
       items = items.slice().sort(function(a, b) {
         var ar = areaRank(a.area) - areaRank(b.area);
         if (ar) return ar;
@@ -1337,7 +1419,7 @@
 
       var staffList = [];
       S.scheduleItems.forEach(function(i) {
-        if (i.staff && staffList.indexOf(i.staff) < 0) staffList.push(i.staff);
+        if (i.staff && !i.cancelled && staffList.indexOf(i.staff) < 0) staffList.push(i.staff);
       });
       staffList.sort();
       var sel = document.getElementById('order-mode-staff-sel');
@@ -1560,10 +1642,11 @@
     }
 
     function updateScheduleStats() {
-      var sameDayN   = S.scheduleItems.filter(function(i) { return i.isSameDayIn; }).length;
-      var notInN     = S.scheduleItems.filter(function(i) { return !i.isSameDayIn; }).length;
-      var totalTasks = S.scheduleItems.reduce(function(acc, i) { return acc + i.taskCount; }, 0);
-      document.getElementById('s-total').textContent     = S.scheduleItems.length;
+      var active = S.scheduleItems.filter(function(i) { return !i.cancelled; });
+      var sameDayN   = active.filter(function(i) { return i.isSameDayIn; }).length;
+      var notInN     = active.filter(function(i) { return !i.isSameDayIn; }).length;
+      var totalTasks = active.reduce(function(acc, i) { return acc + i.taskCount; }, 0);
+      document.getElementById('s-total').textContent     = active.length;
       document.getElementById('s-samedayin').textContent = sameDayN;
       document.getElementById('s-notin').textContent     = notInN;
       document.getElementById('s-tasks').textContent     = totalTasks;
@@ -2086,7 +2169,7 @@
         if (r.uid) {
           html += '<div class="manual-row-actions">';
           html += '<button class="btn-manual-chg" data-uid="' + esc(r.uid) + '">変更</button>';
-          html += '<button class="btn-manual-del" data-uid="' + esc(r.uid) + '" data-prop="' + esc(r.propName) + '">キャンセル</button>';
+          html += '<button class="btn-manual-del" data-uid="' + esc(r.uid) + '" data-prop="' + esc(r.propName) + '">削除</button>';
           html += '</div>';
           if (isChanging) {
             html += '<div class="manual-inline-change" id="manual-change-form-' + esc(r.uid) + '">';
@@ -2535,7 +2618,8 @@
       if (silent) {
         if (_staffPendingSchedule || S.scheduleExpandedKey ||
             !document.getElementById('task-modal').hidden ||
-            !document.getElementById('task-drawer').hidden) return;
+            !document.getElementById('task-drawer').hidden ||
+            !document.getElementById('clean-cancel-modal').hidden) return;
       } else {
         var _sc = lsGet('dh_schedule_range');
         if (_sc) {
@@ -2604,6 +2688,15 @@
 
         updateScheduleViewBars();
         renderScheduleList();
+
+        // キャンセル処理中バッジ用（失敗しても画面を止めない）
+        callApi({ action: 'getCancelStatus' }).then(function(cs) {
+          if (!cs || !cs.ok) return;
+          S.cancelPendingByUid     = cs.pendingCancelByUid  || {};
+          S.cancelUndoPendingByUid = cs.pendingUndoByUid    || {};
+          S.cancelLastErrorByUid   = cs.lastErrorByUid      || {};
+          renderScheduleList();
+        }).catch(function() {});
       }).catch(function(e) {
         S.scheduleSearchLoading = false;
         if (e.isUnauthorized) { handleUnauthorized(); return; }
@@ -2697,6 +2790,12 @@
       var pnEsc  = esc(pn);
       var uid    = item.uid || '';
 
+      // キャンセル状態
+      var isCancelled     = item.cancelled === true;
+      var cancelledReason = item.cancelReason || '';
+      var isPendingCancel = uid ? !!S.cancelPendingByUid[uid]     : false;
+      var isPendingUndo   = uid ? !!S.cancelUndoPendingByUid[uid] : false;
+
         var typeBadge = item.isSameDayIn
           ? '<span class="sched-type-badge-in">同日イン</span>'
           : '<span class="sched-type-badge-out">インなし</span>';
@@ -2708,6 +2807,19 @@
         var taskBadge = item.taskCount > 0
           ? '<span class="sched-task-cnt">対応' + item.taskCount + '件</span>'
           : '';
+
+        // キャンセル・処理中バッジ（dateBadge よりも優先）
+        var cancelBadge = '';
+        if (isPendingCancel) {
+          cancelBadge = '<span class="sched-processing-badge">処理中（キャンセル）</span>';
+        } else if (isPendingUndo) {
+          cancelBadge = '<span class="sched-processing-badge">処理中（取り消し）</span>';
+        } else if (isCancelled) {
+          var shortReason = cancelledReason.length > 15
+            ? cancelledReason.slice(0, 15) + '…' : cancelledReason;
+          cancelBadge = '<span class="sched-cancel-badge">キャンセル</span>' +
+            (shortReason ? '<span class="sched-cancel-reason"> ' + esc(shortReason) + '</span>' : '');
+        }
 
         var dateBadge = '';
         var pendingLr = uid ? pendingByUid[uid] : null;
@@ -2729,7 +2841,8 @@
           ? '<span class="sched-order-num">' + item.order + '</span>'
           : '';
 
-      var h = '<div class="sched-row' + (isExpanded ? ' expanded' : '') + '" data-sched-key="' + keyEsc + '">';
+      var rowCls = 'sched-row' + (isExpanded ? ' expanded' : '') + (isCancelled ? ' cancelled' : '');
+      var h = '<div class="' + rowCls + '" data-sched-key="' + keyEsc + '">';
       h += '<div class="sched-row-main" data-sched-toggle="' + keyEsc + '">' +
           dateLabel +
           orderNum +
@@ -2737,101 +2850,121 @@
           areaInline +
           typeBadge +
           '<span class="' + staffCls + '">' + esc(staffText) + '</span>' +
-          taskBadge +
-          dateBadge +
+          (isCancelled || isPendingCancel || isPendingUndo ? cancelBadge : taskBadge + dateBadge) +
           '<span class="sched-chevron">▼</span>' +
         '</div>';
 
         if (isExpanded) {
-          // 担当変更セレクト
-          var isDone = S.scheduleProgressData[pn] && S.scheduleProgressData[pn].status === 'DONE';
-          var selOpts = '<option value=""' + (!item.staff ? ' selected' : '') + '>未担当</option>';
-          S.cleaners.forEach(function(c) {
-            selOpts += '<option value="' + esc(c.name) + '"' +
-              (item.staff === c.name ? ' selected' : '') + '>' + esc(c.name) + '</option>';
-          });
-
           h += '<div class="sched-expand">';
-          h += '<div class="sched-assign-section">' +
-            '<span class="sched-assign-label">担当：</span>' +
-            '<select class="sched-staff-sel" data-sched-assign-key="' + keyEsc + '"' +
-              (isDone ? ' disabled' : '') + '>' + selOpts + '</select>' +
-          '</div>';
 
-          // 対応一覧・追加・再送（タスクデータは openScheduleDetail でロード済み）
-          h += '<div class="sched-tasks-section">';
-          var tasks = S.scheduleTasks[pn];
-          if (!tasks) {
-            h += '<div class="sched-tasks-empty">読み込み中…</div>';
-          } else if (!tasks.length) {
-            h += '<div class="sched-tasks-empty">OPEN の対応はありません</div>';
+          if (isCancelled) {
+            // キャンセル済み：取り消しボタンのみ
+            h += '<button class="btn-sched-undo-cancel"' +
+              ' data-sched-undo-uid="' + esc(uid) + '"' +
+              ' data-sched-undo-pn="' + pnEsc + '">' +
+              'キャンセルを取り消す' +
+            '</button>';
           } else {
-            var todayYmd = today();
-            tasks.forEach(function(t) {
-              var taskDateLabel = t.targetMode === 'NEXT'
-                ? '次回清掃' + (t.boundDate ? '（' + t.boundDate + '）' : '')
-                : (t.targetDate || '');
-              var expired = t.targetMode === 'DATE' && t.targetDate && t.targetDate < todayYmd;
-              h += '<div class="sched-task-item">' +
-                '<div class="task-item-header">' +
-                  '<span class="task-type-badge">' + esc(t.type) + '</span>' +
-                  '<span class="task-date-label">' + esc(taskDateLabel) + '</span>' +
-                  (expired ? '<span class="task-expired-label">期限切れ</span>' : '') +
-                '</div>' +
-                '<div class="task-content">' + esc(t.content) + '</div>' +
-                (t.photoRequired ? '<div class="task-photo-tag">📷 写真必要</div>' : '') +
-                '<div class="task-actions">' +
-                  '<button class="btn-task-done" data-sched-tid="' + esc(t.taskId) + '" data-sched-prop="' + pnEsc + '">完了</button>' +
-                  '<button class="btn-task-cancel" data-sched-tid="' + esc(t.taskId) + '" data-sched-prop="' + pnEsc + '">取消</button>' +
-                '</div>' +
-              '</div>';
+            // 通常展開
+            var isDone = S.scheduleProgressData[pn] && S.scheduleProgressData[pn].status === 'DONE';
+            var selOpts = '<option value=""' + (!item.staff ? ' selected' : '') + '>未担当</option>';
+            S.cleaners.forEach(function(c) {
+              selOpts += '<option value="' + esc(c.name) + '"' +
+                (item.staff === c.name ? ' selected' : '') + '>' + esc(c.name) + '</option>';
             });
-          }
-          h += '<button class="btn-sched-add-task" data-sched-add-prop="' + pnEsc + '" data-sched-add-date="' + esc(item.date) + '">＋ 対応追加</button>';
-          h += '</div>';
 
-          // 日程変更セクション（iCal 予約のみ）
-          if (item.source !== 'MANUAL') {
-            var tomorrowYmd = tomorrow();
-            var canChange = item.autoDate && item.autoDate >= tomorrowYmd;
-            h += '<div class="sched-date-change-section">' +
-              '<div class="sched-date-change-label">日程変更</div>';
-            if (canChange) {
-              h += '<div class="sched-date-change-row">' +
-                '<label>ICS 日付</label>' +
-                '<span>' + esc(fmtDate(item.autoDate)) + '</span>' +
-              '</div>';
-              if (item.manualDate) {
+            h += '<div class="sched-assign-section">' +
+              '<span class="sched-assign-label">担当：</span>' +
+              '<select class="sched-staff-sel" data-sched-assign-key="' + keyEsc + '"' +
+                (isDone ? ' disabled' : '') + '>' + selOpts + '</select>' +
+            '</div>';
+
+            // 対応一覧・追加
+            h += '<div class="sched-tasks-section">';
+            var tasks = S.scheduleTasks[pn];
+            if (!tasks) {
+              h += '<div class="sched-tasks-empty">読み込み中…</div>';
+            } else if (!tasks.length) {
+              h += '<div class="sched-tasks-empty">OPEN の対応はありません</div>';
+            } else {
+              var todayYmd = today();
+              tasks.forEach(function(t) {
+                var taskDateLabel = t.targetMode === 'NEXT'
+                  ? '次回清掃' + (t.boundDate ? '（' + t.boundDate + '）' : '')
+                  : (t.targetDate || '');
+                var expired = t.targetMode === 'DATE' && t.targetDate && t.targetDate < todayYmd;
+                h += '<div class="sched-task-item">' +
+                  '<div class="task-item-header">' +
+                    '<span class="task-type-badge">' + esc(t.type) + '</span>' +
+                    '<span class="task-date-label">' + esc(taskDateLabel) + '</span>' +
+                    (expired ? '<span class="task-expired-label">期限切れ</span>' : '') +
+                  '</div>' +
+                  '<div class="task-content">' + esc(t.content) + '</div>' +
+                  (t.photoRequired ? '<div class="task-photo-tag">📷 写真必要</div>' : '') +
+                  '<div class="task-actions">' +
+                    '<button class="btn-task-done" data-sched-tid="' + esc(t.taskId) + '" data-sched-prop="' + pnEsc + '">完了</button>' +
+                    '<button class="btn-task-cancel" data-sched-tid="' + esc(t.taskId) + '" data-sched-prop="' + pnEsc + '">取消</button>' +
+                  '</div>' +
+                '</div>';
+              });
+            }
+            h += '<button class="btn-sched-add-task" data-sched-add-prop="' + pnEsc + '" data-sched-add-date="' + esc(item.date) + '">＋ 対応追加</button>';
+            h += '</div>';
+
+            // 日程変更セクション（iCal 予約のみ）
+            if (item.source !== 'MANUAL') {
+              var tomorrowYmd = tomorrow();
+              var canChange = item.autoDate && item.autoDate >= tomorrowYmd;
+              h += '<div class="sched-date-change-section">' +
+                '<div class="sched-date-change-label">日程変更</div>';
+              if (canChange) {
                 h += '<div class="sched-date-change-row">' +
-                  '<label>現在の設定</label>' +
-                  '<span>' + esc(fmtDate(item.manualDate)) + '</span>' +
-                  '<button class="btn-sched-clear-date"' +
+                  '<label>ICS 日付</label>' +
+                  '<span>' + esc(fmtDate(item.autoDate)) + '</span>' +
+                '</div>';
+                if (item.manualDate) {
+                  h += '<div class="sched-date-change-row">' +
+                    '<label>現在の設定</label>' +
+                    '<span>' + esc(fmtDate(item.manualDate)) + '</span>' +
+                    '<button class="btn-sched-clear-date"' +
+                      ' data-sched-uid="' + esc(uid) + '"' +
+                      ' data-sched-pn="' + pnEsc + '"' +
+                      ' data-sched-old="' + esc(item.manualDate) + '">' +
+                      '元に戻す' +
+                    '</button>' +
+                  '</div>';
+                }
+                h += '<div class="sched-date-change-row">' +
+                  '<label>変更後の日付</label>' +
+                  '<input type="date" class="sched-new-date-input"' +
+                    ' data-sched-uid="' + esc(uid) + '"' +
+                    ' min="' + esc(tomorrowYmd) + '">' +
+                  '<button class="btn-sched-change-date"' +
                     ' data-sched-uid="' + esc(uid) + '"' +
                     ' data-sched-pn="' + pnEsc + '"' +
-                    ' data-sched-old="' + esc(item.manualDate) + '">' +
-                    '元に戻す' +
+                    ' data-sched-old="' + esc(item.autoDate) + '">' +
+                    '変更する' +
                   '</button>' +
                 '</div>';
+              } else {
+                h += '<div class="sched-date-change-row">' +
+                  '<span style="font-size:0.8rem;color:var(--muted)">日程変更は明日以降の清掃のみ可能です</span>' +
+                '</div>';
               }
-              h += '<div class="sched-date-change-row">' +
-                '<label>変更後の日付</label>' +
-                '<input type="date" class="sched-new-date-input"' +
-                  ' data-sched-uid="' + esc(uid) + '"' +
-                  ' min="' + esc(tomorrowYmd) + '">' +
-                '<button class="btn-sched-change-date"' +
-                  ' data-sched-uid="' + esc(uid) + '"' +
-                  ' data-sched-pn="' + pnEsc + '"' +
-                  ' data-sched-old="' + esc(item.autoDate) + '">' +
-                  '変更する' +
-                '</button>' +
-              '</div>';
-            } else {
-              h += '<div class="sched-date-change-row">' +
-                '<span style="font-size:0.8rem;color:var(--muted)">日程変更は明日以降の清掃のみ可能です</span>' +
-              '</div>';
+              h += '</div>';
             }
-            h += '</div>';
+
+            // 清掃キャンセルボタン（管理者・今日以降）
+            if (S.isAdmin && item.date >= today()) {
+              h += '<button class="btn-sched-clean-cancel"' +
+                ' data-sched-cancel-uid="' + esc(uid) + '"' +
+                ' data-sched-cancel-pn="' + pnEsc + '"' +
+                ' data-sched-cancel-date="' + esc(item.date) + '">' +
+                '清掃キャンセル' +
+              '</button>';
+            }
           }
+
           h += '</div>';
         }
         h += '</div>';
@@ -3751,6 +3884,128 @@
       document.getElementById('task-modal').hidden = true;
     }
 
+    // ── 清掃キャンセルモーダル ──────────────────────────────
+    var _ccModalUid  = '';
+    var _ccModalPn   = '';
+    var _ccSubmitting = false;
+
+    var CANCEL_ERROR_MSG = {
+      unauthorized:               '管理者のみ操作できます',
+      uid_required:               'UIDが必要です',
+      uid_not_found:              '指定の清掃行が見つかりません',
+      invalid_reason:             'キャンセル理由が不正です',
+      already_cancelled:          'すでにキャンセル済みです',
+      not_cancelled:              'キャンセルされていません',
+      row_is_done:                '清掃済みのためキャンセルできません',
+      pending_exists:             '処理中の操作があります。しばらく後に再試行してください',
+      lock_timeout:               'タイムアウトしました。再試行してください',
+      linerequests_columns_missing: 'シートの設定に問題があります（列が見つかりません）',
+      schedule_header_invalid:    'スケジュールシートのヘッダーが不正です'
+    };
+
+    function cancelErrMsg(code) {
+      return CANCEL_ERROR_MSG[code] || ('エラー: ' + (code || '不明'));
+    }
+
+    function openCleanCancelModal(uid, propName, date) {
+      _ccModalUid  = uid;
+      _ccModalPn   = propName;
+      _ccSubmitting = false;
+      document.getElementById('cc-modal-prop').textContent = propName + '　' + fmtDate(date);
+      document.querySelectorAll('input[name="cc-reason"]').forEach(function(r) { r.checked = false; });
+      document.getElementById('cc-memo').value          = '';
+      document.getElementById('cc-char-count').textContent = '0 / 90';
+      document.getElementById('cc-memo-row').hidden     = true;
+      document.getElementById('cc-memo-error').hidden   = true;
+      document.getElementById('cc-memo-error').textContent = '';
+      document.getElementById('cc-error-msg').hidden    = true;
+      document.getElementById('cc-error-msg').textContent  = '';
+      document.getElementById('cc-modal-submit').disabled  = true;
+      document.getElementById('clean-cancel-modal').hidden = false;
+    }
+
+    function closeCleanCancelModal() {
+      document.getElementById('clean-cancel-modal').hidden = true;
+    }
+
+    function validateCancelForm() {
+      var selected = document.querySelector('input[name="cc-reason"]:checked');
+      if (!selected) { document.getElementById('cc-modal-submit').disabled = true; return; }
+      var val = selected.value;
+      if (val === 'その他') {
+        var memo = document.getElementById('cc-memo').value;
+        var noNl = memo.indexOf('\n') < 0 && memo.indexOf('\r') < 0;
+        var len  = memo.length;
+        var full = 'その他：' + memo;
+        var ok   = len > 0 && len <= 90 && full.length <= 100 && noNl;
+        document.getElementById('cc-modal-submit').disabled = !ok;
+        if (len > 90) {
+          document.getElementById('cc-memo-error').textContent = '90文字以内で入力してください';
+          document.getElementById('cc-memo-error').hidden = false;
+        } else if (!noNl) {
+          document.getElementById('cc-memo-error').textContent = '改行は入力できません';
+          document.getElementById('cc-memo-error').hidden = false;
+        } else {
+          document.getElementById('cc-memo-error').hidden = true;
+        }
+      } else {
+        document.getElementById('cc-modal-submit').disabled = false;
+      }
+    }
+
+    function submitCleanCancel() {
+      if (_ccSubmitting) return;
+      var selected = document.querySelector('input[name="cc-reason"]:checked');
+      if (!selected) return;
+      var val    = selected.value;
+      var reason = val === 'その他'
+        ? 'その他：' + document.getElementById('cc-memo').value.replace(/[\r\n]/g, '')
+        : val;
+      _ccSubmitting = true;
+      document.getElementById('cc-modal-submit').disabled = true;
+      document.getElementById('cc-modal-back').disabled   = true;
+      document.getElementById('cc-error-msg').hidden      = true;
+      callApi({ action: 'cleanCancel', uid: _ccModalUid, reason: reason })
+        .then(function(r) {
+          _ccSubmitting = false;
+          document.getElementById('cc-modal-back').disabled = false;
+          if (r.ok) {
+            S.cancelPendingByUid[_ccModalUid] = true;
+            closeCleanCancelModal();
+            renderScheduleList();
+          } else {
+            document.getElementById('cc-error-msg').textContent = cancelErrMsg(r.error);
+            document.getElementById('cc-error-msg').hidden = false;
+            document.getElementById('cc-modal-submit').disabled = false;
+          }
+        })
+        .catch(function(err) {
+          _ccSubmitting = false;
+          document.getElementById('cc-modal-back').disabled = false;
+          document.getElementById('cc-modal-submit').disabled = false;
+          if (err.isUnauthorized) { handleUnauthorized(); return; }
+          document.getElementById('cc-error-msg').textContent = 'エラー: ' + err.message;
+          document.getElementById('cc-error-msg').hidden = false;
+        });
+    }
+
+    function submitCleanCancelUndo(uid) {
+      callApi({ action: 'cleanCancelUndo', uid: uid })
+        .then(function(r) {
+          if (r.ok) {
+            S.cancelUndoPendingByUid[uid] = true;
+            renderScheduleList();
+          } else {
+            toast(cancelErrMsg(r.error));
+          }
+        })
+        .catch(function(err) {
+          if (err.isUnauthorized) { handleUnauthorized(); return; }
+          toast('エラー: ' + err.message);
+        });
+    }
+    // ────────────────────────────────────────────────────────
+
     function submitTask() {
       var propName   = taskModal.propName;
       var boundDate  = taskModal.boundDate;
@@ -4185,6 +4440,25 @@
         if (e.target === this) closeTaskModal();
       });
 
+      // 清掃キャンセルモーダル内部イベント
+      document.querySelectorAll('input[name="cc-reason"]').forEach(function(r) {
+        r.addEventListener('change', function() {
+          document.getElementById('cc-memo-row').hidden = this.value !== 'その他';
+          document.getElementById('cc-memo-error').hidden = true;
+          validateCancelForm();
+        });
+      });
+      document.getElementById('cc-memo').addEventListener('input', function() {
+        var len = this.value.replace(/[\r\n]/g, '').length;
+        document.getElementById('cc-char-count').textContent = len + ' / 90';
+        validateCancelForm();
+      });
+      document.getElementById('cc-modal-back').addEventListener('click', closeCleanCancelModal);
+      document.getElementById('cc-modal-submit').addEventListener('click', submitCleanCancel);
+      document.getElementById('clean-cancel-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeCleanCancelModal();
+      });
+
       // ドロワー背景タップで閉じる
       document.getElementById('task-drawer').addEventListener('click', function(e) {
         if (e.target === this) closeTaskDrawer();
@@ -4330,6 +4604,22 @@
           var oldCl  = clearDateBtn.dataset.schedOld;
           if (!confirm(fmtDate(oldCl) + ' の変更を元に戻しますか？')) return;
           saveScheduleChange('CLEAR', uidCl, propCl, oldCl, '');
+          return;
+        }
+        // 清掃キャンセルボタン
+        var cancelBtn = e.target.closest('[data-sched-cancel-uid]');
+        if (cancelBtn) {
+          openCleanCancelModal(
+            cancelBtn.dataset.schedCancelUid,
+            cancelBtn.dataset.schedCancelPn,
+            cancelBtn.dataset.schedCancelDate
+          );
+          return;
+        }
+        // キャンセル取り消しボタン
+        var undoBtn = e.target.closest('[data-sched-undo-uid]');
+        if (undoBtn) {
+          submitCleanCancelUndo(undoBtn.dataset.schedUndoUid);
           return;
         }
       });
