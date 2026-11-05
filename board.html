@@ -400,17 +400,19 @@
     .prog-checkin-badge-out { background: #eeeeee; color: #888; }
 
     /* ── 進捗確認 統一行スタイル ── */
-    .prog-list { background: var(--card); border-radius: 8px; overflow: hidden; margin-bottom: 0.5rem; }
-    .prog-row { border-bottom: 1px solid var(--border); }
-    .prog-row:last-child { border-bottom: none; }
+    .prog-list { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.5rem; }
+    .prog-row {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
     .prog-row-main {
       display: flex; align-items: center; gap: 0.35rem;
       padding: 0.2rem 0.4rem; cursor: pointer;
     }
-    .prog-row-main:active { background: var(--bg); }
-    .prog-row.prog-row-done { background: #f0f0f0; }
-    .prog-row.prog-row-doing { background: #e3f2fd; }
-    .prog-row.prog-row-linen-stage { background: #fffde7; }
+    .prog-row-main:active { opacity: 0.75; }
+    .prog-row.prog-row-done { background: #f0f0f0; border-color: #ccc; }
+    .prog-row.prog-row-doing { background: #e3f2fd; border-color: #90caf9; }
+    .prog-row.prog-row-linen-stage { background: #fffde7; border-color: #ffe082; }
     .prog-row.prog-row-done .sched-prop-name { color: #777; font-weight: normal; }
     .prog-row-marks { display: flex; gap: 0.15rem; flex-shrink: 0; align-items: center; }
     /* エリア別 */
@@ -537,14 +539,16 @@
     .order-tap-name { font-size: 0.88rem; flex: 1; }
     .order-mode-actions { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
     .order-mode-actions .btn { flex: 1; }
-    .sched-list { background: var(--card); border-radius: 8px; overflow: hidden; margin-bottom: 0.75rem; }
-    .sched-row { border-bottom: 1px solid var(--border); }
-    .sched-row:last-child { border-bottom: none; }
+    .sched-list { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.75rem; }
+    .sched-row {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); overflow: hidden;
+    }
     .sched-row-main {
       display: flex; align-items: center; gap: 0.35rem;
       padding: 0.2rem 0.4rem; cursor: pointer;
     }
-    .sched-row-main:active { background: var(--bg); }
+    .sched-row-main:active { opacity: 0.75; }
     .sched-prop-name {
       flex: 1; min-width: 0; font-size: 0.75rem; font-weight: normal; color: #1976d2;
       overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
