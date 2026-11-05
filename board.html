@@ -384,7 +384,7 @@
       font-size: 0.6rem; padding: 0.05rem 0.22rem; border-radius: 3px;
       font-weight: bold; line-height: 1.4; white-space: nowrap;
     }
-    .prog-mark-linen      { background: #e0e0e0; color: #666; }
+    .prog-mark-linen      { background: #fff3cd; color: #e65100; }
     .prog-mark-linen-done { background: #c8e6c9; color: #2e7d32; }
     .prog-mark-trash      { background: #ffcdd2; color: #b71c1c; }
     .prog-mark-trash-done { background: #c8e6c9; color: #2e7d32; }
@@ -400,17 +400,19 @@
     .prog-checkin-badge-out { background: #eeeeee; color: #888; }
 
     /* ── 進捗確認 統一行スタイル ── */
-    .prog-list { background: var(--card); border-radius: 8px; overflow: hidden; margin-bottom: 0.5rem; }
-    .prog-row { border-bottom: 1px solid var(--border); }
-    .prog-row:last-child { border-bottom: none; }
+    .prog-list { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.5rem; }
+    .prog-row {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
     .prog-row-main {
       display: flex; align-items: center; gap: 0.35rem;
       padding: 0.2rem 0.4rem; cursor: pointer;
     }
-    .prog-row-main:active { background: var(--bg); }
-    .prog-row.prog-row-done { background: #f0f0f0; }
-    .prog-row.prog-row-doing { background: #e3f2fd; }
-    .prog-row.prog-row-linen-stage { background: #fffde7; }
+    .prog-row-main:active { opacity: 0.75; }
+    .prog-row.prog-row-done { background: #f0f0f0; border-color: #ccc; }
+    .prog-row.prog-row-doing { background: #e3f2fd; border-color: #90caf9; }
+    .prog-row.prog-row-linen-stage { background: #fffde7; border-color: #ffe082; }
     .prog-row.prog-row-done .sched-prop-name { color: #777; font-weight: normal; }
     .prog-row-marks { display: flex; gap: 0.15rem; flex-shrink: 0; align-items: center; }
     /* エリア別 */
@@ -455,7 +457,8 @@
       border: 1.5px solid var(--border); background: var(--bg);
       font-family: inherit; cursor: pointer; text-align: center;
     }
-    .ped-ind-btn.linen-todo { background: var(--bg); color: var(--muted); }
+    .ped-ind-btn.linen-none { background: var(--bg); color: var(--muted); }
+    .ped-ind-btn.linen-need { background: #fff3cd; color: #e65100; border-color: #ffca28; }
     .ped-ind-btn.linen-done { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
     .ped-ind-btn.trash-none { background: var(--bg); color: var(--muted); }
     .ped-ind-btn.trash-need { background: #ffebee; color: #c62828; border-color: #ef9a9a; }
@@ -536,14 +539,16 @@
     .order-tap-name { font-size: 0.88rem; flex: 1; }
     .order-mode-actions { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
     .order-mode-actions .btn { flex: 1; }
-    .sched-list { background: var(--card); border-radius: 8px; overflow: hidden; margin-bottom: 0.75rem; }
-    .sched-row { border-bottom: 1px solid var(--border); }
-    .sched-row:last-child { border-bottom: none; }
+    .sched-list { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.75rem; }
+    .sched-row {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); overflow: hidden;
+    }
     .sched-row-main {
       display: flex; align-items: center; gap: 0.35rem;
       padding: 0.2rem 0.4rem; cursor: pointer;
     }
-    .sched-row-main:active { background: var(--bg); }
+    .sched-row-main:active { opacity: 0.75; }
     .sched-prop-name {
       flex: 1; min-width: 0; font-size: 0.75rem; font-weight: normal; color: #1976d2;
       overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
@@ -877,19 +882,6 @@
     .bulk-progress { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.5rem; text-align: center; }
     .btn-bulk-add-row { display: block; width: 100%; margin: 0.4rem 0; padding: 0.4rem; border: 1px dashed var(--border); border-radius: 6px; background: var(--card); color: var(--fg); font-size: 0.82rem; font-family: inherit; cursor: pointer; text-align: center; box-sizing: border-box; }
     .btn-bulk-add-row:active { opacity: 0.75; }
-    /* リネン表示切り替え */
-    .linen-toggle-row { margin-bottom: 0.5rem; }
-    .btn-linen-toggle {
-      padding: 0.28rem 0.75rem; border-radius: 6px;
-      border: 1.5px solid var(--border); background: var(--bg);
-      font-size: 0.8rem; cursor: pointer; font-family: inherit; color: var(--muted);
-    }
-    .btn-linen-toggle.on { border-color: #ffd54f; background: #fffde7; color: #f57f17; font-weight: bold; }
-    .btn-linen-toggle:active { opacity: 0.75; }
-    /* リネンバッジを非表示にするクラス（#panel-progress に付与） */
-    .linen-hidden .prog-mark-linen,
-    .linen-hidden .prog-mark-linen-done,
-    .linen-hidden .prog-tile-stage { display: none; }
     /* アルバムURL再送 */
     .album-resend-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
     .prog-resend-bar { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
@@ -922,7 +914,7 @@
     </nav>
 
     <!-- 進捗確認タブ -->
-    <div id="panel-progress" class="panel linen-hidden">
+    <div id="panel-progress" class="panel">
       <div class="date-row">
         <label for="progress-date-sel">日付</label>
         <input type="date" id="progress-date-sel">
@@ -944,9 +936,6 @@
       <div class="view-toggle">
         <button class="view-btn active" id="vbtn-staff" data-view="staff">スタッフ別</button>
         <button class="view-btn"        id="vbtn-board" data-view="board">エリア別</button>
-      </div>
-      <div class="linen-toggle-row">
-        <button id="btn-linen-toggle" class="btn-linen-toggle">リネン表示</button>
       </div>
       <div id="progress-staff-view"></div>
       <div id="progress-board-view" hidden></div>
@@ -1194,7 +1183,7 @@
         <div class="ped-label">リネン・ゴミ・チェック</div>
         <div class="ped-ind-row">
           <span class="ped-ind-label">リネン</span>
-          <button id="ped-linen-btn" class="ped-ind-btn linen-todo">リネン未</button>
+          <button id="ped-linen-btn" class="ped-ind-btn linen-none">オフ → リネン要に</button>
           <button id="ped-linen-back" class="ped-ind-back-btn" hidden>戻す</button>
         </div>
         <div class="ped-ind-row">
@@ -3182,7 +3171,7 @@
       var marks = '';
       if (pd.linen === 'DONE') {
         marks += '<span class="prog-mark prog-mark-linen-done">リ✓</span>';
-      } else {
+      } else if (pd.linen === 'NEED') {
         marks += '<span class="prog-mark prog-mark-linen">リ</span>';
       }
       if (pd.trash === 'DONE') {
@@ -3215,7 +3204,7 @@
       var marks = '';
       if (pd.linen === 'DONE') {
         marks += '<span class="prog-mark prog-mark-linen-done">リ✓</span>';
-      } else {
+      } else if (pd.linen === 'NEED') {
         marks += '<span class="prog-mark prog-mark-linen">リ</span>';
       }
       if (pd.trash === 'DONE') {
@@ -3507,15 +3496,20 @@
         document.getElementById('ped-staff-sel').innerHTML = opts;
       }
 
-      // リネン・ゴミ・チェック（進捗ボードのみ）
+      // リネン・ゴミ・チェック（全ビュー共通）
       var indSection = document.getElementById('ped-indicators-section');
-      indSection.hidden = (view !== 'board');
-      if (view === 'board') {
+      indSection.hidden = false;
+      {
         var linenBtn  = document.getElementById('ped-linen-btn');
         var linenBack = document.getElementById('ped-linen-back');
-        linenBtn.className = 'ped-ind-btn ' + (pd.linen === 'DONE' ? 'linen-done' : 'linen-todo');
-        linenBtn.textContent = pd.linen === 'DONE' ? 'リネン済 ✓' : 'リネン未 → 済に';
-        linenBack.hidden = (pd.linen !== 'DONE');
+        if (pd.linen === 'DONE') {
+          linenBtn.className = 'ped-ind-btn linen-done'; linenBtn.textContent = 'リネン済 ✓';
+        } else if (pd.linen === 'NEED') {
+          linenBtn.className = 'ped-ind-btn linen-need'; linenBtn.textContent = 'リネン要 → 済に';
+        } else {
+          linenBtn.className = 'ped-ind-btn linen-none'; linenBtn.textContent = 'オフ → リネン要に';
+        }
+        linenBack.hidden = !pd.linen;
 
         var trashBtn  = document.getElementById('ped-trash-btn');
         var trashBack = document.getElementById('ped-trash-back');
@@ -4085,16 +4079,6 @@
         document.getElementById('progress-staff-view').hidden = true;
       });
 
-      // リネン表示トグル
-      document.getElementById('btn-linen-toggle').addEventListener('click', function() {
-        var panel = document.getElementById('panel-progress');
-        var on = panel.classList.toggle('linen-hidden');
-        // toggle() returns true if added; we want "on" = NOT hidden
-        var showing = !on;
-        this.textContent = showing ? 'リネン非表示' : 'リネン表示';
-        this.classList.toggle('on', showing);
-      });
-
       // 進捗確認パネル：タイルタップで編集ドロワー or 順番モードのタップ処理
       document.getElementById('panel-progress').addEventListener('click', function(e) {
         var tile = e.target.closest('[data-tile-prop]');
@@ -4124,12 +4108,15 @@
 
         if (e.target.closest('#ped-linen-btn') && S.editDrawerProp) {
           var linenPd = getEffectiveProgress(S.editDrawerProp);
-          if (linenPd.linen !== 'DONE') updateProgressField(S.editDrawerProp, { linen: 'DONE' });
+          var newLinen = linenPd.linen === '' ? 'NEED' : linenPd.linen === 'NEED' ? 'DONE' : linenPd.linen;
+          if (newLinen !== linenPd.linen) updateProgressField(S.editDrawerProp, { linen: newLinen });
           return;
         }
 
         if (e.target.closest('#ped-linen-back') && S.editDrawerProp) {
-          updateProgressField(S.editDrawerProp, { linen: '' });
+          var linenBackPd = getEffectiveProgress(S.editDrawerProp);
+          var prevLinen = linenBackPd.linen === 'DONE' ? 'NEED' : '';
+          updateProgressField(S.editDrawerProp, { linen: prevLinen });
           return;
         }
 
