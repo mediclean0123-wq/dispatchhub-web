@@ -504,6 +504,26 @@
       font-size: 0.78rem; font-family: inherit; cursor: pointer; color: #3949ab;
     }
     .btn-order-mode:active { background: #c5cae9; }
+    /* ── 今すぐ反映 ── */
+    .run-now-order-row { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.4rem; }
+    .run-now-wrap { display: flex; flex-direction: column; gap: 0.15rem; }
+    .btn-run-now {
+      padding: 0.28rem 0.65rem; border-radius: 6px;
+      border: 1.5px solid #2e7d32; background: #e8f5e9;
+      font-size: 0.78rem; font-family: inherit; cursor: pointer; color: #2e7d32;
+    }
+    .btn-run-now:active { background: #c8e6c9; }
+    .btn-run-now:disabled { border-color: #9e9e9e; background: #f5f5f5; color: #9e9e9e; cursor: default; }
+    .run-now-info { font-size: 0.68rem; color: var(--muted); line-height: 1.3; }
+    .run-now-desc { font-size: 0.68rem; color: var(--muted); line-height: 1.4; margin-bottom: 0.4rem; }
+    .run-now-popup-card {
+      position: fixed; bottom: 1.2rem; left: 50%; transform: translateX(-50%);
+      z-index: 50; width: min(calc(100% - 2rem), 320px);
+      background: var(--card); border-radius: 12px; padding: 1rem 1.1rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.22);
+    }
+    .run-now-popup-card[hidden] { display: none; }
+    .run-now-popup-msg { font-size: 0.88rem; margin-bottom: 0.9rem; line-height: 1.4; }
     .order-mode-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
     .order-mode-title { font-weight: bold; font-size: 0.9rem; flex-shrink: 0; }
     .order-mode-staff-sel {
@@ -1086,7 +1106,14 @@
         <button id="btn-open-room-assign" class="btn-open-room-assign" hidden>部屋番号振り分け<span id="room-assign-badge" class="room-assign-badge" hidden></span></button>
       </div>
       <div id="order-mode-bar" hidden>
-        <button id="btn-order-mode" class="btn-order-mode">順番を決める</button>
+        <div class="run-now-order-row">
+          <div class="run-now-wrap">
+            <button id="btn-run-now" class="btn-run-now">今すぐ反映</button>
+            <span id="run-now-info" class="run-now-info"></span>
+          </div>
+          <button id="btn-order-mode" class="btn-order-mode">順番を決める</button>
+        </div>
+        <div id="run-now-desc" class="run-now-desc">担当の変更・キャンセル・LINE の再送は操作後5分以内に自動で反映されます。明日以降の手入力予約の追加・変更・削除を清掃スケジュールに反映するには「今すぐ反映」を使ってください。</div>
       </div>
       <div id="order-mode-panel" hidden>
         <div class="order-mode-header">
@@ -1371,6 +1398,14 @@
     </div>
   </div>
 
+  <div id="run-now-popup" class="run-now-popup-card" hidden>
+    <p class="run-now-popup-msg">明日以降の手入力予約を変更しました。今すぐ清掃スケジュールに反映しますか？</p>
+    <div class="modal-actions">
+      <button id="run-now-popup-later" class="btn btn-import">あとで</button>
+      <button id="run-now-popup-now"   class="btn btn-save">今すぐ反映</button>
+    </div>
+  </div>
+
   <div id="toast" hidden></div>
 
   <!-- 進捗編集ドロワー -->
@@ -1518,7 +1553,8 @@
         g7:        { red: 5,  yellow: 3  },
         hours:     { red: 40, yellow: 30 }
       },
-      busyExpandedDate: null    // 展開中の日付（'YYYY-MM-DD'）
+      busyExpandedDate: null,   // 展開中の日付（'YYYY-MM-DD'）
+      runNow: { status: 'idle', requestedAt: null, pollCount: 0, pollTimer: null, lastFinishedAt: '', fetchedInitial: false }
     };
 
     // ── ユーティリティ ─────────────────────────────────────────────────
@@ -1763,9 +1799,103 @@
       var loaded   = S.scheduleSearchFetched || S.scheduleSearchLoading;
       // グループ切り替えバー: データ読み込み後に表示
       document.getElementById('sched-grouping-bar').hidden = !loaded;
-      // 順番を決めるボタン: ADMIN + 単日モード + モード外
+      // 順番を決めるボタン（+今すぐ反映）: ADMIN + 単日モード + モード外
       document.getElementById('order-mode-bar').hidden =
         !S.isAdmin || isSearch || S.orderMode;
+      renderRunNow();
+      if (S.isAdmin && !S.runNow.fetchedInitial) {
+        S.runNow.fetchedInitial = true;
+        callApi({ action: 'getRunNowStatus' }).then(function(data) {
+          if (data && data.ok && data.lastFinishedAt) {
+            S.runNow.lastFinishedAt = data.lastFinishedAt;
+            renderRunNow();
+          }
+        }).catch(function() {});
+      }
+    }
+
+    // ── 今すぐ反映 ───────────────────────────────────────────────────────
+    function renderRunNow() {
+      var btn  = document.getElementById('btn-run-now');
+      var info = document.getElementById('run-now-info');
+      if (!btn || !info) return;
+      var rn = S.runNow;
+      if (rn.status === 'pending') {
+        btn.textContent  = '受付済み';
+        btn.disabled     = true;
+        info.textContent = 'スケジューラ実行中…（最大8分）';
+      } else if (rn.status === 'done') {
+        btn.textContent  = '今すぐ反映';
+        btn.disabled     = false;
+        var t = rn.lastFinishedAt ? rn.lastFinishedAt.slice(11, 16) : '';
+        info.textContent = t ? '反映済み ' + t : '反映済み';
+      } else {
+        btn.textContent  = '今すぐ反映';
+        btn.disabled     = false;
+        var lf = rn.lastFinishedAt;
+        info.textContent = lf ? '最終反映 ' + lf.slice(11, 16) : '';
+      }
+    }
+
+    function callRunNowApi() {
+      if (S.runNow.status === 'pending') return;
+      document.getElementById('run-now-popup').hidden = true;
+      callApi({ action: 'requestRunNow' }).then(function(data) {
+        if (!data.ok) { toast('エラー: ' + (data.error || '不明')); return; }
+        S.runNow.status      = 'pending';
+        S.runNow.requestedAt = new Date().toISOString();
+        S.runNow.pollCount   = 0;
+        renderRunNow();
+        schedulePollRunNow();
+      }).catch(function(e) {
+        if (e.isUnauthorized) { handleUnauthorized(); return; }
+        toast('エラー: ' + e.message);
+      });
+    }
+
+    function schedulePollRunNow() {
+      if (S.runNow.pollTimer) clearTimeout(S.runNow.pollTimer);
+      S.runNow.pollTimer = setTimeout(pollRunNowStatus, 30000);
+    }
+
+    function pollRunNowStatus() {
+      S.runNow.pollTimer = null;
+      if (S.runNow.status !== 'pending') return;
+      callApi({ action: 'getRunNowStatus' }).then(function(data) {
+        if (!data.ok) {
+          S.runNow.pollCount++;
+          if (S.runNow.pollCount < 10) { schedulePollRunNow(); }
+          else { S.runNow.status = 'idle'; renderRunNow(); }
+          return;
+        }
+        var finished = data.lastFinishedAt || '';
+        if (finished) S.runNow.lastFinishedAt = finished;
+        if (finished && S.runNow.requestedAt && finished > S.runNow.requestedAt) {
+          S.runNow.status = 'done';
+          renderRunNow();
+          return;
+        }
+        S.runNow.pollCount++;
+        renderRunNow();
+        if (S.runNow.pollCount < 10) {
+          schedulePollRunNow();
+        } else {
+          S.runNow.status = 'idle';
+          renderRunNow();
+          toast('スケジューラの完了を確認できませんでした。しばらくお待ちください。', 5000);
+        }
+      }).catch(function() {
+        S.runNow.pollCount++;
+        if (S.runNow.pollCount < 10) { schedulePollRunNow(); }
+        else { S.runNow.status = 'idle'; renderRunNow(); }
+      });
+    }
+
+    function maybeShowRunNowPopup(date) {
+      if (!S.isAdmin) return;
+      if (!date || date <= today()) return;
+      if (S.runNow.status === 'pending') return;
+      document.getElementById('run-now-popup').hidden = false;
     }
 
     // ── タップ順モード ────────────────────────────────────────────────
@@ -2949,6 +3079,7 @@
           document.getElementById('manual-dup-warning-cont').hidden = true;
         } else {
           toast('登録しました。この一覧への反映には最大5分かかります。清掃スケジュールへの反映には最大1時間かかります。', 5000);
+          maybeShowRunNowPopup(dtend);
           closeManualAddSection();
         }
         loadManualReservations();
@@ -2982,6 +3113,7 @@
       }).then(function(data) {
         if (!data.ok) { toast('保存エラー: ' + (data.error || '不明')); return; }
         toast('変更しました。この一覧への反映には最大5分かかります。', 4000);
+        maybeShowRunNowPopup(newDtend);
         S.manualChangeUid = null;
         loadManualReservations();
       }).catch(function(e) {
@@ -2991,9 +3123,12 @@
 
     function cancelManualReservation(uid, propName) {
       if (!confirm('「' + propName + '」の予約をキャンセルしますか？')) return;
+      var cxItem  = S.manualReservations.find(function(r) { return r.uid === uid; });
+      var cxDtend = cxItem ? (cxItem.dtend || '') : '';
       callApi({ action: 'deleteManualReservation', uid: uid }).then(function(data) {
         if (!data.ok) { toast('キャンセルエラー: ' + (data.error || '不明')); return; }
         toast('キャンセルしました。この一覧への反映には最大5分かかります。', 4000);
+        maybeShowRunNowPopup(cxDtend);
         loadManualReservations();
       }).catch(function(e) {
         toast('キャンセルエラー: ' + e.message);
@@ -5283,6 +5418,13 @@
         document.getElementById('btn-group-area').classList.remove('active');
         renderScheduleList();
       });
+
+      // 今後の清掃予定タブ：今すぐ反映・ポップアップ
+      document.getElementById('btn-run-now').addEventListener('click', callRunNowApi);
+      document.getElementById('run-now-popup-later').addEventListener('click', function() {
+        document.getElementById('run-now-popup').hidden = true;
+      });
+      document.getElementById('run-now-popup-now').addEventListener('click', callRunNowApi);
 
       // 今後の清掃予定タブ：順番を決めるモード
       document.getElementById('btn-order-mode').addEventListener('click', enterOrderMode);
