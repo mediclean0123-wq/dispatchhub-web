@@ -733,14 +733,14 @@
       color: #999; font-size: 1rem; padding: 0.1rem 0.3rem;
     }
 
-    /* ── 手入力予約ボタン（手入力予約タブ入口）── */
+    /* ── 手入力予約・部屋番号振り分けボタン（清掃スケジュール入口）── */
     .manual-open-row {
       display: flex; gap: 0.5rem; margin-bottom: 0.5rem;
     }
     .manual-open-row button { flex: 1; }
     .btn-open-manual {
-      padding: 0.42rem 0.5rem; border: 1px solid var(--border); border-radius: 6px;
-      background: var(--card); color: var(--fg); font-size: 0.82rem;
+      padding: 0.55rem; border: 1.5px solid #bbb; border-radius: 6px;
+      background: #fff; color: #333; font-size: 0.88rem;
       font-family: inherit; cursor: pointer;
     }
     .btn-open-manual:active { opacity: 0.75; }
@@ -757,10 +757,10 @@
     .btn-manual-back:active { opacity: 0.75; }
     .manual-title { font-size: 1rem; font-weight: bold; }
 
-    /* ── 部屋の振り分けパネル ── */
+    /* ── 部屋番号振り分けパネル ── */
     .btn-open-room-assign {
-      padding: 0.35rem 0.9rem; border: 1px solid var(--border); border-radius: 6px;
-      background: var(--card); color: var(--fg); font-size: 0.82rem;
+      padding: 0.55rem; border: 1.5px solid #bbb; border-radius: 6px;
+      background: #fff; color: #333; font-size: 0.88rem;
       font-family: inherit; cursor: pointer; position: relative;
     }
     .btn-open-room-assign:active { opacity: 0.75; }
@@ -1083,7 +1083,7 @@
       </div>
       <div class="manual-open-row">
         <button id="btn-open-manual" class="btn-open-manual">手入力予約</button>
-        <button id="btn-open-room-assign" class="btn-open-room-assign" hidden>部屋の振り分け<span id="room-assign-badge" class="room-assign-badge" hidden></span></button>
+        <button id="btn-open-room-assign" class="btn-open-room-assign" hidden>部屋番号振り分け<span id="room-assign-badge" class="room-assign-badge" hidden></span></button>
       </div>
       <div id="order-mode-bar" hidden>
         <button id="btn-order-mode" class="btn-order-mode">順番を決める</button>
@@ -1240,7 +1240,7 @@
     <div id="panel-room-assign" class="panel" hidden>
       <div class="ra-header-row">
         <button id="btn-room-assign-back" class="btn-room-assign-back">← 清掃スケジュール</button>
-        <span class="ra-title">部屋の振り分け</span>
+        <span class="ra-title">部屋番号振り分け</span>
       </div>
       <div id="ra-list"></div>
     </div>
