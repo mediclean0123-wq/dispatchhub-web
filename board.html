@@ -1083,6 +1083,7 @@
 
     <!-- 先の予定パネル（管理者のみ） -->
     <div id="panel-busy" class="panel" hidden>
+      <div id="busy-area-unset-notice" class="notice" hidden></div>
       <div class="busy-nav">
         <button id="busy-prev-btn" class="busy-nav-btn">◀ 前月</button>
         <span   id="busy-month-title" class="busy-nav-title"></span>
@@ -1603,6 +1604,15 @@
       var red    = S.busyThresholds.red;
       var yellow = S.busyThresholds.yellow;
 
+      // エリア未設定のお知らせ
+      var unsetNotice = document.getElementById('busy-area-unset-notice');
+      if (data.summary && data.summary.areaUnset > 0) {
+        unsetNotice.textContent = 'エリア未設定の物件があります（' + data.summary.areaUnset + '件）';
+        unsetNotice.hidden = false;
+      } else {
+        unsetNotice.hidden = true;
+      }
+
       // グループヘッダー更新
       document.getElementById('busy-th-g1234').textContent = busyGroupHeader('g1234');
       document.getElementById('busy-th-g56').textContent   = busyGroupHeader('g56');
@@ -1659,11 +1669,14 @@
       }
       var html = '';
       item.details.forEach(function(d) {
-        var h = d.cleanHours !== null ? d.cleanHours + 'h' : '未登録';
+        var h = d.area && ['①','②','③','④','⑤','⑥'].indexOf(d.area) >= 0
+          ? (d.cleanHours !== null ? d.cleanHours + 'h' : '未登録')
+          : '—';
+        var areaDisp = d.area ? esc(d.area) : '<span style="color:var(--muted)">未設定</span>';
         html += '<tr class="busy-detail-row">';
         html += '<td class="busy-date-cell"></td>';
         html += '<td colspan="6">' + esc(d.propertyName) + '</td>';
-        html += '<td>' + esc(d.area || '—') + '</td>';
+        html += '<td>' + areaDisp + '</td>';
         html += '<td>' + esc(h) + '</td>';
         html += '</tr>';
       });
