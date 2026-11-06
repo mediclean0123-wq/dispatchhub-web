@@ -954,37 +954,62 @@
     .btn-album-resend:disabled { opacity: 0.5; cursor: default; }
 
     /* ── 先の予定タブ ── */
-    .busy-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem; }
+    .busy-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
     .busy-nav-btn {
-      padding: 0.4rem 0.8rem; border: 1px solid var(--border); border-radius: 6px;
-      background: var(--card); font-size: 0.85rem; font-family: inherit; cursor: pointer;
+      padding: 0.3rem 0.6rem; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--card); font-size: 0.8rem; font-family: inherit; cursor: pointer;
     }
     .busy-nav-btn:disabled { opacity: 0.4; cursor: default; }
-    .busy-nav-title { font-weight: bold; font-size: 1rem; }
-    .busy-threshold-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.82rem; }
-    .busy-threshold-row label { color: var(--muted); white-space: nowrap; }
-    .busy-threshold-row input[type=number] { width: 4em; padding: 0.25rem 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.82rem; font-family: inherit; }
-    .busy-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .busy-table { border-collapse: collapse; min-width: 100%; font-size: 0.82rem; }
-    .busy-table th, .busy-table td {
-      padding: 0.35rem 0.45rem; border: 1px solid var(--border); text-align: right; white-space: nowrap;
+    .busy-nav-title { font-weight: bold; font-size: 0.95rem; }
+    .busy-threshold-panel {
+      margin-bottom: 0.5rem; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
     }
-    .busy-table th { background: var(--bg); font-weight: bold; text-align: center; }
+    .busy-threshold-summary {
+      cursor: pointer; padding: 0.3rem 0.6rem; font-size: 0.78rem; color: var(--muted);
+      display: block; list-style: none; user-select: none; background: var(--bg);
+    }
+    .busy-threshold-summary::-webkit-details-marker { display: none; }
+    .busy-threshold-grid {
+      display: grid; grid-template-columns: auto auto 3em auto 3em;
+      gap: 0.18rem 0.3rem; padding: 0.4rem 0.6rem; font-size: 0.78rem; align-items: center;
+      background: var(--card);
+    }
+    .busy-threshold-grid label { color: var(--muted); white-space: nowrap; }
+    .bt-input {
+      width: 3em; padding: 0.12rem 0.2rem; border: 1px solid var(--border); border-radius: 4px;
+      font-size: 0.78rem; font-family: inherit; text-align: right;
+    }
+    .busy-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .busy-table { border-collapse: collapse; width: 100%; font-size: 0.65rem; }
+    .busy-table th, .busy-table td {
+      padding: 0.09rem 0.14rem; border: 1px solid var(--border); text-align: right;
+      white-space: nowrap; line-height: 1.3;
+    }
+    .busy-table th { background: var(--bg); font-weight: bold; text-align: center; font-size: 0.6rem; }
+    .busy-table tbody tr:not(.busy-detail-row):not(.busy-summary-row) td { background: #f9f9f9; }
     .busy-date-cell {
-      position: sticky; left: 0; background: var(--card); z-index: 1; cursor: pointer;
-      text-align: left; font-size: 0.8rem; min-width: 5.5em;
+      position: sticky; left: 0; background: #f9f9f9; z-index: 1; cursor: pointer;
+      text-align: left; min-width: 4em;
     }
     .busy-date-cell:active { opacity: 0.7; }
-    .busy-row-red  td { background: #ffebee; }
-    .busy-row-yellow td { background: #fffde7; }
-    .busy-row-red  .busy-date-cell { background: #ffcdd2; }
-    .busy-row-yellow .busy-date-cell { background: #fff9c4; }
-    .busy-unregistered { font-size: 0.72rem; color: var(--muted); display: block; white-space: nowrap; }
-    .busy-detail-row td { background: #f9f9f9; font-size: 0.78rem; color: var(--fg); text-align: left; padding: 0.25rem 0.45rem; }
-    .busy-detail-row .busy-date-cell { background: #f9f9f9; cursor: default; }
+    .busy-date-sat { color: #1565c0; }
+    .busy-date-sun { color: #c0392b; }
+    .busy-cell-red    { background: #ffd7d9 !important; color: #7a0000; }
+    .busy-cell-yellow { background: #fff3b0 !important; color: #5a3800; }
+    @media (prefers-color-scheme: dark) {
+      .busy-table tbody tr:not(.busy-detail-row):not(.busy-summary-row) td { background: #242424; }
+      .busy-date-cell { background: #242424; }
+      .busy-cell-red    { background: #5c0000 !important; color: #ffb3b3; }
+      .busy-cell-yellow { background: #4a3600 !important; color: #ffe082; }
+    }
+    .busy-unrg-mark { font-size: 0.6rem; color: #e65100; margin-left: 0.1rem; }
+    .busy-unregistered { font-size: 0.65rem; color: var(--muted); display: block; white-space: nowrap; }
+    .busy-detail-row td { background: #fff !important; font-size: 0.72rem; color: var(--fg); text-align: left; padding: 0.2rem 0.35rem; }
+    .busy-detail-row .busy-date-cell { background: #fff !important; cursor: default; }
+    .busy-unrg-detail { font-size: 0.7rem; color: var(--muted); font-style: italic; }
     .busy-loading { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.85rem; }
-    .busy-summary-row td { font-weight: bold; background: #e8eaf6; }
-    .busy-summary-row .busy-date-cell { background: #e8eaf6; cursor: default; }
+    .busy-summary-row td { font-weight: bold; background: #e8eaf6 !important; }
+    .busy-summary-row .busy-date-cell { background: #e8eaf6 !important; cursor: default; }
 
   </style>
 </head>
@@ -1089,12 +1114,16 @@
         <span   id="busy-month-title" class="busy-nav-title"></span>
         <button id="busy-next-btn" class="busy-nav-btn">翌月 ▶</button>
       </div>
-      <div class="busy-threshold-row">
-        <label>赤：</label>
-        <input type="number" id="busy-red-thresh"    min="1" max="99" step="0.5" value="8">h以上
-        <label style="margin-left:0.5rem;">黄：</label>
-        <input type="number" id="busy-yellow-thresh" min="1" max="99" step="0.5" value="5">h以上
-      </div>
+      <details id="busy-threshold-details" class="busy-threshold-panel">
+        <summary class="busy-threshold-summary">色の基準 ▼</summary>
+        <div class="busy-threshold-grid">
+          <span>合計</span>      <label>赤</label><input type="number" id="bt-total-red"    class="bt-input" min="1" max="999" step="1"   value="30"><label>黄</label><input type="number" id="bt-total-yellow"   class="bt-input" min="1" max="999" step="1"   value="15">
+          <span>同日</span>      <label>赤</label><input type="number" id="bt-sdi-red"      class="bt-input" min="1" max="999" step="1"   value="15"><label>黄</label><input type="number" id="bt-sdi-yellow"     class="bt-input" min="1" max="999" step="1"   value="8">
+          <span>インなし</span>  <label>赤</label><input type="number" id="bt-notin-red"    class="bt-input" min="1" max="999" step="1"   value="20"><label>黄</label><input type="number" id="bt-notin-yellow"   class="bt-input" min="1" max="999" step="1"   value="13">
+          <span>エリア外</span>  <label>赤</label><input type="number" id="bt-g7-red"       class="bt-input" min="1" max="999" step="1"   value="5"> <label>黄</label><input type="number" id="bt-g7-yellow"       class="bt-input" min="1" max="999" step="1"   value="3">
+          <span>所要時間</span>  <label>赤</label><input type="number" id="bt-hours-red"    class="bt-input" min="1" max="999" step="0.5" value="40"><label>黄</label><input type="number" id="bt-hours-yellow"   class="bt-input" min="1" max="999" step="0.5" value="30">
+        </div>
+      </details>
       <div class="busy-wrap">
         <table class="busy-table">
           <thead>
@@ -1482,7 +1511,13 @@
       busyData:       {},       // { 'YYYY-MM': { items, summary } }
       busyMonth:      null,     // 'YYYY-MM' 表示中の月
       busyLoading:    false,
-      busyThresholds: { red: 8, yellow: 5 },
+      busyThresholds: {
+        total:     { red: 30, yellow: 15 },
+        sameDayIn: { red: 15, yellow: 8  },
+        notIn:     { red: 20, yellow: 13 },
+        g7:        { red: 5,  yellow: 3  },
+        hours:     { red: 40, yellow: 30 }
+      },
       busyExpandedDate: null    // 展開中の日付（'YYYY-MM-DD'）
     };
 
@@ -1546,14 +1581,34 @@
       return { 'g1234': '①〜④', 'g56': '⑤⑥', 'g7': '⑦', 'g8': '⑧' }[key];
     }
 
-    var BUSY_THRESHOLD_KEY = 'busyThresholds';
+    var BUSY_DOW = ['日','月','火','水','木','金','土'];
+    function busyFmtDate(ymd) {
+      var parts = ymd.split('-');
+      var d = new Date(Number(parts[0]), Number(parts[1])-1, Number(parts[2]));
+      return (parts[1]|0) + '/' + String(parts[2]|0).padStart(2,'0') + ' ' + BUSY_DOW[d.getDay()];
+    }
+
+    function busyCellCls(val, key) {
+      var t = S.busyThresholds[key];
+      if (!t) return '';
+      if (val >= t.red)    return 'busy-cell-red';
+      if (val >= t.yellow) return 'busy-cell-yellow';
+      return '';
+    }
+
+    var BUSY_THRESHOLD_KEY = 'busyThresholdsV2';
+    var BUSY_THRESHOLD_KEYS = ['total','sameDayIn','notIn','g7','hours'];
     function loadBusyThresholds() {
       try {
         var v = localStorage.getItem(BUSY_THRESHOLD_KEY);
         if (!v) return;
         var obj = JSON.parse(v);
-        if (typeof obj.red    === 'number') S.busyThresholds.red    = obj.red;
-        if (typeof obj.yellow === 'number') S.busyThresholds.yellow = obj.yellow;
+        BUSY_THRESHOLD_KEYS.forEach(function(k) {
+          if (obj[k]) {
+            if (typeof obj[k].red    === 'number') S.busyThresholds[k].red    = obj[k].red;
+            if (typeof obj[k].yellow === 'number') S.busyThresholds[k].yellow = obj[k].yellow;
+          }
+        });
       } catch(e) {}
     }
     function saveBusyThresholds() {
@@ -1601,8 +1656,6 @@
       if (!ym) return;
       var data = S.busyData[ym];
       if (!data) return;
-      var red    = S.busyThresholds.red;
-      var yellow = S.busyThresholds.yellow;
 
       // エリア未設定のお知らせ
       var unsetNotice = document.getElementById('busy-area-unset-notice');
@@ -1622,21 +1675,27 @@
       var html = '';
       data.items.forEach(function(item) {
         var expanded = (S.busyExpandedDate === item.date);
-        var rowCls = '';
-        if (item.cleanHoursTotal >= red)    rowCls = 'busy-row-red';
-        else if (item.cleanHoursTotal >= yellow) rowCls = 'busy-row-yellow';
+        var parts = item.date.split('-');
+        var dow = new Date(Number(parts[0]), Number(parts[1])-1, Number(parts[2])).getDay();
+        var dateCls = 'busy-date-cell' + (dow === 0 ? ' busy-date-sun' : dow === 6 ? ' busy-date-sat' : '');
+        var dateStr  = busyFmtDate(item.date);
         var hoursDisp = item.cleanHoursTotal > 0 ? item.cleanHoursTotal + 'h' : '-';
-        var unregDisp = item.unregistered > 0 ? '<span class="busy-unregistered">未登録' + item.unregistered + '件</span>' : '';
-        html += '<tr class="' + rowCls + '">';
-        html += '<td class="busy-date-cell" data-busy-date="' + esc(item.date) + '">' + esc(item.date.slice(5)) + '</td>';
-        html += '<td>' + item.total + '</td>';
-        html += '<td>' + item.sameDayIn + '</td>';
-        html += '<td>' + item.notIn + '</td>';
+        if (item.unregistered > 0) hoursDisp += '<span class="busy-unrg-mark">＊</span>';
+        var tc  = busyCellCls(item.total,            'total');
+        var sc  = busyCellCls(item.sameDayIn,        'sameDayIn');
+        var nc  = busyCellCls(item.notIn,            'notIn');
+        var g7c = busyCellCls(item.byArea.g7,        'g7');
+        var hc  = busyCellCls(item.cleanHoursTotal,  'hours');
+        html += '<tr>';
+        html += '<td class="' + dateCls + '" data-busy-date="' + esc(item.date) + '">' + esc(dateStr) + '</td>';
+        html += '<td' + (tc  ? ' class="' + tc  + '"' : '') + '>' + item.total         + '</td>';
+        html += '<td' + (sc  ? ' class="' + sc  + '"' : '') + '>' + item.sameDayIn     + '</td>';
+        html += '<td' + (nc  ? ' class="' + nc  + '"' : '') + '>' + item.notIn         + '</td>';
         html += '<td>' + item.byArea.g1234 + '</td>';
         html += '<td>' + item.byArea.g56   + '</td>';
-        html += '<td>' + item.byArea.g7    + '</td>';
+        html += '<td' + (g7c ? ' class="' + g7c + '"' : '') + '>' + item.byArea.g7     + '</td>';
         html += '<td>' + item.byArea.g8    + '</td>';
-        html += '<td>' + hoursDisp + unregDisp + '</td>';
+        html += '<td' + (hc  ? ' class="' + hc  + '"' : '') + '>' + hoursDisp          + '</td>';
         html += '</tr>';
         if (expanded) {
           html += renderBusyDetailRows(item);
@@ -1665,7 +1724,7 @@
 
     function renderBusyDetailRows(item) {
       if (!item.details || !item.details.length) {
-        return '<tr class="busy-detail-row"><td class="busy-date-cell"></td><td colspan="8" style="color:var(--muted);font-size:0.78rem;">この日の予定なし</td></tr>';
+        return '<tr class="busy-detail-row"><td class="busy-date-cell"></td><td colspan="8" style="color:var(--muted);font-size:0.72rem;">この日の予定なし</td></tr>';
       }
       var html = '';
       item.details.forEach(function(d) {
@@ -1680,6 +1739,10 @@
         html += '<td>' + esc(h) + '</td>';
         html += '</tr>';
       });
+      if (item.unregistered > 0) {
+        html += '<tr class="busy-detail-row"><td class="busy-date-cell"></td>';
+        html += '<td colspan="8" class="busy-unrg-detail">未登録 ' + item.unregistered + '件（所要時間）</td></tr>';
+      }
       return html;
     }
 
@@ -4875,8 +4938,16 @@
             if (!S.busyMonth) {
               S.busyMonth = busyMonthFirst();
               loadBusyThresholds();
-              document.getElementById('busy-red-thresh').value    = S.busyThresholds.red;
-              document.getElementById('busy-yellow-thresh').value = S.busyThresholds.yellow;
+              document.getElementById('bt-total-red').value    = S.busyThresholds.total.red;
+              document.getElementById('bt-total-yellow').value = S.busyThresholds.total.yellow;
+              document.getElementById('bt-sdi-red').value      = S.busyThresholds.sameDayIn.red;
+              document.getElementById('bt-sdi-yellow').value   = S.busyThresholds.sameDayIn.yellow;
+              document.getElementById('bt-notin-red').value    = S.busyThresholds.notIn.red;
+              document.getElementById('bt-notin-yellow').value = S.busyThresholds.notIn.yellow;
+              document.getElementById('bt-g7-red').value       = S.busyThresholds.g7.red;
+              document.getElementById('bt-g7-yellow').value    = S.busyThresholds.g7.yellow;
+              document.getElementById('bt-hours-red').value    = S.busyThresholds.hours.red;
+              document.getElementById('bt-hours-yellow').value = S.busyThresholds.hours.yellow;
             }
             if (!S.busyData[S.busyMonth]) loadBusyStats();
             else renderBusyTable();
@@ -5406,14 +5477,26 @@
       });
 
       // ── 先の予定タブ：閾値変更 ────────────────────────────────────
-      document.getElementById('busy-red-thresh').addEventListener('change', function() {
-        var v = Number(this.value);
-        if (v > 0) { S.busyThresholds.red = v; saveBusyThresholds(); renderBusyTable(); }
-      });
-      document.getElementById('busy-yellow-thresh').addEventListener('change', function() {
-        var v = Number(this.value);
-        if (v > 0) { S.busyThresholds.yellow = v; saveBusyThresholds(); renderBusyTable(); }
-      });
+      (function() {
+        var btMap = {
+          'bt-total-red':    function(v) { S.busyThresholds.total.red        = v; },
+          'bt-total-yellow': function(v) { S.busyThresholds.total.yellow     = v; },
+          'bt-sdi-red':      function(v) { S.busyThresholds.sameDayIn.red    = v; },
+          'bt-sdi-yellow':   function(v) { S.busyThresholds.sameDayIn.yellow = v; },
+          'bt-notin-red':    function(v) { S.busyThresholds.notIn.red        = v; },
+          'bt-notin-yellow': function(v) { S.busyThresholds.notIn.yellow     = v; },
+          'bt-g7-red':       function(v) { S.busyThresholds.g7.red           = v; },
+          'bt-g7-yellow':    function(v) { S.busyThresholds.g7.yellow        = v; },
+          'bt-hours-red':    function(v) { S.busyThresholds.hours.red        = v; },
+          'bt-hours-yellow': function(v) { S.busyThresholds.hours.yellow     = v; }
+        };
+        Object.keys(btMap).forEach(function(id) {
+          document.getElementById(id).addEventListener('change', function() {
+            var v = Number(this.value);
+            if (v > 0) { btMap[id](v); saveBusyThresholds(); renderBusyTable(); }
+          });
+        });
+      })();
 
       // ── 先の予定タブ：日付タップで詳細展開 ───────────────────────
       document.getElementById('busy-tbody').addEventListener('click', function(e) {
