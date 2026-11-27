@@ -13,6 +13,7 @@
       --green:  #00a84f;
       --amber:  #f59e0b;
       --red:    #ef4444;
+      --blue:   #1976d2;
       --fg:     #222;
       --bg:     #f4f4f4;
       --card:   #fff;
@@ -78,6 +79,8 @@
     .badge-todo { background: #e5e7eb; color: #555; }
     .badge-doing { background: #fef3c7; color: #92400e; }
     .badge-done { background: #d1fae5; color: #065f46; }
+    .badge-delivered { background: #d1fae5; color: #065f46; }
+    .badge-pending { background: #fef3c7; color: #92400e; }
 
     /* ── 詳細 ── */
     #detail-view { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
@@ -125,9 +128,145 @@
       background: none; color: var(--muted);
       border: 1px solid var(--border); font-size: 0.9rem; padding: 0.6rem;
     }
+    .btn-prepare {
+      background: var(--blue); color: #fff;
+      font-size: 0.95rem; padding: 0.75rem;
+    }
 
     .btn-row { display: flex; gap: 0.5rem; }
     .btn-row .btn { flex: 1; }
+
+    /* ── 完了ブロック ── */
+    .pending-block {
+      background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px;
+      padding: 0.75rem 1rem; font-size: 0.9rem; color: #7a5700;
+    }
+
+    /* ── 持ち込み予定 ── */
+    .pending-supply-item {
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .pending-supply-item:last-child { border-bottom: none; }
+    .pending-supply-name {
+      font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem;
+    }
+    .pending-supply-meta { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.5rem; }
+    .pending-supply-actions { display: flex; gap: 0.5rem; }
+    .btn-deliver {
+      flex: 1; padding: 0.55rem 0.5rem;
+      background: var(--green); color: #fff;
+      border: none; border-radius: 8px; font-family: inherit;
+      font-size: 0.9rem; font-weight: bold; cursor: pointer;
+    }
+    .btn-skip {
+      flex: 1; padding: 0.55rem 0.5rem;
+      background: none; color: var(--fg);
+      border: 1px solid var(--border); border-radius: 8px; font-family: inherit;
+      font-size: 0.9rem; cursor: pointer;
+    }
+    .btn-deliver:disabled, .btn-skip:disabled { opacity: 0.4; cursor: not-allowed; }
+    .supply-status-delivered { color: var(--green); font-weight: bold; font-size: 0.9rem; }
+    .supply-status-skipped   { color: var(--muted); font-size: 0.9rem; }
+    .supply-inline-error { color: var(--red); font-size: 0.85rem; margin-top: 0.4rem; }
+
+    /* ── スキップ理由フォーム（インライン） ── */
+    .skip-form {
+      background: #f8f8f8; border-radius: 8px;
+      padding: 0.75rem; margin-top: 0.4rem;
+    }
+    .skip-form-title { font-size: 0.9rem; font-weight: bold; margin-bottom: 0.5rem; }
+    .skip-reason-list { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.6rem; }
+    .skip-reason-btn {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 0.75rem; border-radius: 8px;
+      border: 1px solid var(--border); background: #fff;
+      font-family: inherit; font-size: 0.9rem; cursor: pointer; text-align: left;
+    }
+    .skip-reason-btn.selected {
+      border-color: var(--blue); background: #e3f0ff; font-weight: bold;
+    }
+    .skip-other-memo {
+      width: 100%; padding: 0.5rem; border-radius: 6px;
+      border: 1px solid var(--border); font-family: inherit; font-size: 0.9rem;
+      resize: none; margin-bottom: 0.6rem;
+    }
+    .skip-form-actions { display: flex; gap: 0.5rem; }
+    .btn-skip-confirm {
+      flex: 1; padding: 0.6rem; background: var(--amber); color: #fff;
+      border: none; border-radius: 8px; font-family: inherit;
+      font-size: 0.9rem; font-weight: bold; cursor: pointer;
+    }
+    .btn-skip-cancel {
+      padding: 0.6rem 1rem; background: none; color: var(--muted);
+      border: 1px solid var(--border); border-radius: 8px; font-family: inherit;
+      font-size: 0.9rem; cursor: pointer;
+    }
+    .btn-skip-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
+    .skip-result-msg { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; }
+
+    /* ── 次回の準備ビュー ── */
+    #prep-view { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+
+    .prep-card {
+      background: var(--card); border-radius: 10px;
+      border: 1px solid var(--border); padding: 1rem;
+    }
+    .prep-card h2 { font-size: 1rem; font-weight: bold; margin-bottom: 0.75rem; }
+
+    .supply-filter-bar {
+      display: flex; gap: 0.4rem; overflow-x: auto;
+      padding-bottom: 0.25rem; margin-bottom: 0.75rem;
+      scrollbar-width: none;
+    }
+    .supply-filter-bar::-webkit-scrollbar { display: none; }
+    .supply-filter-btn {
+      flex-shrink: 0; padding: 0.3rem 0.75rem;
+      border-radius: 20px; border: 1px solid var(--border);
+      background: #fff; font-family: inherit; font-size: 0.85rem; cursor: pointer;
+    }
+    .supply-filter-btn.active {
+      background: var(--green); color: #fff; border-color: var(--green);
+    }
+
+    .supply-item-grid {
+      display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem;
+    }
+    .supply-item-btn {
+      padding: 0.4rem 0.75rem; border-radius: 20px;
+      border: 1px solid var(--border); background: #fff;
+      font-family: inherit; font-size: 0.9rem; cursor: pointer;
+    }
+    .supply-item-btn.selected {
+      border-color: var(--blue); background: #e3f0ff; font-weight: bold;
+    }
+
+    .prep-form-label {
+      font-size: 0.85rem; color: var(--muted); margin-bottom: 0.25rem;
+    }
+    .prep-form-row { margin-bottom: 0.75rem; }
+    .prep-qty-row { display: flex; align-items: center; gap: 0.5rem; }
+    .prep-qty-input {
+      width: 5rem; padding: 0.5rem; border-radius: 6px;
+      border: 1px solid var(--border); font-family: inherit; font-size: 1rem;
+      text-align: center;
+    }
+    .prep-qty-unit { font-size: 0.95rem; color: var(--muted); }
+    .prep-memo-input {
+      width: 100%; padding: 0.5rem; border-radius: 6px;
+      border: 1px solid var(--border); font-family: inherit; font-size: 0.95rem;
+      resize: none;
+    }
+    .prep-form-error { color: var(--red); font-size: 0.85rem; margin-top: 0.3rem; }
+
+    .registered-list { display: flex; flex-direction: column; gap: 0.3rem; }
+    .registered-item {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.9rem; padding: 0.35rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .registered-item:last-child { border-bottom: none; }
+    .registered-no-item { font-size: 0.9rem; color: var(--muted); }
   </style>
 </head>
 <body>
@@ -160,48 +299,106 @@
   <!-- 詳細ビュー -->
   <div id="detail-view" hidden></div>
 
+  <!-- 次回の準備ビュー -->
+  <div id="prep-view" hidden></div>
+
 </div>
 
 <script>
   // ── 辞書（次の段階で言語切替を追加できる構造） ───────────────────────
   var DICT = {
     ja: {
-      appTitle:     '清掃スケジュール',
-      loading:      '読み込み中...',
-      errUnauth:    'ログインが必要です。',
-      errLoad:      '読み込みに失敗しました。',
-      errConflict:  '他の端末で更新されました。再読み込みします。',
-      errNetwork:   '通信エラーが発生しました。',
-      empty:        '今日の担当物件はありません。',
-      checkinTime:  'チェックイン',
-      password:     'パスワード',
-      manual:       'マニュアル',
-      manualOpen:   'マニュアルを開く',
-      photo:        '写真',
-      photoOpen:    '写真を開く',
-      carryTasks:   '📦 CARRYタスク',
-      progress:     '進捗',
-      linen:        'リネン',
-      trash:        'ゴミ',
-      check:        'チェック',
-      status:       'ステータス',
-      TODO:         '未着手',
-      DOING:        '進行中',
-      DONE:         '完了',
-      btnStart:     '開始',
-      btnFinish:    '完了にする',
-      btnUndoStart: '開始を取り消す',
-      btnUndoFinish:'完了を取り消す',
-      startedAt:    '開始時刻',
-      finishedAt:   '終了時刻',
-      na:           '—',
-      back:         '← 一覧に戻る',
-      startedAtVal: function(v) { return v ? formatTime(v) : '—'; },
-      finishedAtVal:function(v) { return v ? formatTime(v) : '—'; }
+      appTitle:            '清掃スケジュール',
+      loading:             '読み込み中...',
+      loadingSupply:       '品目を読み込み中...',
+      errUnauth:           'ログインが必要です。',
+      errLoad:             '読み込みに失敗しました。',
+      errConflict:         '他の端末で更新されました。再読み込みします。',
+      errNetwork:          '通信エラーが発生しました。',
+      errDateMismatch:     '日付が一致しません。画面を再読み込みしてください。',
+      errUnknownItem:      'SupplyMaster に登録されていない品目です。',
+      errNotPending:       'すでに確認済みです。画面を再読み込みしてください。',
+      errLockTimeout:      '処理が混み合っています。しばらくしてから再試行してください。',
+      empty:               '今日の担当物件はありません。',
+      checkinTime:         'チェックイン',
+      password:            'パスワード',
+      manual:              'マニュアル',
+      manualOpen:          'マニュアルを開く',
+      photo:               '写真',
+      photoOpen:           '写真を開く',
+      carryTasks:          '📦 CARRYタスク',
+      progress:            '進捗',
+      status:              'ステータス',
+      TODO:                '未着手',
+      DOING:               '進行中',
+      DONE:                '完了',
+      btnStart:            '開始',
+      btnFinish:           '完了にする',
+      btnUndoStart:        '開始を取り消す',
+      btnUndoFinish:       '完了を取り消す',
+      btnPrepare:          '次回の準備',
+      startedAt:           '開始時刻',
+      finishedAt:          '終了時刻',
+      na:                  '—',
+      back:                '← 一覧に戻る',
+      backToDetail:        '← 詳細に戻る',
+      startedAtVal:        function(v) { return v ? formatTime(v) : '—'; },
+      finishedAtVal:       function(v) { return v ? formatTime(v) : '—'; },
+
+      // 持ち込み予定
+      pendingTitle:        '📦 持ち込み予定',
+      btnDeliver:          '持参した',
+      btnSkip:             '持参しなかった',
+      supplyDelivered:     '✓ 持参済み',
+      supplySkipped:       '→ 繰り越し済み',
+
+      // 完了ブロック
+      pendingBlockMsg:     '未確認の備品があります。「持参した」または「持参しなかった」を選んでください。',
+
+      // スキップ理由
+      skipTitle:           '持参しなかった理由（必須）',
+      skipConfirm:         '次回に持ち越す',
+      skipCancel:          'キャンセル',
+      skipResultDate:      function(d) { return '→ 次回（' + d + '）に持ち越しました'; },
+      skipResultUnknown:   '→ 繰り越し中（次の清掃日未定）',
+      skipOtherMemoLabel:  '詳細（必須）',
+      skipReasonRequired:  '理由を選択してください。',
+      skipOtherRequired:   '「その他」の場合は詳細を入力してください。',
+
+      skipReasonOUT_OF_STOCK: '在庫切れ',
+      skipReasonFORGOT:       '持ち忘れ',
+      skipReasonNOT_NEEDED:   '今回は不要と判断',
+      skipReasonDEFERRED:     '次の担当者に持ち越し',
+      skipReasonOTHER:        'その他',
+
+      // 次回の準備
+      prepTitle:           '次回の準備',
+      supplyTitle:         '📦 備品リクエスト',
+      supplyCatAll:        'すべて',
+      supplyPickLabel:     '品目を選ぶ',
+      supplyNoItems:       '品目がありません。',
+      supplyQtyLabel:      '数量（任意）',
+      supplyMemoLabel:     'メモ（任意、90文字以内）',
+      supplyRegister:      '登録する',
+      supplyRegistered:    '✅ 登録済みの備品（今回追加分）',
+      supplyNoRegistered:  'まだ追加していません。',
+      supplySelectFirst:   '品目を選んでください。',
+      supplyRegOk:         '✓ 登録しました',
+      supplyInvalidQty:    '数量は 1〜999 の整数で入力してください。',
+      supplyMemoTooLong:   'メモは90文字以内で入力してください。',
+      supplyMemoNewline:   'メモに改行は使えません。',
     }
   };
   var LANG = 'ja';
-  function t(key) { var d = DICT[LANG] || DICT.ja; return d[key] || key; }
+  function t(key) { var d = DICT[LANG] || DICT.ja; var v = d[key]; return (v !== undefined) ? v : key; }
+
+  var SKIP_REASONS = [
+    { id: 'OUT_OF_STOCK', key: 'skipReasonOUT_OF_STOCK' },
+    { id: 'FORGOT',       key: 'skipReasonFORGOT' },
+    { id: 'NOT_NEEDED',   key: 'skipReasonNOT_NEEDED' },
+    { id: 'DEFERRED',     key: 'skipReasonDEFERRED' },
+    { id: 'OTHER',        key: 'skipReasonOTHER' }
+  ];
 
   // ── ユーティリティ ───────────────────────────────────────────────────
   var CFG = window.DISPATCH_CONFIG;
@@ -233,11 +430,23 @@
 
   // ── 状態 ────────────────────────────────────────────────────────────
   var S = {
-    idToken:  null,
-    today:    null,
-    rows:     [],
-    row:      null,
-    busy:     false
+    idToken:         null,
+    today:           null,
+    rows:            [],
+    row:             null,
+    busy:            false,
+    // 次回の準備
+    supplyItems:     [],       // getSupplyMasterItems の結果
+    prepRegistered:  [],       // 今セッションで登録した備品（表示用）
+    prepBusy:        false,
+    prepCatFilter:   null,     // カテゴリフィルター（null = すべて）
+    prepSelectedItem:null,     // 選択中の品目オブジェクト
+    // スキップフォーム
+    skipTargetId:    null,     // スキップフォームを開いている SR の requestId
+    skipReason:      null,     // 選択中の理由 ID
+    skipOtherMemo:   '',
+    skipBusy:        false,
+    deliverBusyIds:  {}        // deliver 中の requestId → true
   };
 
   // ── API ─────────────────────────────────────────────────────────────
@@ -258,6 +467,17 @@
       }
       return data;
     });
+  }
+
+  function apiErrorMsg(err, errorCode) {
+    var code = errorCode || (err && err.message) || '';
+    if (code === 'conflict')         return t('errConflict');
+    if (code === 'date_mismatch')    return t('errDateMismatch');
+    if (code === 'unknown_item')     return t('errUnknownItem');
+    if (code === 'not_pending')      return t('errNotPending');
+    if (code === 'lock_timeout')     return t('errLockTimeout');
+    if (err && err.isUnauthorized)   return t('errUnauth');
+    return t('errNetwork') + (code ? ' (' + code + ')' : '');
   }
 
   // ── ロード ──────────────────────────────────────────────────────────
@@ -281,6 +501,7 @@
   // ── 一覧レンダリング ─────────────────────────────────────────────────
   function renderList() {
     document.getElementById('detail-view').hidden = true;
+    document.getElementById('prep-view').hidden   = true;
     document.getElementById('list-view').hidden   = false;
     document.getElementById('hdr-title').textContent = t('appTitle');
     document.getElementById('hdr-date').textContent  = S.today;
@@ -316,8 +537,12 @@
   // ── 詳細レンダリング ─────────────────────────────────────────────────
   function openDetail(idx) {
     S.row = S.rows[idx];
+    S.skipTargetId = null;
+    S.skipReason   = null;
+    S.skipOtherMemo = '';
     renderDetail();
     document.getElementById('list-view').hidden   = true;
+    document.getElementById('prep-view').hidden   = true;
     document.getElementById('detail-view').hidden = false;
     window.scrollTo(0, 0);
   }
@@ -326,8 +551,10 @@
     var row  = S.row;
     var prog = row.progress || {};
     var status = prog.status || 'TODO';
+    var supplyRequests = row.supplyRequests || [];
 
-    var carryTasks = (row.tasks || []).filter(function(tk) { return tk.type === 'CARRY'; });
+    // 持ち込み予定（PENDING のみブロック判定に使う）
+    var hasPending = supplyRequests.some(function(sr) { return sr.status === 'PENDING'; });
 
     var infoRows = '';
 
@@ -347,6 +574,7 @@
       infoRows += detailRow(t('photo'),
         '<a href="' + escHtml(row.photoUrl) + '" target="_blank">' + escHtml(t('photoOpen')) + '</a>');
 
+    var carryTasks = (row.tasks || []).filter(function(tk) { return tk.type === 'CARRY'; });
     var carryHtml = '';
     if (carryTasks.length) {
       carryHtml = '<div class="detail-card">' +
@@ -360,22 +588,51 @@
       '</div>';
     }
 
+    // 持ち込み予定セクション
+    var supplyHtml = '';
+    if (supplyRequests.length) {
+      var items = supplyRequests.map(function(sr) {
+        return renderSupplyItem(sr);
+      }).join('');
+      supplyHtml = '<div class="detail-card" id="supply-section">' +
+        '<h2>' + escHtml(t('pendingTitle')) + '</h2>' +
+        items +
+      '</div>';
+    }
+
+    // 完了ブロックメッセージ
+    var blockHtml = '';
+    if (hasPending && (status === 'DOING' || status === 'TODO')) {
+      blockHtml = '<div class="pending-block" id="pending-block-msg">' +
+        escHtml(t('pendingBlockMsg')) +
+      '</div>';
+    }
+
+    // 進捗情報
     var progressInfo =
       detailRow(t('status'), '<span class="badge badge-' + status.toLowerCase() + '">' + escHtml(t(status)) + '</span>') +
       detailRow(t('startedAt'),  escHtml(t('startedAtVal')(prog.startedAt))) +
       detailRow(t('finishedAt'), escHtml(t('finishedAtVal')(prog.finishedAt)));
 
+    // ボタン
     var btnHtml = '';
     if (status === 'TODO') {
       btnHtml = '<button id="btn-start" class="btn btn-start">' + escHtml(t('btnStart')) + '</button>';
     } else if (status === 'DOING') {
+      var finishDisabled = hasPending ? ' disabled' : '';
       btnHtml =
         '<div class="btn-row">' +
           '<button id="btn-undo-start" class="btn btn-undo">' + escHtml(t('btnUndoStart')) + '</button>' +
-          '<button id="btn-finish" class="btn btn-finish">' + escHtml(t('btnFinish')) + '</button>' +
+          '<button id="btn-finish" class="btn btn-finish"' + finishDisabled + '>' + escHtml(t('btnFinish')) + '</button>' +
         '</div>';
     } else if (status === 'DONE') {
       btnHtml = '<button id="btn-undo-finish" class="btn btn-undo">' + escHtml(t('btnUndoFinish')) + '</button>';
+    }
+
+    // 「次回の準備」ボタン（DOING または DONE のとき）
+    var prepBtnHtml = '';
+    if (status === 'DOING' || status === 'DONE') {
+      prepBtnHtml = '<button id="btn-prepare" class="btn btn-prepare">' + escHtml(t('btnPrepare')) + '</button>';
     }
 
     var el = document.getElementById('detail-view');
@@ -388,15 +645,18 @@
       '</div>' +
 
       carryHtml +
+      supplyHtml +
+      blockHtml +
 
       '<div class="detail-card">' +
         '<h2>' + escHtml(t('progress')) + '</h2>' +
         progressInfo +
       '</div>' +
 
-      '<div>' + btnHtml + '</div>';
+      (prepBtnHtml ? '<div>' + prepBtnHtml + '</div>' : '') +
+      '<div id="detail-btn-area">' + btnHtml + '</div>';
 
-    // イベント
+    // イベント登録
     document.getElementById('btn-back').onclick = function() {
       document.getElementById('detail-view').hidden = true;
       document.getElementById('list-view').hidden   = false;
@@ -415,13 +675,252 @@
     var btnUndoFinish = document.getElementById('btn-undo-finish');
     if (btnUndoFinish) btnUndoFinish.onclick = function() { doUndoFinish(); };
 
+    var btnPrepare = document.getElementById('btn-prepare');
+    if (btnPrepare) btnPrepare.onclick = function() { openPrepView(); };
+
+    // 持ち込み予定ボタンのイベント
+    attachSupplyEvents();
   }
 
-  function detailRow(label, valHtml) {
-    return '<div class="detail-row">' +
-      '<span class="detail-label">' + escHtml(label) + '</span>' +
-      '<span class="detail-val">' + valHtml + '</span>' +
+  function renderSupplyItem(sr) {
+    var qtyUnit = '';
+    if (sr.qty != null) qtyUnit += ' × ' + sr.qty;
+    if (sr.unit)        qtyUnit += ' ' + sr.unit;
+
+    var metaHtml = '';
+    if (sr.memo) metaHtml = '<div class="pending-supply-meta">' + escHtml(sr.memo) + '</div>';
+
+    if (sr.status === 'DELIVERED') {
+      return '<div class="pending-supply-item" data-rid="' + escHtml(sr.requestId) + '">' +
+        '<div class="pending-supply-name">' + escHtml(sr.item) + escHtml(qtyUnit) + '</div>' +
+        metaHtml +
+        '<div class="supply-status-delivered">' + escHtml(t('supplyDelivered')) + '</div>' +
+      '</div>';
+    }
+
+    if (sr.status !== 'PENDING') {
+      return '<div class="pending-supply-item" data-rid="' + escHtml(sr.requestId) + '">' +
+        '<div class="pending-supply-name">' + escHtml(sr.item) + escHtml(qtyUnit) + '</div>' +
+        metaHtml +
+        '<div class="supply-status-skipped">' + escHtml(t('supplySkipped')) + '</div>' +
+      '</div>';
+    }
+
+    // PENDING: skip form or action buttons
+    var actionsOrForm = '';
+    if (S.skipTargetId === sr.requestId) {
+      actionsOrForm = renderSkipForm(sr);
+    } else {
+      var deliverBusy = S.deliverBusyIds[sr.requestId] ? ' disabled' : '';
+      actionsOrForm =
+        '<div class="pending-supply-actions">' +
+          '<button class="btn-deliver" data-rid="' + escHtml(sr.requestId) + '" data-uat="' + escHtml(sr.updatedAt) + '"' + deliverBusy + '>' +
+            escHtml(t('btnDeliver')) +
+          '</button>' +
+          '<button class="btn-skip" data-rid="' + escHtml(sr.requestId) + '">' +
+            escHtml(t('btnSkip')) +
+          '</button>' +
+        '</div>' +
+        '<div class="supply-inline-error" id="supply-err-' + escHtml(sr.requestId) + '" hidden></div>';
+    }
+
+    return '<div class="pending-supply-item" data-rid="' + escHtml(sr.requestId) + '">' +
+      '<div class="pending-supply-name">' + escHtml(sr.item) + escHtml(qtyUnit) + '</div>' +
+      metaHtml +
+      actionsOrForm +
     '</div>';
+  }
+
+  function renderSkipForm(sr) {
+    var reasonBtns = SKIP_REASONS.map(function(r) {
+      var sel = S.skipReason === r.id ? ' selected' : '';
+      return '<button class="skip-reason-btn' + sel + '" data-reason="' + escHtml(r.id) + '" data-rid="' + escHtml(sr.requestId) + '">' +
+        (S.skipReason === r.id ? '● ' : '○ ') + escHtml(t(r.key)) +
+      '</button>';
+    }).join('');
+
+    var otherMemoHtml = '';
+    if (S.skipReason === 'OTHER') {
+      otherMemoHtml =
+        '<div class="prep-form-label">' + escHtml(t('skipOtherMemoLabel')) + '</div>' +
+        '<textarea class="skip-other-memo" id="skip-other-memo" rows="2" maxlength="90">' +
+          escHtml(S.skipOtherMemo) +
+        '</textarea>';
+    }
+
+    var skipBusy = S.skipBusy ? ' disabled' : '';
+    return '<div class="skip-form">' +
+      '<div class="skip-form-title">' + escHtml(t('skipTitle')) + '</div>' +
+      '<div class="skip-reason-list" id="skip-reason-list" data-rid="' + escHtml(sr.requestId) + '" data-uat="' + escHtml(sr.updatedAt) + '">' +
+        reasonBtns +
+      '</div>' +
+      otherMemoHtml +
+      '<div class="supply-inline-error" id="skip-form-err" hidden></div>' +
+      '<div class="skip-form-actions">' +
+        '<button class="btn-skip-confirm" id="btn-skip-confirm" data-rid="' + escHtml(sr.requestId) + '" data-uat="' + escHtml(sr.updatedAt) + '"' + skipBusy + '>' +
+          escHtml(t('skipConfirm')) +
+        '</button>' +
+        '<button class="btn-skip-cancel" id="btn-skip-cancel">' +
+          escHtml(t('skipCancel')) +
+        '</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function attachSupplyEvents() {
+    // 持参した
+    document.querySelectorAll('.btn-deliver').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        doDeliver(btn.dataset.rid, btn.dataset.uat);
+      });
+    });
+
+    // 持参しなかった（skip form を開く）
+    document.querySelectorAll('.btn-skip').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        S.skipTargetId  = btn.dataset.rid;
+        S.skipReason    = null;
+        S.skipOtherMemo = '';
+        S.skipBusy      = false;
+        renderDetail();
+      });
+    });
+
+    // skip 理由ボタン
+    document.querySelectorAll('.skip-reason-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        S.skipReason = btn.dataset.reason;
+        if (S.skipReason !== 'OTHER') S.skipOtherMemo = '';
+        renderDetail();
+      });
+    });
+
+    // OTHER メモ入力
+    var otherMemoEl = document.getElementById('skip-other-memo');
+    if (otherMemoEl) {
+      otherMemoEl.addEventListener('input', function() {
+        S.skipOtherMemo = otherMemoEl.value;
+      });
+    }
+
+    // skip 確定
+    var skipConfirmBtn = document.getElementById('btn-skip-confirm');
+    if (skipConfirmBtn) {
+      skipConfirmBtn.addEventListener('click', function() {
+        doSkip(skipConfirmBtn.dataset.rid, skipConfirmBtn.dataset.uat);
+      });
+    }
+
+    // skip キャンセル
+    var skipCancelBtn = document.getElementById('btn-skip-cancel');
+    if (skipCancelBtn) {
+      skipCancelBtn.addEventListener('click', function() {
+        S.skipTargetId  = null;
+        S.skipReason    = null;
+        S.skipOtherMemo = '';
+        renderDetail();
+      });
+    }
+  }
+
+  // ── 持ち込み予定アクション ───────────────────────────────────────────
+  function doDeliver(requestId, knownUpdatedAt) {
+    S.deliverBusyIds[requestId] = true;
+    renderDetail();
+
+    callApi({
+      action:       'confirmSupplyDelivery',
+      propertyName: S.row.propertyName,
+      date:         S.today,
+      requestId:    requestId,
+      confirm:      'deliver',
+      knownUpdatedAt: knownUpdatedAt || ''
+    }).then(function(data) {
+      delete S.deliverBusyIds[requestId];
+      if (!data.ok) {
+        if (data.error === 'conflict') {
+          alert(t('errConflict'));
+          return loadScheduleAndRefreshDetail();
+        }
+        showSupplyInlineError(requestId, apiErrorMsg(null, data.error));
+        renderDetail();
+        return;
+      }
+      loadScheduleAndRefreshDetail();
+    }).catch(function(err) {
+      delete S.deliverBusyIds[requestId];
+      if (err.isUnauthorized) {
+        showError(t('errUnauth'));
+      } else {
+        showSupplyInlineError(requestId, apiErrorMsg(err, ''));
+        renderDetail();
+      }
+    });
+  }
+
+  function doSkip(requestId, knownUpdatedAt) {
+    if (!S.skipReason) {
+      showSkipFormError(t('skipReasonRequired'));
+      return;
+    }
+    if (S.skipReason === 'OTHER' && !S.skipOtherMemo.trim()) {
+      showSkipFormError(t('skipOtherRequired'));
+      return;
+    }
+
+    var skipReason = S.skipReason === 'OTHER'
+      ? 'OTHER:' + S.skipOtherMemo.trim()
+      : S.skipReason;
+
+    S.skipBusy = true;
+    renderDetail();
+
+    callApi({
+      action:       'confirmSupplyDelivery',
+      propertyName: S.row.propertyName,
+      date:         S.today,
+      requestId:    requestId,
+      confirm:      'skip',
+      skipReason:   skipReason,
+      knownUpdatedAt: knownUpdatedAt || ''
+    }).then(function(data) {
+      S.skipBusy = false;
+      if (!data.ok) {
+        if (data.error === 'conflict') {
+          alert(t('errConflict'));
+          return loadScheduleAndRefreshDetail();
+        }
+        showSkipFormError(apiErrorMsg(null, data.error));
+        return;
+      }
+      // 繰り越し結果メッセージを brief に表示してからリロード
+      var nextDate = data.nextDate || '';
+      var msg = nextDate ? t('skipResultDate')(nextDate) : t('skipResultUnknown');
+      S.skipTargetId   = null;
+      S.skipReason     = null;
+      S.skipOtherMemo  = '';
+      // skip 後は SR が今日のリストから消えるのでリロード
+      loadScheduleAndRefreshDetail(msg);
+    }).catch(function(err) {
+      S.skipBusy = false;
+      if (err.isUnauthorized) {
+        showError(t('errUnauth'));
+      } else {
+        showSkipFormError(apiErrorMsg(err, ''));
+      }
+    });
+  }
+
+  function showSupplyInlineError(requestId, msg) {
+    S.supplyInlineErrors = S.supplyInlineErrors || {};
+    S.supplyInlineErrors[requestId] = msg;
+  }
+
+  function showSkipFormError(msg) {
+    var el = document.getElementById('skip-form-err');
+    if (!el) return;
+    el.textContent = msg;
+    el.hidden = false;
   }
 
   // ── 更新アクション ───────────────────────────────────────────────────
@@ -460,15 +959,17 @@
           alert(t('errConflict'));
           return loadScheduleAndRefreshDetail();
         }
+        if (data.error === 'pending_supply_requests') {
+          setDetailBusy(false);
+          alert(t('pendingBlockMsg'));
+          return;
+        }
         throw new Error(data.error || 'update_failed');
       }
       prog.updatedAt = data.updatedAt || prog.updatedAt;
       if (fields.status    !== undefined) prog.status    = fields.status;
       if (fields.startedAt !== undefined) prog.startedAt = fields.startedAt;
       if (fields.finishedAt!== undefined) prog.finishedAt= fields.finishedAt;
-      if (fields.linen     !== undefined) prog.linen     = fields.linen;
-      if (fields.trash     !== undefined) prog.trash     = fields.trash;
-      if (fields.check     !== undefined) prog.check     = fields.check;
       row.progress = prog;
       renderDetail();
       renderListBadge();
@@ -503,7 +1004,7 @@
     }
   }
 
-  function loadScheduleAndRefreshDetail() {
+  function loadScheduleAndRefreshDetail(toastMsg) {
     var prev = S.row;
     callApi({ action: 'getCleanerSchedule', date: S.today })
       .then(function(data) {
@@ -512,10 +1013,272 @@
           return (a.order || 0) - (b.order || 0);
         });
         var refreshed = S.rows.find(function(r) { return r.propertyName === prev.propertyName; });
-        if (refreshed) { S.row = refreshed; renderDetail(); }
+        if (refreshed) {
+          S.row = refreshed;
+          renderDetail();
+          if (toastMsg) showToast(toastMsg);
+        }
         renderListBadge();
       })
       .catch(function() {});
+  }
+
+  // ── 次回の準備ビュー ─────────────────────────────────────────────────
+  function openPrepView() {
+    S.prepRegistered   = [];
+    S.prepCatFilter    = null;
+    S.prepSelectedItem = null;
+    S.prepBusy         = false;
+
+    document.getElementById('detail-view').hidden = true;
+    document.getElementById('list-view').hidden   = true;
+    document.getElementById('prep-view').hidden   = false;
+    document.getElementById('hdr-title').textContent = t('prepTitle');
+    document.getElementById('hdr-date').textContent  = S.today;
+    window.scrollTo(0, 0);
+
+    if (S.supplyItems.length) {
+      renderPrepView();
+      return;
+    }
+    // 品目を初回ロード
+    renderPrepViewLoading();
+    callApi({ action: 'getSupplyMasterItems' })
+      .then(function(data) {
+        if (data && data.ok && Array.isArray(data.items)) {
+          S.supplyItems = data.items;
+        } else {
+          S.supplyItems = [];
+        }
+        renderPrepView();
+      })
+      .catch(function() {
+        S.supplyItems = [];
+        renderPrepView();
+      });
+  }
+
+  function renderPrepViewLoading() {
+    var el = document.getElementById('prep-view');
+    el.innerHTML =
+      '<button class="back-btn" id="prep-btn-back">' + escHtml(t('backToDetail')) + '</button>' +
+      '<div style="text-align:center;padding:2rem;color:var(--muted)"><span class="spin">⏳</span> ' +
+        escHtml(t('loadingSupply')) + '</div>';
+    document.getElementById('prep-btn-back').onclick = backToDetail;
+  }
+
+  function renderPrepView() {
+    var el = document.getElementById('prep-view');
+
+    // カテゴリ一覧
+    var cats = [];
+    S.supplyItems.forEach(function(item) {
+      if (item.category && cats.indexOf(item.category) < 0) cats.push(item.category);
+    });
+
+    // フィルタバー
+    var filterBtns = '<button class="supply-filter-btn' + (!S.prepCatFilter ? ' active' : '') + '" data-cat="">' +
+      escHtml(t('supplyCatAll')) + '</button>';
+    cats.forEach(function(cat) {
+      var active = S.prepCatFilter === cat ? ' active' : '';
+      filterBtns += '<button class="supply-filter-btn' + active + '" data-cat="' + escHtml(cat) + '">' +
+        escHtml(cat) + '</button>';
+    });
+
+    // 品目グリッド
+    var filtered = S.supplyItems.filter(function(item) {
+      return !S.prepCatFilter || item.category === S.prepCatFilter;
+    });
+    var itemBtns = filtered.length
+      ? filtered.map(function(item) {
+          var sel = (S.prepSelectedItem && S.prepSelectedItem.displayName === item.displayName) ? ' selected' : '';
+          return '<button class="supply-item-btn' + sel + '" data-name="' + escHtml(item.displayName) + '">' +
+            escHtml(item.displayName) +
+            (item.unit ? '<span style="font-size:0.8rem;color:var(--muted)"> /' + escHtml(item.unit) + '</span>' : '') +
+          '</button>';
+        }).join('')
+      : '<div class="registered-no-item">' + escHtml(t('supplyNoItems')) + '</div>';
+
+    // フォーム（品目選択後に活性化）
+    var selectedUnit = S.prepSelectedItem && S.prepSelectedItem.unit ? S.prepSelectedItem.unit : '';
+    var formHtml =
+      '<div class="prep-form-row">' +
+        '<div class="prep-form-label">' + escHtml(t('supplyQtyLabel')) + '</div>' +
+        '<div class="prep-qty-row">' +
+          '<input type="number" id="prep-qty" class="prep-qty-input" min="1" max="999" placeholder="—"' +
+            (!S.prepSelectedItem ? ' disabled' : '') + '>' +
+          (selectedUnit ? '<span class="prep-qty-unit">' + escHtml(selectedUnit) + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="prep-form-row">' +
+        '<div class="prep-form-label">' + escHtml(t('supplyMemoLabel')) + '</div>' +
+        '<textarea id="prep-memo" class="prep-memo-input" rows="2" maxlength="90"' +
+          (!S.prepSelectedItem ? ' disabled' : '') + '></textarea>' +
+      '</div>' +
+      '<div class="prep-form-error" id="prep-form-err" hidden></div>' +
+      '<button id="btn-add-supply" class="btn btn-prepare"' +
+        (!S.prepSelectedItem || S.prepBusy ? ' disabled' : '') + '>' +
+        escHtml(t('supplyRegister')) +
+      '</button>';
+
+    // 登録済みリスト
+    var registeredHtml = S.prepRegistered.length
+      ? S.prepRegistered.map(function(r) {
+          var qtyUnit = '';
+          if (r.qty != null) qtyUnit += ' × ' + r.qty;
+          if (r.unit)        qtyUnit += ' ' + r.unit;
+          return '<div class="registered-item"><span>📦</span><span>' +
+            escHtml(r.item) + escHtml(qtyUnit) +
+            (r.memo ? '<span style="color:var(--muted)"> — ' + escHtml(r.memo) + '</span>' : '') +
+          '</span></div>';
+        }).join('')
+      : '<div class="registered-no-item">' + escHtml(t('supplyNoRegistered')) + '</div>';
+
+    el.innerHTML =
+      '<button class="back-btn" id="prep-btn-back">' + escHtml(t('backToDetail')) + '</button>' +
+
+      '<div class="prep-card">' +
+        '<h2>' + escHtml(t('supplyTitle')) + '</h2>' +
+        '<div class="supply-filter-bar" id="supply-filter-bar">' + filterBtns + '</div>' +
+        '<div class="prep-form-label" style="margin-bottom:0.4rem">' + escHtml(t('supplyPickLabel')) + '</div>' +
+        '<div class="supply-item-grid" id="supply-item-grid">' + itemBtns + '</div>' +
+        formHtml +
+      '</div>' +
+
+      '<div class="prep-card">' +
+        '<h2>' + escHtml(t('supplyRegistered')) + '</h2>' +
+        '<div class="registered-list" id="registered-list">' + registeredHtml + '</div>' +
+      '</div>';
+
+    // イベント
+    document.getElementById('prep-btn-back').onclick = backToDetail;
+
+    document.getElementById('supply-filter-bar').querySelectorAll('.supply-filter-btn')
+      .forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          S.prepCatFilter    = btn.dataset.cat || null;
+          S.prepSelectedItem = null;
+          renderPrepView();
+        });
+      });
+
+    document.getElementById('supply-item-grid').querySelectorAll('.supply-item-btn')
+      .forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var name = btn.dataset.name;
+          S.prepSelectedItem = S.supplyItems.find(function(it) { return it.displayName === name; }) || null;
+          renderPrepView();
+        });
+      });
+
+    var addBtn = document.getElementById('btn-add-supply');
+    if (addBtn) {
+      addBtn.addEventListener('click', function() { doAddSupplyRequest(); });
+    }
+  }
+
+  function doAddSupplyRequest() {
+    if (!S.prepSelectedItem) return;
+
+    var qtyEl  = document.getElementById('prep-qty');
+    var memoEl = document.getElementById('prep-memo');
+    var errEl  = document.getElementById('prep-form-err');
+    if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
+
+    var qtyRaw  = qtyEl  ? qtyEl.value.trim()  : '';
+    var memoRaw = memoEl ? memoEl.value         : '';
+
+    // バリデーション
+    var qty = null;
+    if (qtyRaw !== '') {
+      var qtyNum = Number(qtyRaw);
+      if (!Number.isInteger(qtyNum) || qtyNum < 1 || qtyNum > 999) {
+        if (errEl) { errEl.textContent = t('supplyInvalidQty'); errEl.hidden = false; }
+        return;
+      }
+      qty = qtyNum;
+    }
+    if (/[\r\n]/.test(memoRaw)) {
+      if (errEl) { errEl.textContent = t('supplyMemoNewline'); errEl.hidden = false; }
+      return;
+    }
+    if (memoRaw.length > 90) {
+      if (errEl) { errEl.textContent = t('supplyMemoTooLong'); errEl.hidden = false; }
+      return;
+    }
+
+    S.prepBusy = true;
+    renderPrepView();
+
+    callApi({
+      action:       'addSupplyRequest',
+      propertyName: S.row.propertyName,
+      date:         S.today,
+      item:         S.prepSelectedItem.displayName,
+      qty:          qty,
+      memo:         memoRaw
+    }).then(function(data) {
+      S.prepBusy = false;
+      if (!data.ok) {
+        S.prepBusy = false;
+        renderPrepView();
+        var eEl = document.getElementById('prep-form-err');
+        if (eEl) { eEl.textContent = apiErrorMsg(null, data.error); eEl.hidden = false; }
+        return;
+      }
+      // 登録済みリストに追加
+      S.prepRegistered.push({
+        item: S.prepSelectedItem.displayName,
+        qty:  qty,
+        unit: S.prepSelectedItem.unit || '',
+        memo: memoRaw
+      });
+      S.prepSelectedItem = null;
+      renderPrepView();
+      showToast(t('supplyRegOk'));
+    }).catch(function(err) {
+      S.prepBusy = false;
+      renderPrepView();
+      var eEl = document.getElementById('prep-form-err');
+      if (eEl) { eEl.textContent = apiErrorMsg(err, ''); eEl.hidden = false; }
+    });
+  }
+
+  function backToDetail() {
+    document.getElementById('prep-view').hidden   = true;
+    document.getElementById('detail-view').hidden = false;
+    document.getElementById('hdr-title').textContent = t('appTitle');
+    document.getElementById('hdr-date').textContent  = S.today;
+    window.scrollTo(0, 0);
+  }
+
+  // ── ヘルパー ─────────────────────────────────────────────────────────
+  function detailRow(label, valHtml) {
+    return '<div class="detail-row">' +
+      '<span class="detail-label">' + escHtml(label) + '</span>' +
+      '<span class="detail-val">' + valHtml + '</span>' +
+    '</div>';
+  }
+
+  var toastTimer = null;
+  function showToast(msg) {
+    var toast = document.getElementById('toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'toast';
+      toast.style.cssText =
+        'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);' +
+        'background:#333;color:#fff;padding:0.6rem 1.2rem;border-radius:20px;' +
+        'font-size:0.9rem;z-index:999;white-space:nowrap;pointer-events:none;' +
+        'transition:opacity 0.3s;';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.style.opacity = '1';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() {
+      toast.style.opacity = '0';
+    }, 2500);
   }
 
   // ── UI ヘルパー ──────────────────────────────────────────────────────
