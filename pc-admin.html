@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PC 管理画面</title>
+  <script src="config.js"></script>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    [hidden] { display: none !important; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green:  #00a84f;
+      --fg:     #222;
+      --bg:     #f0f2f5;
+      --card:   #fff;
+      --border: #e0e0e0;
+      --muted:  #888;
+    }
+    body {
+      font-family: -apple-system, "Hiragino Sans", "Meiryo", sans-serif;
+      background: var(--bg); color: var(--fg); font-size: 14px; min-height: 100vh;
+    }
+
+    /* ── ローディング / エラー / アクセス拒否 ── */
+    .fill {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 100vh;
+      padding: 2rem; text-align: center; gap: 1rem;
+    }
+    #error-box { color: #c00; }
+    #no-access { color: #c00; font-size: 1.1rem; font-weight: bold; }
+    .spin { display: inline-block; animation: spin 1s linear infinite; font-size: 2rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── アプリ ── */
+    #app { display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── ヘッダー ── */
+    .app-header {
+      background: var(--green); color: #fff;
+      padding: 0.6rem 1rem; display: flex; align-items: center;
+      justify-content: space-between; gap: 0.5rem;
+    }
+    .app-header h1 { font-size: 1rem; font-weight: bold; }
+    .header-date  { font-size: 0.82rem; opacity: 0.9; }
+
+    /* ── タブ ── */
+    .tabs {
+      display: flex; background: var(--card);
+      border-bottom: 2px solid var(--border);
+    }
+    .tab-btn {
+      flex: 1; max-width: 160px; padding: 0.75rem 1rem; border: none;
+      background: transparent; font-size: 0.9rem; font-family: inherit;
+      cursor: pointer; color: var(--muted);
+    }
+    .tab-btn.active {
+      color: var(--green); border-bottom: 3px solid var(--green);
+      margin-bottom: -2px; font-weight: bold;
+    }
+
+    /* ── パネル ── */
+    .panel { padding: 0.75rem 1rem; }
+
+    /* ── フィルタ行 ── */
+    .filter-row {
+      display: flex; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-row label { font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
+    .filter-row select {
+      padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.88rem; font-family: inherit; background: var(--card);
+      min-width: 110px;
+    }
+
+    /* ── テーブル ── */
+    .tbl-wrap { overflow-x: auto; }
+    table {
+      width: 100%; border-collapse: collapse; min-width: 580px;
+      background: var(--card); border-radius: 8px; overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    th {
+      background: #f5f7fa; padding: 0.55rem 0.75rem; text-align: left;
+      font-size: 0.8rem; color: var(--muted); border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border);
+      font-size: 0.88rem; vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafafa; }
+
+    /* ── ステータスバッジ ── */
+    .badge {
+      display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px;
+      font-size: 0.78rem; font-weight: bold; white-space: nowrap;
+    }
+    .badge-todo  { background: #f0f0f0; color: #888; }
+    .badge-doing { background: #fff3cd; color: #856404; }
+    .badge-done  { background: #d4edda; color: #155724; }
+
+    /* ── 更新ボタン ── */
+    .btn-reload {
+      padding: 0.4rem 0.9rem; border: 1px solid var(--green); border-radius: 6px;
+      background: var(--card); color: var(--green); cursor: pointer;
+      font-size: 0.85rem; font-family: inherit; font-weight: bold;
+    }
+    .btn-reload:active { opacity: 0.7; }
+    .btn-reload:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── 集計バー ── */
+    .summary-bar {
+      display: flex; gap: 0.75rem; margin-bottom: 0.75rem; flex-wrap: wrap;
+    }
+    .sbar-item {
+      background: var(--card); border-radius: 6px;
+      padding: 0.4rem 0.75rem; font-size: 0.82rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+    }
+    .sbar-n { font-weight: bold; font-size: 1.1rem; color: var(--green); }
+
+    /* ── メッセージ ── */
+    .msg { color: var(--muted); text-align: center; padding: 2rem; font-size: 0.9rem; }
+    .err-msg { color: #c00; text-align: center; padding: 1rem; font-size: 0.88rem; }
+    .loading-inline { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+  <!-- 起動中 / ADMIN チェック中 -->
+  <div id="loading" class="fill">
+    <span class="spin">⟳</span>
+    <p>読み込み中...</p>
+  </div>
+
+  <!-- LIFF エラー -->
+  <div id="error-box" class="fill" hidden>
+    <strong>エラーが発生しました</strong>
+    <p id="error-msg"></p>
+  </div>
+
+  <!-- 権限なし -->
+  <div id="no-access" class="fill" hidden>
+    管理者のみアクセスできます
+  </div>
+
+  <!-- アプリ本体（ADMIN のみ表示） -->
+  <div id="app" hidden>
+    <div class="app-header">
+      <h1>PC 管理画面</h1>
+      <span class="header-date" id="header-date"></span>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="summary">今日の一覧</button>
+    </div>
+
+    <!-- 今日の一覧パネル -->
+    <div class="panel" id="panel-summary">
+      <div class="filter-row">
+        <label>担当者</label>
+        <select id="filter-staff">
+          <option value="">すべて</option>
+        </select>
+        <label>状態</label>
+        <select id="filter-status">
+          <option value="">すべて</option>
+          <option value="TODO">未着手</option>
+          <option value="DOING">作業中</option>
+          <option value="DONE">完了</option>
+        </select>
+        <button class="btn-reload" id="btn-reload" onclick="reloadSummary()">更新</button>
+      </div>
+      <div class="summary-bar" id="summary-bar"></div>
+      <div id="summary-loading" class="loading-inline" hidden>読み込み中...</div>
+      <div id="summary-err" class="err-msg" hidden></div>
+      <div class="tbl-wrap">
+        <table id="summary-table" hidden>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>物件</th>
+              <th>担当者</th>
+              <th>状態</th>
+              <th>開始</th>
+              <th>完了</th>
+            </tr>
+          </thead>
+          <tbody id="summary-tbody"></tbody>
+        </table>
+      </div>
+      <div id="summary-empty" class="msg" hidden>該当する物件がありません</div>
+    </div>
+  </div>
+
+  <script>
+    var CFG = window.DISPATCH_CONFIG || {};
+    var S = {
+      idToken:     null,
+      today:       null,
+      summaryRows: []
+    };
+
+    function todayJst() {
+      var d = new Date();
+      var jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+      return jst.toISOString().slice(0, 10);
+    }
+
+    function fmtTime(isoStr) {
+      if (!isoStr) return '—';
+      var s = String(isoStr).trim();
+      if (!s) return '—';
+      var d = new Date(s);
+      if (isNaN(d.getTime())) return s.length >= 5 ? s.slice(0, 5) : s;
+      var jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+      var hh  = String(jst.getUTCHours()).padStart(2, '0');
+      var mm  = String(jst.getUTCMinutes()).padStart(2, '0');
+      return hh + ':' + mm;
+    }
+
+    function esc(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function statusBadge(s) {
+      if (s === 'DONE')  return '<span class="badge badge-done">✓ 完了</span>';
+      if (s === 'DOING') return '<span class="badge badge-doing">🧹 作業中</span>';
+      return '<span class="badge badge-todo">⬜ 未着手</span>';
+    }
+
+    function callApi(body) {
+      body.idToken = S.idToken;
+      return fetch(CFG.GAS_API_URL + '?api=1', {
+        method:  'POST',
+        body:    JSON.stringify(body),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      }).then(function(r) { return r.json(); });
+    }
+
+    function showError(msg) {
+      document.getElementById('loading').hidden  = true;
+      document.getElementById('error-msg').textContent = msg;
+      document.getElementById('error-box').hidden = false;
+    }
+
+    // ── 一覧 ─────────────────────────────────────────────────────────
+
+    function buildStaffFilter(rows) {
+      var seen = {};
+      var names = [];
+      rows.forEach(function(r) {
+        var s = r.assignedStaff || '';
+        if (s && !seen[s]) { seen[s] = true; names.push(s); }
+      });
+      names.sort();
+
+      var sel = document.getElementById('filter-staff');
+      var cur = sel.value;
+      sel.innerHTML = '<option value="">すべて</option>';
+      names.forEach(function(n) {
+        var opt = document.createElement('option');
+        opt.value = n; opt.textContent = n;
+        if (n === cur) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    function renderSummary() {
+      var filterStaff  = document.getElementById('filter-staff').value;
+      var filterStatus = document.getElementById('filter-status').value;
+
+      var rows = S.summaryRows.filter(function(r) {
+        if (filterStaff  && r.assignedStaff !== filterStaff)  return false;
+        if (filterStatus && r.status        !== filterStatus) return false;
+        return true;
+      });
+
+      var total = S.summaryRows.length;
+      var done  = S.summaryRows.filter(function(r) { return r.status === 'DONE';  }).length;
+      var doing = S.summaryRows.filter(function(r) { return r.status === 'DOING'; }).length;
+      var todo  = total - done - doing;
+      document.getElementById('summary-bar').innerHTML =
+        '<div class="sbar-item"><span class="sbar-n">' + total + '</span> 件</div>' +
+        '<div class="sbar-item"><span class="sbar-n" style="color:#155724">' + done  + '</span> 完了</div>' +
+        '<div class="sbar-item"><span class="sbar-n" style="color:#856404">' + doing + '</span> 作業中</div>' +
+        '<div class="sbar-item"><span class="sbar-n" style="color:#888">'   + todo  + '</span> 未着手</div>';
+
+      if (!rows.length) {
+        document.getElementById('summary-table').hidden = true;
+        document.getElementById('summary-empty').hidden = false;
+        return;
+      }
+
+      document.getElementById('summary-empty').hidden = true;
+      document.getElementById('summary-table').hidden = false;
+
+      var tbody = document.getElementById('summary-tbody');
+      tbody.innerHTML = '';
+      rows.forEach(function(r, i) {
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + esc(r.order || (i + 1)) + '</td>' +
+          '<td>' + esc(r.propertyName) + '</td>' +
+          '<td>' + esc(r.assignedStaff || '(未定)') + '</td>' +
+          '<td>' + statusBadge(r.status) + '</td>' +
+          '<td>' + fmtTime(r.startedAt) + '</td>' +
+          '<td>' + fmtTime(r.effectiveEndTime) + '</td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    function applySummaryData(r) {
+      S.summaryRows = r.rows || [];
+      buildStaffFilter(S.summaryRows);
+      renderSummary();
+    }
+
+    // 起動時の初回ロード（ADMIN 確認兼用）
+    function initSummary() {
+      callApi({ action: 'getAdminSummary', date: S.today }).then(function(r) {
+        document.getElementById('loading').hidden = true;
+
+        if (r.error === 'unauthorized') {
+          document.getElementById('no-access').hidden = false;
+          return;
+        }
+        if (!r.ok) {
+          showError('データの取得に失敗しました（' + (r.error || '不明') + '）');
+          return;
+        }
+
+        document.getElementById('app').hidden = false;
+        applySummaryData(r);
+      }).catch(function(e) {
+        showError('通信エラー: ' + (e.message || '不明'));
+      });
+    }
+
+    // 更新ボタン用（エラー表示は inline）
+    function reloadSummary() {
+      document.getElementById('btn-reload').disabled = true;
+      document.getElementById('summary-loading').hidden = false;
+      document.getElementById('summary-err').hidden    = true;
+      document.getElementById('summary-table').hidden  = true;
+      document.getElementById('summary-empty').hidden  = true;
+
+      callApi({ action: 'getAdminSummary', date: S.today }).then(function(r) {
+        document.getElementById('summary-loading').hidden = true;
+        document.getElementById('btn-reload').disabled = false;
+
+        if (!r.ok) {
+          var el = document.getElementById('summary-err');
+          el.textContent = 'データの取得に失敗しました（' + (r.error || '不明') + '）';
+          el.hidden = false;
+          return;
+        }
+        applySummaryData(r);
+      }).catch(function(e) {
+        document.getElementById('summary-loading').hidden = true;
+        document.getElementById('btn-reload').disabled = false;
+        var el = document.getElementById('summary-err');
+        el.textContent = '通信エラー: ' + (e.message || '不明');
+        el.hidden = false;
+      });
+    }
+
+    // ── フィルタ変更 ─────────────────────────────────────────────────
+    document.getElementById('filter-staff').addEventListener('change',  renderSummary);
+    document.getElementById('filter-status').addEventListener('change', renderSummary);
+
+    // ── LIFF 初期化 ──────────────────────────────────────────────────
+    liff.init({ liffId: CFG.ADMIN_LIFF_ID }).then(function() {
+      if (!liff.isLoggedIn()) { liff.login(); return; }
+      S.idToken = liff.getIDToken();
+      S.today   = todayJst();
+      document.getElementById('header-date').textContent = S.today;
+
+      // getAdminSummary が ADMIN チェックを兼ねる。
+      // unauthorized なら no-access を表示、ok なら app を表示して一覧を描画する。
+      initSummary();
+    }).catch(function(e) {
+      showError(e.message || '不明なエラー（LIFF init 失敗）');
+    });
+  </script>
+</body>
+</html>
