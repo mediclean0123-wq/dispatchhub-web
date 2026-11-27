@@ -111,13 +111,6 @@
     }
     .task-item:last-child { border-bottom: none; }
 
-    /* ── チェックボックス行 ── */
-    .check-row {
-      display: flex; align-items: center; gap: 0.6rem;
-      padding: 0.5rem 0; font-size: 0.95rem;
-    }
-    .check-row input[type=checkbox] { width: 1.2rem; height: 1.2rem; accent-color: var(--green); }
-
     /* ── ボタン ── */
     .btn {
       display: block; width: 100%; padding: 0.9rem;
@@ -367,11 +360,6 @@
       '</div>';
     }
 
-    var checkBoxes =
-      checkRow('linen', t('linen'), prog.linen === 'TRUE' || prog.linen === true) +
-      checkRow('trash', t('trash'), prog.trash === 'TRUE' || prog.trash === true) +
-      checkRow('check', t('check'), prog.check === 'TRUE' || prog.check === true);
-
     var progressInfo =
       detailRow(t('status'), '<span class="badge badge-' + status.toLowerCase() + '">' + escHtml(t(status)) + '</span>') +
       detailRow(t('startedAt'),  escHtml(t('startedAtVal')(prog.startedAt))) +
@@ -404,7 +392,6 @@
       '<div class="detail-card">' +
         '<h2>' + escHtml(t('progress')) + '</h2>' +
         progressInfo +
-        checkBoxes +
       '</div>' +
 
       '<div>' + btnHtml + '</div>';
@@ -428,11 +415,6 @@
     var btnUndoFinish = document.getElementById('btn-undo-finish');
     if (btnUndoFinish) btnUndoFinish.onclick = function() { doUndoFinish(); };
 
-    // チェックボックス
-    ['linen', 'trash', 'check'].forEach(function(field) {
-      var cb = document.getElementById('cb-' + field);
-      if (cb) cb.onchange = function() { doCheckToggle(field, cb.checked); };
-    });
   }
 
   function detailRow(label, valHtml) {
@@ -440,13 +422,6 @@
       '<span class="detail-label">' + escHtml(label) + '</span>' +
       '<span class="detail-val">' + valHtml + '</span>' +
     '</div>';
-  }
-
-  function checkRow(id, label, checked) {
-    return '<label class="check-row">' +
-      '<input type="checkbox" id="cb-' + id + '"' + (checked ? ' checked' : '') + '>' +
-      escHtml(label) +
-    '</label>';
   }
 
   // ── 更新アクション ───────────────────────────────────────────────────
@@ -468,12 +443,6 @@
   function doUndoFinish() {
     setDetailBusy(true);
     updateProgress({ status: 'DOING', finishedAt: '' });
-  }
-
-  function doCheckToggle(field, val) {
-    var fields = {};
-    fields[field] = val ? 'TRUE' : 'FALSE';
-    updateProgress(fields);
   }
 
   function updateProgress(fields) {
