@@ -82,8 +82,13 @@
   // ── シート一覧読み込み ─────────────────────────────────────────────────────
 
   function loadSheetList_() {
+    $_('ms-loading').hidden = false;
     callApi_({ action: 'masterSheetList' }).then(function(r) {
-      if (!r.ok) { showErr_('シート一覧の取得に失敗: ' + (r.error || '')); return; }
+      $_('ms-loading').hidden = true;
+      if (!r.ok) {
+        if (r.error === 'unauthorized' && window.showReloginPrompt) { window.showReloginPrompt(); return; }
+        showErr_('シート一覧の取得に失敗: ' + (r.error || '')); return;
+      }
       state.sheets = r.sheets;
       var sel = $_('ms-sheet-sel');
       (r.sheets || []).forEach(function(s) {
@@ -94,7 +99,7 @@
         sel.appendChild(opt);
       });
       sel.onchange = function() { selectSheet_(sel.value); };
-    }).catch(function(e) { showErr_('通信エラー: ' + (e.message || '')); });
+    }).catch(function(e) { $_('ms-loading').hidden = true; showErr_('通信エラー: ' + (e.message || '')); });
   }
 
   function selectSheet_(sheetId) {
@@ -123,7 +128,10 @@
 
     callApi_({ action: 'masterSheetGet', sheetId: state.sheetId }).then(function(r) {
       $_('ms-loading').hidden = true;
-      if (!r.ok) { showErr_('データ取得に失敗: ' + (r.error || '')); return; }
+      if (!r.ok) {
+        if (r.error === 'unauthorized' && window.showReloginPrompt) { window.showReloginPrompt(); return; }
+        showErr_('データ取得に失敗: ' + (r.error || '')); return;
+      }
       state.rows   = r.rows   || [];
       state.header = r.header || [];
       renderTable_();
@@ -341,6 +349,7 @@
 
   function handleSaveResult_(r) {
     if (!r.ok) {
+      if (r.error === 'unauthorized' && window.showReloginPrompt) { window.showReloginPrompt(); return; }
       var msg = r.error || '不明なエラー';
       if (r.details) msg += '\n' + r.details.map(function(d) { return d.column + ': ' + d.reason; }).join('\n');
       alert('保存に失敗しました: ' + msg);
@@ -349,6 +358,7 @@
     }
     closeModal_();
     loadRows_();
+    if (window.showToast) window.showToast('保存しました');
   }
 
   function handleSaveErr_(e) {

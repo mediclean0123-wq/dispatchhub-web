@@ -109,7 +109,11 @@
     '.pm-url-diff { background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 6px; padding: 0.75rem;',
     '  font-size: 0.82rem; word-break: break-all; margin-bottom: 0.75rem; }',
     '.pm-url-diff .pm-url-label { color: #888; font-size: 0.75rem; margin-bottom: 0.25rem; }',
-    '.pm-url-diff .pm-url-val { font-family: monospace; word-break: break-all; }'
+    '.pm-url-diff .pm-url-val { font-family: monospace; word-break: break-all; }',
+    /* 物件名列を省略表示、状態・編集列を折り返し禁止 */
+    '.pm-tbl td:nth-child(2) { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+    '.pm-tbl th:nth-child(6), .pm-tbl td:nth-child(6) { white-space: nowrap; }',
+    '.pm-tbl th:nth-child(8), .pm-tbl td:nth-child(8) { white-space: nowrap; width: 60px; }'
   ].join('\n');
 
   // ── 状態 ──────────────────────────────────────────────────────────────────────
@@ -191,8 +195,10 @@
       var active = isActive_(p.Active);
       html += '<tr>' +
         '<td>' + esc(p.rowNumber) + '</td>' +
-        '<td>' + esc(p.PropertyName) + '</td>' +
-        '<td>' + esc(p.DisplayName || '') + '</td>' +
+        '<td title="' + esc(p.PropertyName) + '">' + esc(p.PropertyName) + '</td>' +
+        '<td>' + (p.DisplayName
+          ? esc(p.DisplayName)
+          : '<span style="color:#aaa">' + esc(p.PropertyName) + '</span>') + '</td>' +
         '<td>' + esc(p.Area || '') + '</td>' +
         '<td>' + esc(p.Owner || '') + '</td>' +
         '<td>' + (active
@@ -262,7 +268,10 @@
     render();
     callApiFn({ action: 'masterGetProperties' }).then(function(r) {
       state.loading = false;
-      if (!r.ok) { state.err = 'データ取得エラー: ' + (r.error || '不明'); render(); return; }
+      if (!r.ok) {
+        if (r.error === 'unauthorized' && window.showReloginPrompt) { window.showReloginPrompt(); return; }
+        state.err = 'データ取得エラー: ' + (r.error || '不明'); render(); return;
+      }
       state.properties = r.properties || [];
       state.choices    = r.choices    || { owners: [], linenTypes: [], cleaners: [], areas: [] };
       render();
@@ -462,12 +471,14 @@
     }).then(function(r) {
       if (saveBtn) saveBtn.disabled = false;
       if (!r.ok) {
+        if (r.error === 'unauthorized' && window.showReloginPrompt) { window.showReloginPrompt(); return; }
         var msg = buildErrMsg(r);
         if (errEl) { errEl.textContent = msg; errEl.hidden = false; }
         return;
       }
       closeModal();
       loadProperties();
+      if (window.showToast) window.showToast('保存しました');
     }).catch(function(e) {
       if (saveBtn) saveBtn.disabled = false;
       if (errEl) { errEl.textContent = '通信エラー: ' + (e.message || '不明'); errEl.hidden = false; }
@@ -487,6 +498,7 @@
     }).then(function(r) {
       if (saveBtn) saveBtn.disabled = false;
       if (!r.ok) {
+        if (r.error === 'unauthorized' && window.showReloginPrompt) { window.showReloginPrompt(); return; }
         if (r.error === 'duplicate_property' && r.warning) {
           if (window.confirm('同名の物件がすでに存在します。続けて追加しますか？\n（Airbnb と Beds24 の2本の iCal を同名で持つ場合など）')) {
             doAdd(changes, true);
@@ -499,6 +511,7 @@
       }
       closeModal();
       loadProperties();
+      if (window.showToast) window.showToast('追加しました');
     }).catch(function(e) {
       if (saveBtn) saveBtn.disabled = false;
       if (errEl) { errEl.textContent = '通信エラー: ' + (e.message || '不明'); errEl.hidden = false; }
