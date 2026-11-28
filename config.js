@@ -5,5 +5,6 @@
 window.DISPATCH_CONFIG = {
   LIFF_ID:         '2012021038-TOsuVg6o',
   CLEANER_LIFF_ID: '2012021038-Ju8CVZBa',
+  ADMIN_LIFF_ID:   '2012021038-WMr3DEd8',
   GAS_API_URL: 'https://script.google.com/macros/s/AKfycbzH9ah7_GqmWf4Y0eT620Sl09T7syoucTlo0ziB1mzThXOZGCEMVpeYv1Kwvtsc1pNT/exec'
 };
