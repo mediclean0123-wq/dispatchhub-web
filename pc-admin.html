@@ -228,10 +228,10 @@
   <div id="no-access" class="fill" hidden>
     <p style="font-weight:bold;color:#c00;font-size:1.1rem">管理者のみアクセスできます</p>
     <p style="font-size:0.88rem;color:#666;margin-top:0.5rem">LINE からログインし直してください。</p>
-    <a id="no-access-link" href="#" target="_blank"
-       style="margin-top:0.75rem;display:inline-block;padding:0.5rem 1.2rem;
-              background:#00a84f;color:#fff;border-radius:8px;text-decoration:none;
-              font-size:0.9rem;font-weight:bold">LINE から入り直す</a>
+    <button id="no-access-link" onclick="doRelogin()"
+       style="margin-top:0.75rem;padding:0.5rem 1.2rem;
+              background:#00a84f;color:#fff;border:none;border-radius:8px;cursor:pointer;
+              font-size:0.9rem;font-weight:bold;font-family:inherit">LINE から入り直す</button>
   </div>
 
   <!-- アプリ本体（ADMIN のみ表示） -->
@@ -341,9 +341,9 @@
   <!-- セッション期限切れオーバーレイ -->
   <div id="relogin-overlay" class="fill" hidden
        style="position:fixed;inset:0;background:rgba(255,255,255,0.97);z-index:150">
-    <p style="font-size:1rem;font-weight:bold">セッションが切れました</p>
-    <p style="font-size:0.88rem;color:#666;margin-top:0.25rem">idToken の有効期限が切れています</p>
-    <button class="relogin-btn" onclick="liff.login()">再ログイン</button>
+    <p style="font-size:1rem;font-weight:bold">ログインの有効期限が切れました</p>
+    <p style="font-size:0.88rem;color:#666;margin-top:0.25rem">再ログインして続けてください。</p>
+    <button class="relogin-btn" onclick="doRelogin()">再ログイン</button>
   </div>
 
   <!-- 代理入力モーダル -->
@@ -422,6 +422,11 @@
 
     function showReloginPrompt() {
       document.getElementById('relogin-overlay').hidden = false;
+    }
+
+    function doRelogin() {
+      liff.logout();
+      liff.login();
     }
 
     function handleApiError(r) {
@@ -568,10 +573,18 @@
         document.getElementById('loading').hidden = true;
 
         if (r.error === 'unauthorized') {
+          try {
+            if (!sessionStorage.getItem('pc_admin_relogin_tried')) {
+              sessionStorage.setItem('pc_admin_relogin_tried', '1');
+              doRelogin();
+              return;
+            }
+          } catch (_) {}
+          sessionStorage.removeItem('pc_admin_relogin_tried');
           document.getElementById('no-access').hidden = false;
-          document.getElementById('no-access-link').href = 'https://liff.line.me/' + (CFG.ADMIN_LIFF_ID || '');
           return;
         }
+        try { sessionStorage.removeItem('pc_admin_relogin_tried'); } catch (_) {}
         if (!r.ok) {
           showError('データの取得に失敗しました（' + (r.error || '不明') + '）');
           return;
@@ -812,6 +825,14 @@
     // ── LIFF 初期化 ──────────────────────────────────────────────────
     liff.init({ liffId: CFG.ADMIN_LIFF_ID }).then(function() {
       if (!liff.isLoggedIn()) { liff.login(); return; }
+
+      var decoded = liff.getDecodedIDToken();
+      var nowSec = Math.floor(Date.now() / 1000);
+      if (!decoded || decoded.exp <= nowSec + 60) {
+        doRelogin();
+        return;
+      }
+
       if (window.history && window.history.replaceState) {
         window.history.replaceState(null, '', window.location.pathname + window.location.hash);
       }
