@@ -127,6 +127,59 @@
     .msg { color: var(--muted); text-align: center; padding: 2rem; font-size: 0.9rem; }
     .err-msg { color: #c00; text-align: center; padding: 1rem; font-size: 0.88rem; }
     .loading-inline { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.9rem; }
+
+    /* ── 備品タブ固有 ── */
+    .filter-row input[type="date"] {
+      padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.88rem; font-family: inherit; background: var(--card);
+    }
+    .filter-row input[type="text"] {
+      padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.88rem; font-family: inherit; background: var(--card); min-width: 110px;
+    }
+    .badge-pending   { background: #fff3cd; color: #856404; }
+    .badge-delivered { background: #d4edda; color: #155724; }
+    .summary-prop-list {
+      display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem;
+    }
+    .summary-prop-item {
+      background: var(--card); border-radius: 6px; padding: 0.3rem 0.6rem;
+      font-size: 0.8rem; box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+    }
+    .summary-prop-item .sp-n { font-weight: bold; color: #856404; }
+
+    /* ── 代理入力モーダル ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      display: flex; align-items: center; justify-content: center; z-index: 100;
+    }
+    .modal-box {
+      background: var(--card); border-radius: 10px; padding: 1.25rem;
+      max-width: 320px; width: 90%; box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+    .modal-title  { font-weight: bold; margin-bottom: 0.9rem; word-break: break-all; }
+    .modal-note   { font-size: 0.82rem; color: #856404; background: #fff3cd;
+      border-radius: 6px; padding: 0.4rem 0.6rem; margin: 0.75rem 0 0.5rem; }
+    .modal-label  { font-size: 0.88rem; margin-bottom: 0.25rem; }
+    .modal-input  { display: block; width: 100%; margin-top: 0.3rem; padding: 0.4rem 0.5rem;
+      border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem;
+      font-family: inherit; background: var(--card); box-sizing: border-box; }
+    .modal-btns   { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem; }
+    .btn-primary  { background: var(--accent); color: white; border: none; border-radius: 6px;
+      padding: 0.4rem 0.9rem; font-family: inherit; cursor: pointer; font-size: 0.9rem; }
+    .btn-secondary { background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+      padding: 0.4rem 0.9rem; font-family: inherit; cursor: pointer; font-size: 0.9rem; }
+    .btn-sm-deliver {
+      font-size: 0.78rem; padding: 0.2rem 0.45rem;
+      border: 1px solid #28a745; border-radius: 5px; background: #d4edda; color: #155724;
+      cursor: pointer; white-space: nowrap;
+    }
+    .btn-sm-skip {
+      font-size: 0.78rem; padding: 0.2rem 0.45rem;
+      border: 1px solid #856404; border-radius: 5px; background: #fff3cd; color: #856404;
+      cursor: pointer; white-space: nowrap;
+    }
+    .action-cell  { display: flex; gap: 0.3rem; flex-wrap: nowrap; }
   </style>
 </head>
 <body>
@@ -156,7 +209,8 @@
     </div>
 
     <div class="tabs">
-      <button class="tab-btn active" data-tab="summary">今日の一覧</button>
+      <button class="tab-btn active" data-tab="summary" onclick="switchTab('summary')">今日の一覧</button>
+      <button class="tab-btn" data-tab="supply" onclick="switchTab('supply')">備品</button>
     </div>
 
     <!-- 今日の一覧パネル -->
@@ -195,6 +249,75 @@
       </div>
       <div id="summary-empty" class="msg" hidden>該当する物件がありません</div>
     </div>
+
+    <!-- 備品パネル -->
+    <div class="panel" id="panel-supply" hidden>
+      <div class="filter-row">
+        <label>状態</label>
+        <select id="supply-filter-status">
+          <option value="PENDING">未確認</option>
+          <option value="DELIVERED">納品済み</option>
+          <option value="ALL">すべて</option>
+        </select>
+        <label>開始</label>
+        <input type="date" id="supply-filter-from">
+        <label>終了</label>
+        <input type="date" id="supply-filter-to">
+        <label>物件</label>
+        <input type="text" id="supply-filter-prop" placeholder="部分一致">
+        <button class="btn-reload" id="btn-supply-reload" onclick="loadSupply()">更新</button>
+      </div>
+      <div id="supply-prop-summary" class="summary-prop-list"></div>
+      <div id="supply-loading" class="loading-inline" hidden>読み込み中...</div>
+      <div id="supply-err" class="err-msg" hidden></div>
+      <div class="tbl-wrap">
+        <table id="supply-table" hidden>
+          <thead>
+            <tr>
+              <th>物件</th>
+              <th>予定日</th>
+              <th>品目</th>
+              <th>状態</th>
+              <th>持ち越し</th>
+              <th>理由</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="supply-tbody"></tbody>
+        </table>
+      </div>
+      <div id="supply-empty" class="msg" hidden>該当する備品リクエストがありません</div>
+    </div>
+  </div>
+
+  <!-- 代理入力モーダル -->
+  <div id="supply-modal" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <p id="sm-title" class="modal-title"></p>
+      <div id="sm-deliver-section">
+        <p class="modal-label">納品日（省略時は今日）</p>
+        <input type="date" id="sm-delivered-date" class="modal-input">
+        <p class="modal-label" style="margin-top:0.6rem;">数量（省略可）</p>
+        <input type="number" id="sm-qty" min="1" max="999" class="modal-input" placeholder="入力しなければ元の数量のまま">
+      </div>
+      <div id="sm-skip-section" hidden>
+        <p class="modal-label">理由（必須）</p>
+        <select id="sm-reason" class="modal-input">
+          <option value="">選んでください</option>
+          <option value="OUT_OF_STOCK">在庫切れ</option>
+          <option value="FORGOT">持ち忘れ</option>
+          <option value="NOT_NEEDED">今回は不要と判断</option>
+          <option value="DEFERRED">次の担当者に持ち越し</option>
+          <option value="OTHER">その他</option>
+        </select>
+      </div>
+      <p class="modal-note">管理者として代理で記録します</p>
+      <div id="sm-err" class="err-msg" hidden></div>
+      <div class="modal-btns">
+        <button class="btn-secondary" onclick="closeSupplyModal()">キャンセル</button>
+        <button class="btn-primary" id="sm-submit" onclick="submitSupplyAction()">記録する</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -202,8 +325,11 @@
     var S = {
       idToken:     null,
       today:       null,
-      summaryRows: []
+      summaryRows: [],
+      supplyRows:  [],
+      currentTab:  'summary'
     };
+    var supplyActionTarget = null; // { idx, action }
 
     function todayJst() {
       var d = new Date();
@@ -233,6 +359,21 @@
       if (s === 'DONE')  return '<span class="badge badge-done">✓ 完了</span>';
       if (s === 'DOING') return '<span class="badge badge-doing">🧹 作業中</span>';
       return '<span class="badge badge-todo">⬜ 未着手</span>';
+    }
+
+    function supplyBadge(s) {
+      if (s === 'DELIVERED') return '<span class="badge badge-delivered">✓ 納品済み</span>';
+      return '<span class="badge badge-pending">⬜ 未確認</span>';
+    }
+
+    // ── タブ切り替え ──────────────────────────────────────────────────
+    function switchTab(tab) {
+      S.currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+      });
+      document.getElementById('panel-summary').hidden = (tab !== 'summary');
+      document.getElementById('panel-supply').hidden  = (tab !== 'supply');
     }
 
     function callApi(body) {
@@ -371,6 +512,195 @@
       });
     }
 
+    // ── 備品パネル ───────────────────────────────────────────────────
+
+    function offsetDate(ymd, days) {
+      var d = new Date(ymd + 'T12:00:00Z');
+      d.setUTCDate(d.getUTCDate() + days);
+      return d.toISOString().slice(0, 10);
+    }
+
+    function initSupplyFilters() {
+      var today = S.today;
+      document.getElementById('supply-filter-from').value = offsetDate(today, -14);
+      document.getElementById('supply-filter-to').value   = offsetDate(today,  14);
+    }
+
+    function renderSupplyPropSummary(summaryByProperty) {
+      var props = Object.keys(summaryByProperty).sort();
+      if (!props.length) {
+        document.getElementById('supply-prop-summary').innerHTML = '';
+        return;
+      }
+      var html = '';
+      props.forEach(function(p) {
+        html += '<span class="summary-prop-item"><span class="sp-n">' +
+          esc(summaryByProperty[p]) + '</span> ' + esc(p) + '</span>';
+      });
+      document.getElementById('supply-prop-summary').innerHTML = html;
+    }
+
+    function renderSupply(rows, summaryByProperty) {
+      S.supplyRows = rows || [];
+      renderSupplyPropSummary(summaryByProperty || {});
+
+      if (!rows || !rows.length) {
+        document.getElementById('supply-table').hidden = true;
+        document.getElementById('supply-empty').hidden = false;
+        return;
+      }
+
+      document.getElementById('supply-empty').hidden = true;
+      document.getElementById('supply-table').hidden = false;
+
+      var tbody = document.getElementById('supply-tbody');
+      tbody.innerHTML = '';
+      rows.forEach(function(r, idx) {
+        var itemCell = r.qty != null
+          ? esc(r.item) + ' &times; ' + esc(r.qty) + (r.unit ? ' ' + esc(r.unit) : '')
+          : esc(r.item);
+        var skipCell = r.skipCount > 0 ? esc(r.skipCount) + '回' : '—';
+        var dateCell = r.requestedForDate ? esc(r.requestedForDate) : '<em>未定</em>';
+        var actionCell = '';
+        if (r.status === 'PENDING') {
+          actionCell = '<div class="action-cell">' +
+            '<button class="btn-sm-deliver" onclick="openSupplyModal(' + idx + ',\'DELIVERED\')">持参した</button>' +
+            '<button class="btn-sm-skip"    onclick="openSupplyModal(' + idx + ',\'SKIP\')">持参しなかった</button>' +
+            '</div>';
+        }
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + esc(r.propertyName) + '</td>' +
+          '<td>' + dateCell + '</td>' +
+          '<td>' + itemCell + '</td>' +
+          '<td>' + supplyBadge(r.status) + '</td>' +
+          '<td>' + skipCell + '</td>' +
+          '<td>' + esc(r.skippedReason || '—') + '</td>' +
+          '<td>' + actionCell + '</td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    function loadSupply() {
+      var status   = document.getElementById('supply-filter-status').value;
+      var fromDate = document.getElementById('supply-filter-from').value;
+      var toDate   = document.getElementById('supply-filter-to').value;
+      var property = document.getElementById('supply-filter-prop').value.trim();
+
+      document.getElementById('btn-supply-reload').disabled = true;
+      document.getElementById('supply-loading').hidden = false;
+      document.getElementById('supply-err').hidden     = true;
+      document.getElementById('supply-table').hidden   = true;
+      document.getElementById('supply-empty').hidden   = true;
+
+      callApi({ action: 'getAdminSupplyList', status: status,
+                fromDate: fromDate, toDate: toDate, property: property })
+        .then(function(r) {
+          document.getElementById('supply-loading').hidden = true;
+          document.getElementById('btn-supply-reload').disabled = false;
+
+          if (!r.ok) {
+            var el = document.getElementById('supply-err');
+            el.textContent = 'データの取得に失敗しました（' + (r.error || '不明') + '）';
+            el.hidden = false;
+            return;
+          }
+          renderSupply(r.rows, r.summaryByProperty);
+        }).catch(function(e) {
+          document.getElementById('supply-loading').hidden = true;
+          document.getElementById('btn-supply-reload').disabled = false;
+          var el = document.getElementById('supply-err');
+          el.textContent = '通信エラー: ' + (e.message || '不明');
+          el.hidden = false;
+        });
+    }
+
+    // ── 代理入力モーダル ─────────────────────────────────────────────
+
+    function openSupplyModal(idx, action) {
+      var r = S.supplyRows[idx];
+      if (!r) return;
+      supplyActionTarget = { idx: idx, action: action };
+      var label = action === 'DELIVERED' ? '持参した' : '持参しなかった';
+      var itemLabel = r.qty != null
+        ? String(r.item || '') + ' × ' + r.qty + (r.unit ? ' ' + r.unit : '')
+        : String(r.item || '');
+      document.getElementById('sm-title').textContent = label + '：' + itemLabel;
+      document.getElementById('sm-deliver-section').hidden = (action !== 'DELIVERED');
+      document.getElementById('sm-skip-section').hidden    = (action !== 'SKIP');
+      var todayVal = S.today || todayJst();
+      var dateEl = document.getElementById('sm-delivered-date');
+      dateEl.value = todayVal;
+      dateEl.max   = todayVal;
+      document.getElementById('sm-qty').value    = '';
+      document.getElementById('sm-reason').value = '';
+      document.getElementById('sm-err').hidden   = true;
+      document.getElementById('sm-submit').disabled = false;
+      document.getElementById('supply-modal').hidden = false;
+    }
+
+    function closeSupplyModal() {
+      document.getElementById('supply-modal').hidden = true;
+      supplyActionTarget = null;
+    }
+
+    function submitSupplyAction() {
+      if (!supplyActionTarget) return;
+      var idx    = supplyActionTarget.idx;
+      var action = supplyActionTarget.action;
+      var r      = S.supplyRows[idx];
+      if (!r) return;
+
+      var body = { action: 'adminConfirmSupply', idToken: S.idToken,
+                   requestId: r.requestId, result: action };
+
+      if (action === 'DELIVERED') {
+        var deliveredDateVal = document.getElementById('sm-delivered-date').value;
+        if (deliveredDateVal) body.deliveredDate = deliveredDateVal;
+        var qtyStr = document.getElementById('sm-qty').value.trim();
+        if (qtyStr !== '') {
+          var n = parseInt(qtyStr, 10);
+          if (isNaN(n) || n < 1 || n > 999) {
+            var el = document.getElementById('sm-err');
+            el.textContent = '数量は 1〜999 の整数で入力してください';
+            el.hidden = false;
+            return;
+          }
+          body.deliveredQty = n;
+        }
+      } else {
+        var reason = document.getElementById('sm-reason').value;
+        if (!reason) {
+          var el = document.getElementById('sm-err');
+          el.textContent = '理由を選んでください';
+          el.hidden = false;
+          return;
+        }
+        body.reason = reason;
+      }
+
+      var submitBtn = document.getElementById('sm-submit');
+      submitBtn.disabled = true;
+      document.getElementById('sm-err').hidden = true;
+
+      callApi(body).then(function(res) {
+        if (!res.ok) {
+          submitBtn.disabled = false;
+          var el = document.getElementById('sm-err');
+          el.textContent = '送信に失敗しました（' + esc(res.error || '不明') + '）';
+          el.hidden = false;
+          return;
+        }
+        closeSupplyModal();
+        loadSupply();
+      }).catch(function(e) {
+        submitBtn.disabled = false;
+        var el = document.getElementById('sm-err');
+        el.textContent = '通信エラー: ' + esc(e.message || '不明');
+        el.hidden = false;
+      });
+    }
+
     // ── フィルタ変更 ─────────────────────────────────────────────────
     document.getElementById('filter-staff').addEventListener('change',  renderSummary);
     document.getElementById('filter-status').addEventListener('change', renderSummary);
@@ -381,6 +711,7 @@
       S.idToken = liff.getIDToken();
       S.today   = todayJst();
       document.getElementById('header-date').textContent = S.today;
+      initSupplyFilters();
 
       // getAdminSummary が ADMIN チェックを兼ねる。
       // unauthorized なら no-access を表示、ok なら app を表示して一覧を描画する。
