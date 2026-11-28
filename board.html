@@ -3138,7 +3138,7 @@
     // ── 今後の清掃予定タブ ────────────────────────────────────────────
     // getScheduleRange(today〜+90) を一度取得して S.scheduleSearchItems/ByDate に保持する。
     // 日付切り替えは保持データから applyScheduleDate() でノーコスト切替。
-    function loadScheduleTab(silent) {
+    function loadScheduleTab(silent, _forceFresh) {
       if (S.sessionExpired) return;
       if (silent) {
         if (_staffPendingSchedule || S.scheduleExpandedKey ||
@@ -3172,7 +3172,7 @@
       var progressProm = callApi({ action: 'getProgress', date: fromDate });
 
       return Promise.all([
-        callApi({ action: 'getScheduleRange', fromDate: fromDate, toDate: toDate }),
+        callApi({ action: 'getScheduleRange', fromDate: fromDate, toDate: toDate, forceFresh: !!_forceFresh }),
         cleanerProm,
         progressProm
       ]).then(function(res) {
@@ -3215,6 +3215,9 @@
 
         updateScheduleViewBars();
         renderScheduleList();
+
+        // stale データを描画後、forceFresh で1回だけ再取得する（無限ループしない）
+        if (sr.stale && !_forceFresh) loadScheduleTab(true, true);
 
         // キャンセル処理中バッジ用（失敗しても画面を止めない）
         callApi({ action: 'getCancelStatus' }).then(function(cs) {
@@ -3601,7 +3604,7 @@
     }
 
     // ── 進捗確認タブ ────────────────────────────────────────────────
-    function loadProgress(silent) {
+    function loadProgress(silent, _forceFresh) {
       if (S.sessionExpired) return;
       if (silent) {
         var _anyPend = Object.keys(_progressPending).some(function(k) { return _progressPending[k]; });
@@ -3625,7 +3628,7 @@
         : callApi({ action: 'getCleanerList' });
 
       Promise.all([
-        callApi({ action: 'getSchedule', date: S.progressDate }),
+        callApi({ action: 'getSchedule', date: S.progressDate, forceFresh: !!_forceFresh }),
         callApi({ action: 'getProgress',  date: S.progressDate }),
         cleanerProm
       ]).then(function(res) {
@@ -3713,6 +3716,9 @@
           taskCounts:              S.taskCounts,
           cleaners:                S.cleaners
         });
+
+        // stale データを描画後、forceFresh で1回だけ再取得する（無限ループしない）
+        if (sr.stale && !_forceFresh) loadProgress(true, true);
       }).catch(function(e) {
         if (e.isUnauthorized) { handleUnauthorized(); return; }
         toast('進捗確認読み込みエラー: ' + e.message);
@@ -5693,6 +5699,16 @@
         S.raRows           = ras.rows || [];
         S.raAssignedByDate = ras.assignedRoomsByDate || {};
         updateRoomAssignBadge();
+
+        // stale データを描画後、forceFresh で1回だけ再取得する（無限ループしない）
+        if (ras.stale) {
+          callApi({ action: 'getRoomAssignStatus', forceFresh: true }).then(function(ras2) {
+            if (!ras2.ok) return;
+            S.raRows           = ras2.rows || [];
+            S.raAssignedByDate = ras2.assignedRoomsByDate || {};
+            updateRoomAssignBadge();
+          }).catch(function() {});
+        }
       }).catch(function() {
         document.getElementById('btn-open-room-assign').hidden = true;
       });
