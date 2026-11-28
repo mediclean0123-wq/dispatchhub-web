@@ -77,6 +77,8 @@
     '.pa-btn:disabled { opacity: 0.4; cursor: not-allowed; }',
     '.pa-btn-primary { background: #00a84f; color: #fff; border-color: #00a84f; }',
     '.pa-btn-primary:hover:not(:disabled) { background: #008a3f; }',
+    '.pa-btn-discard { color: #c00; border-color: #c00; }',
+    '.pa-btn-discard:hover:not(:disabled) { background: #fff0f0; }',
 
     '.pa-err { color: #c00; font-size: 0.88rem; padding: 0.4rem 0; }',
     '.pa-loading { color: #888; padding: 1.5rem 0; text-align: center; }',
@@ -87,28 +89,53 @@
     '  font-size: 0.82rem; background: #fff3cd; border: 1px solid #ffc107;',
     '  border-radius: 6px; padding: 0.4rem 0.75rem; margin-bottom: 0.6rem; color: #856404; }',
 
-    '.pa-tbl-wrap { overflow-x: auto; }',
+    /* overflow: hidden を除去して sticky が動作するよう、shadow/radius を wrap 側へ移動 */
+    '.pa-tbl-wrap {',
+    '  overflow: auto; max-height: calc(100vh - 220px);',
+    '  border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }',
     '.pa-tbl {',
-    '  border-collapse: collapse; background: #fff;',
-    '  border-radius: 8px; overflow: hidden;',
-    '  box-shadow: 0 1px 3px rgba(0,0,0,0.08); font-size: 0.85rem; }',
+    '  border-collapse: collapse; background: #fff; font-size: 0.85rem; }',
+
+    /* 見出し行を sticky で固定（全 th が top: 0 に張り付く） */
     '.pa-tbl th {',
     '  background: #f5f7fa; padding: 0.5rem 0.6rem; text-align: center;',
     '  white-space: nowrap; font-size: 0.78rem; color: #888;',
     '  border-bottom: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0;',
-    '  min-width: 72px; }',
-    '.pa-tbl th.pa-prop-col { text-align: left; min-width: 180px; }',
+    '  min-width: 72px;',
+    '  position: sticky; top: 0; z-index: 2; }',
+
+    /* 物件名の見出しは左にも固定（左上の角 → z-index 最高） */
+    '.pa-tbl th.pa-prop-col {',
+    '  text-align: left; min-width: 180px;',
+    '  position: sticky; left: 0; z-index: 3; }',
+
+    /* 未割当の見出し（left は JS で動的に設定） */
+    '.pa-tbl th.pa-unassigned-col {',
+    '  position: sticky; z-index: 2; background: #f5f7fa;',
+    '  border-right: 2px solid #bdbdbd; }',
+
     '.pa-tbl td {',
     '  padding: 0.4rem 0.6rem; border-bottom: 1px solid #f0f0f0;',
     '  border-right: 1px solid #f0f0f0; vertical-align: middle; }',
     '.pa-tbl tr:last-child td { border-bottom: none; }',
+
+    /* 物件名のセルを左に固定、最大幅を 320px に拡大 */
     '.pa-tbl td.pa-prop-cell {',
     '  font-size: 0.88rem; white-space: nowrap;',
-    '  max-width: 220px; overflow: hidden; text-overflow: ellipsis; }',
+    '  max-width: 320px; overflow: hidden; text-overflow: ellipsis;',
+    '  position: sticky; left: 0; z-index: 1; background: #fff; }',
+
+    /* 未割当のセル（left は JS で動的に設定） */
+    '.pa-tbl td.pa-unassigned-cell {',
+    '  position: sticky; z-index: 1; background: #fff;',
+    '  border-right: 2px solid #bdbdbd; }',
+
+    /* 行ホバー — sticky セルにも明示的に背景を上書きして透過を防ぐ */
     '.pa-tbl tr:hover td { background: #fafafa; }',
+    '.pa-tbl tr:hover td.pa-prop-cell { background: #fafafa; }',
+    '.pa-tbl tr:hover td.pa-unassigned-cell { background: #fafafa; }',
 
     '.pa-cell { text-align: center; cursor: pointer; user-select: none; }',
-    '.pa-cell:hover { background: #f0faf5 !important; }',
 
     '.pa-dot {',
     '  display: inline-block; width: 18px; height: 18px; border-radius: 50%;',
@@ -117,6 +144,7 @@
     '.pa-dot.selected { background: #00a84f; border-color: #00a84f; }',
     '.pa-dot.conflict { background: #ff6d00; border-color: #ff6d00; }',
 
+    /* 競合行の !important が sticky セルの background を上書きする */
     '.pa-conflict-row td { background: #fff8e1 !important; }',
 
     '.pa-unsaved-badge {',
@@ -179,8 +207,17 @@
       if (!matched || sels[pn] !== (matched.staff || '')) unsavedCnt++;
     }
 
-    // ヘッダー
+    // 未割当カウント（ヘッダーに先に必要）
+    var unassignedCnt = 0;
+    for (var i = 0; i < items.length; i++) {
+      var s = Object.prototype.hasOwnProperty.call(sels, items[i].propertyName)
+        ? sels[items[i].propertyName] : (items[i].staff || '');
+      if (!s) unassignedCnt++;
+    }
+
+    // ヘッダー：物件 → 未割当 → 清掃員
     var hdrs = '<th class="pa-prop-col">物件（' + items.length + '件）</th>';
+    hdrs += '<th class="pa-unassigned-col">未割当<div class="pa-cnt">' + unassignedCnt + '件</div></th>';
     for (var ci = 0; ci < cleaners.length; ci++) {
       var cname = cleaners[ci];
       var cnt = 0;
@@ -191,15 +228,8 @@
       }
       hdrs += '<th>' + esc(cname) + '<div class="pa-cnt">' + cnt + '件</div></th>';
     }
-    var unassignedCnt = 0;
-    for (var i = 0; i < items.length; i++) {
-      var s = Object.prototype.hasOwnProperty.call(sels, items[i].propertyName)
-        ? sels[items[i].propertyName] : (items[i].staff || '');
-      if (!s) unassignedCnt++;
-    }
-    hdrs += '<th>未割当<div class="pa-cnt">' + unassignedCnt + '件</div></th>';
 
-    // データ行
+    // データ行：物件 → 未割当 → 清掃員
     var rows = '';
     for (var i = 0; i < items.length; i++) {
       var item    = items[i];
@@ -216,7 +246,15 @@
         ? '<span class="pa-sdi-tag">同日</span>' : '';
 
       rows += '<tr' + rowCls + '>';
-      rows += '<td class="pa-prop-cell">' + esc(pn) + areaTg + sdiTg + badge + '</td>';
+      // title 属性で全文を表示（省略表示でもマウスオーバーで確認できる）
+      rows += '<td class="pa-prop-cell" title="' + esc(pn) + '">' + esc(pn) + areaTg + sdiTg + badge + '</td>';
+
+      // 未割当列（物件名の直後）
+      var uDotCls = !current
+        ? (isConflict ? 'pa-dot conflict' : 'pa-dot selected')
+        : 'pa-dot';
+      rows += '<td class="pa-cell pa-unassigned-cell" data-prop="' + esc(pn) + '" data-staff="">'
+        + '<span class="' + uDotCls + '"></span></td>';
 
       for (var ci = 0; ci < cleaners.length; ci++) {
         var cname = cleaners[ci];
@@ -226,12 +264,6 @@
         rows += '<td class="pa-cell" data-prop="' + esc(pn) + '" data-staff="' + esc(cname) + '">'
           + '<span class="' + dotCls + '"></span></td>';
       }
-      // 未割当列
-      var uDotCls = !current
-        ? (isConflict ? 'pa-dot conflict' : 'pa-dot selected')
-        : 'pa-dot';
-      rows += '<td class="pa-cell" data-prop="' + esc(pn) + '" data-staff="">'
-        + '<span class="' + uDotCls + '"></span></td>';
       rows += '</tr>';
     }
 
@@ -240,12 +272,28 @@
       '<table class="pa-tbl"><thead><tr>' + hdrs + '</tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div>';
 
-    // 保存ボタンの表示
+    // 未割当列の left を物件名列の実幅に合わせて動的に設定
+    fixStickyOffsets_();
+
+    // 保存・破棄ボタンの表示
     var saveBtn = $('pa-save-btn');
     if (saveBtn) {
       saveBtn.textContent = unsavedCnt > 0
         ? '一括保存（' + unsavedCnt + '件変更）'
         : '一括保存';
+    }
+    var discardBtn = $('pa-discard-btn');
+    if (discardBtn) discardBtn.disabled = unsavedCnt === 0;
+  }
+
+  // 未割当列の sticky left を物件名列の実幅から計算して設定する
+  function fixStickyOffsets_() {
+    var propTh = _root.querySelector('.pa-prop-col');
+    if (!propTh) return;
+    var w = propTh.offsetWidth;
+    var els = _root.querySelectorAll('.pa-unassigned-col, .pa-unassigned-cell');
+    for (var i = 0; i < els.length; i++) {
+      els[i].style.left = w + 'px';
     }
   }
 
@@ -407,7 +455,16 @@
     var pn    = el.getAttribute('data-prop');
     var staff = el.getAttribute('data-staff');
     if (pn === null || staff === null) return;
-    state.selections[pn] = staff;
+
+    // 現在の選択済みと同じ丸を再クリックした場合は保存済みの担当に戻す
+    var current = Object.prototype.hasOwnProperty.call(state.selections, pn)
+      ? state.selections[pn] : null;
+    if (current !== null && current === staff) {
+      // selections から削除して保存済み状態に戻す
+      delete state.selections[pn];
+    } else {
+      state.selections[pn] = staff;
+    }
     delete state.conflictProps[pn];
     renderTable();
   }
@@ -442,6 +499,7 @@
       '    <input type="date" id="pa-date" value="' + esc(tomorrow) + '">',
       '    <button class="pa-btn" id="pa-reload-btn">更新</button>',
       '    <button class="pa-btn pa-btn-primary" id="pa-save-btn" disabled>一括保存</button>',
+      '    <button class="pa-btn pa-btn-discard" id="pa-discard-btn" disabled>変更を破棄</button>',
       '  </div>',
       '  <div id="pa-conflict-banner" class="pa-warn" hidden></div>',
       '  <div id="pa-save-info" class="pa-info" hidden>',
@@ -467,6 +525,11 @@
       loadData(false);
     });
     $('pa-save-btn').addEventListener('click', save);
+    $('pa-discard-btn').addEventListener('click', function() {
+      state.selections    = {};
+      state.conflictProps = {};
+      renderTable();
+    });
     container.addEventListener('click', onCellClick);
 
     loadData(false);
