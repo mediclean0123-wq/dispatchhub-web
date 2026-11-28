@@ -76,11 +76,14 @@
       display: inline-block; border-radius: 20px;
       padding: 0.2rem 0.65rem; font-size: 0.8rem; font-weight: bold;
     }
-    .badge-todo { background: #e5e7eb; color: #555; }
-    .badge-doing { background: #fef3c7; color: #92400e; }
-    .badge-done { background: #d1fae5; color: #065f46; }
-    .badge-delivered { background: #d1fae5; color: #065f46; }
-    .badge-pending { background: #fef3c7; color: #92400e; }
+    .badge-todo     { background: #e5e7eb; color: #555; }
+    .badge-doing    { background: #fef3c7; color: #92400e; }
+    .badge-done     { background: #d1fae5; color: #065f46; }
+    .badge-delivered{ background: #d1fae5; color: #065f46; }
+    .badge-pending  { background: #fef3c7; color: #92400e; }
+    .badge-arrived  { background: #dbeafe; color: #1e3a8a; }
+    .badge-almost   { background: #fef3c7; color: #92400e; }
+    .badge-problem  { background: #fee2e2; color: #991b1b; }
 
     /* ── 詳細 ── */
     #detail-view { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
@@ -281,7 +284,7 @@
 <div id="error-view" class="fill" hidden>
   <div style="font-size:2rem">⚠️</div>
   <div id="error-msg"></div>
-  <button class="btn btn-start" style="max-width:200px" onclick="location.reload()">再試行</button>
+  <button id="btn-retry" class="btn btn-start" style="max-width:200px" onclick="location.reload()">再試行</button>
 </div>
 
 <!-- アプリ本体 -->
@@ -305,7 +308,7 @@
 </div>
 
 <script>
-  // ── 辞書（次の段階で言語切替を追加できる構造） ───────────────────────
+  // ── 辞書 ─────────────────────────────────────────────────────────────
   var DICT = {
     ja: {
       appTitle:            '清掃スケジュール',
@@ -335,11 +338,15 @@
       TODO:                '未着手',
       DOING:               '進行中',
       DONE:                '完了',
+      ARRIVED:             '📍 到着',
+      ALMOST:              '⏳ まもなく',
+      PROBLEM:             '⚠ 問題あり',
       btnStart:            '開始',
       btnFinish:           '完了にする',
       btnUndoStart:        '開始を取り消す',
       btnUndoFinish:       '完了を取り消す',
       btnPrepare:          '次回の準備',
+      btnRetry:            '再試行',
       startedAt:           '開始時刻',
       finishedAt:          '終了時刻',
       na:                  '—',
@@ -394,6 +401,98 @@
       supplyInvalidQty:    '数量は 1〜999 の整数で入力してください。',
       supplyMemoTooLong:   'メモは90文字以内で入力してください。',
       supplyMemoNewline:   'メモに改行は使えません。',
+    },
+    en: {
+      appTitle:            'Cleaning Schedule',
+      loading:             'Loading...',
+      loadingSupply:       'Loading items...',
+      errUnauth:           'Please log in.',
+      errLoad:             'Failed to load.',
+      errConflict:         'Updated on another device. Reloading.',
+      errNetwork:          'Network error.',
+      errDateMismatch:     'Date mismatch. Please reload.',
+      errUnknownItem:      'Item not found in SupplyMaster.',
+      errNotPending:       'Already confirmed. Please reload.',
+      errLockTimeout:      'Server busy. Please try again.',
+      empty:               'No assignments for today.',
+      checkinTime:         'Check-in',
+      password:            'Password',
+      manual:              'Manual',
+      manualOpen:          'Open manual',
+      photo:               'Photo',
+      photoOpen:           'View photos',
+      carryTasks:          '📦 CARRY tasks',
+      timeTasks:           '⏰ TIME tasks',
+      workTasks:           '📝 WORK tasks',
+      otherTasks:          'Other tasks',
+      progress:            'Progress',
+      status:              'Status',
+      TODO:                'Todo',
+      DOING:               'In progress',
+      DONE:                'Done',
+      ARRIVED:             '📍 Arrived',
+      ALMOST:              '⏳ Almost done',
+      PROBLEM:             '⚠ Problem',
+      btnStart:            'Start',
+      btnFinish:           'Mark as done',
+      btnUndoStart:        'Undo start',
+      btnUndoFinish:       'Undo done',
+      btnPrepare:          'Next prep',
+      btnRetry:            'Retry',
+      startedAt:           'Started at',
+      finishedAt:          'Finished at',
+      na:                  '—',
+      back:                '← Back to list',
+      backToDetail:        '← Back to detail',
+      startedAtVal:        function(v) { return v ? formatTime(v) : '—'; },
+      finishedAtVal:       function(v) { return v ? formatTime(v) : '—'; },
+
+      // Supplies to bring
+      pendingTitle:        '📦 Supplies to bring',
+      btnDeliver:          'Brought',
+      btnSkip:             'Did not bring',
+      supplyDelivered:     '✓ Delivered',
+      supplySkipped:       '→ Carried over',
+
+      // Finish block
+      pendingBlockMsg:     'Unconfirmed supplies. Please select "Brought" or "Did not bring".',
+
+      // Skip reason
+      skipTitle:           'Reason for not bringing (required)',
+      skipConfirm:         'Carry over to next time',
+      skipCancel:          'Cancel',
+      skipResultDate:      function(d) { return '→ Carried over to ' + d; },
+      skipResultUnknown:   '→ Carried over (next date TBD)',
+      skipOtherMemoLabel:  'Details (required)',
+      skipReasonRequired:  'Please select a reason.',
+      skipOtherRequired:   'Please enter details for "Other".',
+
+      skipReasonOUT_OF_STOCK: 'Out of stock',
+      skipReasonFORGOT:       'Forgot',
+      skipReasonNOT_NEEDED:   'Not needed this time',
+      skipReasonDEFERRED:     'Passed to next cleaner',
+      skipReasonOTHER:        'Other',
+
+      // Carry-over result
+      skipResultMsgDate:    function(d) { return 'Will be handed over on ' + d; },
+      skipResultMsgUnknown: 'Will be handed over when next session is scheduled',
+
+      // Next prep
+      prepTitle:           'Next prep',
+      supplyTitle:         '📦 Supply request',
+      supplyCatAll:        'All',
+      supplyPickLabel:     'Select item',
+      supplyNoItems:       'No items available.',
+      supplyQtyLabel:      'Quantity (optional)',
+      supplyMemoLabel:     'Note (optional, 90 chars max)',
+      supplyRegister:      'Register',
+      supplyRegistered:    '✅ Registered supplies (this session)',
+      supplyNoRegistered:  'Nothing added yet.',
+      supplySelectFirst:   'Please select an item.',
+      supplyRegOk:         '✓ Registered',
+      supplyInvalidQty:    'Please enter an integer between 1 and 999.',
+      supplyMemoTooLong:   'Note must be 90 characters or less.',
+      supplyMemoNewline:   'Note cannot contain line breaks.',
     }
   };
   var LANG = 'ja';
@@ -494,6 +593,7 @@
     callApi({ action: 'getCleanerSchedule', date: S.today })
       .then(function(data) {
         if (!data.ok) throw new Error(data.error || 'load_failed');
+        LANG = (data.staffLang === 'en') ? 'en' : 'ja';
         S.rows = (data.rows || []).slice().sort(function(a, b) {
           return (a.order || 0) - (b.order || 0);
         });
@@ -1342,6 +1442,8 @@
 
   function showError(msg) {
     document.getElementById('error-msg').textContent = msg;
+    var retryBtn = document.getElementById('btn-retry');
+    if (retryBtn) retryBtn.textContent = t('btnRetry');
     document.getElementById('loading-view').hidden = true;
     document.getElementById('error-view').hidden   = false;
     document.getElementById('app').hidden          = true;
