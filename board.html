@@ -1822,8 +1822,8 @@
           : '—';
         var areaDisp = d.area ? esc(d.area) : '<span style="color:var(--muted)">未設定</span>';
         html += '<tr class="busy-detail-row">';
-        html += '<td class="busy-date-cell"></td>';
-        html += '<td colspan="6">' + esc(d.propertyName) + '</td>';
+        html += '<td class="busy-date-cell" style="color:var(--muted)">' + esc(busyFmtDate(item.date)) + '</td>';
+        html += '<td colspan="6" title="' + esc(d.propertyName) + '">' + esc(d.propertyName) + '</td>';
         html += '<td>' + areaDisp + '</td>';
         html += '<td>' + esc(h) + '</td>';
         html += '</tr>';
@@ -3429,7 +3429,7 @@
       h += '<div class="sched-row-main" data-sched-toggle="' + keyEsc + '">' +
           dateLabel +
           orderNum +
-          '<span class="sched-prop-name">' + pnEsc + '</span>' +
+          '<span class="sched-prop-name" title="' + pnEsc + '">' + pnEsc + '</span>' +
           areaInline +
           typeBadge +
           '<span class="' + staffCls + '">' + esc(staffText) + '</span>' +
