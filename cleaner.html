@@ -327,6 +327,9 @@
       photo:               '写真',
       photoOpen:           '写真を開く',
       carryTasks:          '📦 CARRYタスク',
+      timeTasks:           '⏰ TIMEタスク',
+      workTasks:           '📝 WORKタスク',
+      otherTasks:          'その他のタスク',
       progress:            '進捗',
       status:              'ステータス',
       TODO:                '未着手',
@@ -580,19 +583,29 @@
       infoRows += detailRow(t('photo'),
         '<a href="' + escHtml(row.photoUrl) + '" target="_blank">' + escHtml(t('photoOpen')) + '</a>');
 
-    var carryTasks = (row.tasks || []).filter(function(tk) { return tk.type === 'CARRY'; });
-    var carryHtml = '';
-    if (carryTasks.length) {
-      carryHtml = '<div class="detail-card">' +
-        '<h2>' + escHtml(t('carryTasks')) + '</h2>' +
-        carryTasks.map(function(tk) {
+    var allTasks   = row.tasks || [];
+    var carryTasks = allTasks.filter(function(tk) { return tk.type === 'CARRY'; });
+    var timeTasks  = allTasks.filter(function(tk) { return tk.type === 'TIME'; });
+    var workTasks  = allTasks.filter(function(tk) { return tk.type === 'WORK'; });
+    var otherTasks = allTasks.filter(function(tk) { return tk.type === 'OTHER'; });
+
+    function buildTaskSection(tasks, icon, labelKey) {
+      if (!tasks.length) return '';
+      return '<div class="detail-card">' +
+        '<h2>' + escHtml(t(labelKey)) + '</h2>' +
+        tasks.map(function(tk) {
           return '<div class="task-item">' +
-            '<span>📦</span>' +
+            '<span>' + icon + '</span>' +
             '<span>' + escHtml(tk.note || tk.taskId || '') + '</span>' +
           '</div>';
         }).join('') +
       '</div>';
     }
+
+    var carryHtml = buildTaskSection(carryTasks, '📦', 'carryTasks');
+    var timeHtml  = buildTaskSection(timeTasks,  '⏰', 'timeTasks');
+    var workHtml  = buildTaskSection(workTasks,  '📝', 'workTasks');
+    var otherHtml = buildTaskSection(otherTasks, '📋', 'otherTasks');
 
     // 持ち込み予定セクション
     var supplyHtml = '';
@@ -663,6 +676,9 @@
       '</div>' +
 
       carryHtml +
+      timeHtml +
+      workHtml +
+      otherHtml +
       supplyHtml +
       skipResultHtml +
       blockHtml +
