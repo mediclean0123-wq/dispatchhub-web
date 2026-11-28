@@ -3393,7 +3393,7 @@
             '</button>';
           } else {
             // 通常展開
-            var isDone = S.scheduleProgressData[pn] && S.scheduleProgressData[pn].status === 'DONE';
+            var isDone = item.date === today() && S.scheduleProgressData[pn] && S.scheduleProgressData[pn].status === 'DONE';
             var selOpts = '<option value=""' + (!item.staff ? ' selected' : '') + '>未担当</option>';
             S.cleaners.forEach(function(c) {
               selOpts += '<option value="' + esc(c.name) + '"' +
