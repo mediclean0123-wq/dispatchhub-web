@@ -1081,7 +1081,7 @@
       <div id="album-resend-bar" class="album-resend-bar prog-resend-bar" hidden>
         <button id="btn-album-resend" class="btn-album-resend">アルバムURL再送</button>
       </div>
-      <div class="refresh-note" id="progress-refresh-note">30秒ごとに自動更新</div>
+      <div class="refresh-note" id="progress-refresh-note">60秒ごとに自動更新</div>
     </div>
 
     <!-- 今後の清掃予定タブ -->
@@ -1130,7 +1130,7 @@
         </div>
       </div>
       <div id="sched-list" class="sched-list"></div>
-      <div class="refresh-note" id="refresh-note">30秒ごとに自動更新</div>
+      <div class="refresh-note" id="refresh-note">60秒ごとに自動更新</div>
     </div>
 
     <!-- 先の予定パネル（管理者のみ） -->
@@ -2239,7 +2239,7 @@
     function startBoardTimer() {
       stopBoardTimer();
       if (!document.hidden && !S.sessionExpired) {
-        S.boardTimer = setInterval(function() { loadScheduleTab(true); }, 30000);
+        S.boardTimer = setInterval(function() { loadScheduleTab(true); }, 60000);
       }
     }
 
@@ -2251,7 +2251,7 @@
     function startProgressTimer() {
       stopProgressTimer();
       if (!document.hidden && !S.sessionExpired) {
-        S.progressTimer = setInterval(function() { loadProgress(true); }, 30000);
+        S.progressTimer = setInterval(function() { loadProgress(true); }, 60000);
       }
     }
 
@@ -3203,7 +3203,7 @@
         var now = new Date();
         document.getElementById('refresh-note').textContent =
           '最終更新: ' + now.getHours() + ':' +
-          String(now.getMinutes()).padStart(2, '0') + '  ／  30秒ごとに自動更新';
+          String(now.getMinutes()).padStart(2, '0') + '  ／  60秒ごとに自動更新';
 
         S.scheduleFetchedAt = Date.now();
         lsSet('dh_schedule_range', {
@@ -3705,7 +3705,7 @@
         var now = new Date();
         document.getElementById('progress-refresh-note').textContent =
           '最終更新: ' + now.getHours() + ':' +
-          String(now.getMinutes()).padStart(2, '0') + '  ／  30秒ごとに自動更新';
+          String(now.getMinutes()).padStart(2, '0') + '  ／  60秒ごとに自動更新';
 
         S.progressFetchedAt = Date.now();
         lsSet('dh_progress_' + S.progressDate, {
