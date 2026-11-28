@@ -371,6 +371,10 @@
       skipReasonDEFERRED:     '次の担当者に持ち越し',
       skipReasonOTHER:        'その他',
 
+      // 持ち越し結果（詳細画面に残すメッセージ）
+      skipResultMsgDate:    function(d) { return '次回（' + d + '）に引き継がれます'; },
+      skipResultMsgUnknown: '次の清掃日が決まり次第、引き継がれます',
+
       // 次回の準備
       prepTitle:           '次回の準備',
       supplyTitle:         '📦 備品リクエスト',
@@ -446,7 +450,8 @@
     skipReason:      null,     // 選択中の理由 ID
     skipOtherMemo:   '',
     skipBusy:        false,
-    deliverBusyIds:  {}        // deliver 中の requestId → true
+    deliverBusyIds:  {},       // deliver 中の requestId → true
+    skipResultMsgs:  []        // 持ち越し結果メッセージ [{ item, msg }]
   };
 
   // ── API ─────────────────────────────────────────────────────────────
@@ -537,9 +542,10 @@
   // ── 詳細レンダリング ─────────────────────────────────────────────────
   function openDetail(idx) {
     S.row = S.rows[idx];
-    S.skipTargetId = null;
-    S.skipReason   = null;
+    S.skipTargetId  = null;
+    S.skipReason    = null;
     S.skipOtherMemo = '';
+    S.skipResultMsgs = [];
     renderDetail();
     document.getElementById('list-view').hidden   = true;
     document.getElementById('prep-view').hidden   = true;
@@ -600,6 +606,18 @@
       '</div>';
     }
 
+    // 持ち越し結果メッセージ（今セッションで skip した SR ごとに表示）
+    var skipResultHtml = '';
+    if (S.skipResultMsgs.length) {
+      skipResultHtml = '<div class="detail-card">' +
+        S.skipResultMsgs.map(function(r) {
+          var line = r.item ? escHtml(r.item) + '：' + escHtml(r.msg) : escHtml(r.msg);
+          return '<div style="font-size:0.9rem;padding:0.4rem 0;border-bottom:1px solid var(--border)">' +
+            line + '</div>';
+        }).join('') +
+      '</div>';
+    }
+
     // 完了ブロックメッセージ
     var blockHtml = '';
     if (hasPending && (status === 'DOING' || status === 'TODO')) {
@@ -646,6 +664,7 @@
 
       carryHtml +
       supplyHtml +
+      skipResultHtml +
       blockHtml +
 
       '<div class="detail-card">' +
@@ -684,8 +703,10 @@
 
   function renderSupplyItem(sr) {
     var qtyUnit = '';
-    if (sr.qty != null) qtyUnit += ' × ' + sr.qty;
-    if (sr.unit)        qtyUnit += ' ' + sr.unit;
+    if (sr.qty != null) {
+      qtyUnit += ' × ' + sr.qty;
+      if (sr.unit) qtyUnit += ' ' + sr.unit;
+    }
 
     var metaHtml = '';
     if (sr.memo) metaHtml = '<div class="pending-supply-meta">' + escHtml(sr.memo) + '</div>';
@@ -893,14 +914,21 @@
         showSkipFormError(apiErrorMsg(null, data.error));
         return;
       }
-      // 繰り越し結果メッセージを brief に表示してからリロード
+      // 持ち越し結果を詳細画面に残すメッセージとして記録する
       var nextDate = data.nextDate || '';
-      var msg = nextDate ? t('skipResultDate')(nextDate) : t('skipResultUnknown');
+      var skippedSr = (S.row.supplyRequests || []).find(function(sr) {
+        return sr.requestId === requestId;
+      });
+      var skipMsg = nextDate
+        ? t('skipResultMsgDate')(nextDate)
+        : t('skipResultMsgUnknown');
+      S.skipResultMsgs.push({ item: skippedSr ? skippedSr.item : '', msg: skipMsg });
       S.skipTargetId   = null;
       S.skipReason     = null;
       S.skipOtherMemo  = '';
       // skip 後は SR が今日のリストから消えるのでリロード
-      loadScheduleAndRefreshDetail(msg);
+      var toastMsg = nextDate ? t('skipResultDate')(nextDate) : t('skipResultUnknown');
+      loadScheduleAndRefreshDetail(toastMsg);
     }).catch(function(err) {
       S.skipBusy = false;
       if (err.isUnauthorized) {
@@ -1125,8 +1153,10 @@
     var registeredHtml = S.prepRegistered.length
       ? S.prepRegistered.map(function(r) {
           var qtyUnit = '';
-          if (r.qty != null) qtyUnit += ' × ' + r.qty;
-          if (r.unit)        qtyUnit += ' ' + r.unit;
+          if (r.qty != null) {
+            qtyUnit += ' × ' + r.qty;
+            if (r.unit) qtyUnit += ' ' + r.unit;
+          }
           return '<div class="registered-item"><span>📦</span><span>' +
             escHtml(r.item) + escHtml(qtyUnit) +
             (r.memo ? '<span style="color:var(--muted)"> — ' + escHtml(r.memo) + '</span>' : '') +
