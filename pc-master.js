@@ -19,6 +19,13 @@
   var AMOUNT_COLS = ['CleaningUnitPrice', 'ExtraFee', 'FixedCleaningCost'];
   var URL_COLS    = ['iCalURL', 'ManualUrl'];
 
+  // cleaninghub コード.js と同じ判定: 空欄は有効、ON/TRUE/1/YES/ACTIVE は有効、それ以外は無効
+  function isActive_(v) {
+    var s = String(v == null ? '' : v).trim().toUpperCase();
+    if (!s) return true;
+    return s === 'ON' || s === 'TRUE' || s === '1' || s === 'YES' || s === 'ACTIVE';
+  }
+
   // 列のグループ定義（編集フォームで使う）
   var COL_GROUPS = [
     {
@@ -181,7 +188,7 @@
     }
 
     rows.forEach(function(p) {
-      var active = String(p.Active || '').toUpperCase() === 'TRUE';
+      var active = isActive_(p.Active);
       html += '<tr>' +
         '<td>' + esc(p.rowNumber) + '</td>' +
         '<td>' + esc(p.PropertyName) + '</td>' +
@@ -203,7 +210,8 @@
   function filteredProperties() {
     var q = state.searchText.toLowerCase();
     return state.properties.filter(function(p) {
-      if (state.filterActive && String(p.Active || '').toUpperCase() !== state.filterActive) return false;
+      if (state.filterActive === 'TRUE'  && !isActive_(p.Active)) return false;
+      if (state.filterActive === 'FALSE' &&  isActive_(p.Active)) return false;
       if (!q) return true;
       return (p.PropertyName || '').toLowerCase().includes(q) ||
              (p.DisplayName  || '').toLowerCase().includes(q) ||
