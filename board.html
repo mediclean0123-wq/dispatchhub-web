@@ -354,6 +354,8 @@
     }
     .prog-tile.doing       { background: #e3f2fd; border-color: #90caf9; }
     .prog-tile.done        { background: #f0f0f0; border-color: #ccc; }
+    .prog-tile.arrived     { background: #e8f5e9; border-color: #81c784; }
+    .prog-tile.almost      { background: #fff3e0; border-color: #ffb74d; }
     .prog-tile.linen-stage { background: #fffde7; border-color: #ffe082; }
     .prog-tile:active { opacity: 0.75; }
     .prog-tile-nameline {
@@ -412,6 +414,8 @@
     .prog-row-main:active { opacity: 0.75; }
     .prog-row.prog-row-done { background: #f0f0f0; border-color: #ccc; }
     .prog-row.prog-row-doing { background: #e3f2fd; border-color: #90caf9; }
+    .prog-row.prog-row-arrived { background: #e8f5e9; border-color: #81c784; }
+    .prog-row.prog-row-almost  { background: #fff3e0; border-color: #ffb74d; }
     .prog-row.prog-row-linen-stage { background: #fffde7; border-color: #ffe082; }
     .prog-row.prog-row-done .sched-prop-name { color: #777; font-weight: normal; }
     .prog-row-marks { display: flex; gap: 0.15rem; flex-shrink: 0; align-items: center; }
@@ -1839,8 +1843,8 @@
       return y + '-' + String(m + 1).padStart(2, '0');
     }
 
-    var STATUS_RANK = { 'DONE': 0, 'DOING': 1, 'TODO': 2 };
-    function statusRank(s) { return STATUS_RANK[s] !== undefined ? STATUS_RANK[s] : 2; }
+    var STATUS_RANK = { 'DONE': 0, 'DOING': 1, 'ARRIVED': 2, 'ALMOST': 3, 'TODO': 4 };
+    function statusRank(s) { return STATUS_RANK[s] !== undefined ? STATUS_RANK[s] : 4; }
 
     // ── スケジュールタブ：表示バー制御 ───────────────────────────────
     function updateScheduleViewBars() {
@@ -3841,7 +3845,9 @@
       var isLinenStage = (status === 'TODO' && pd.linen === 'DONE');
 
       var tileCls = 'prog-tile' +
-        (status === 'DOING' ? ' doing' : status === 'DONE' ? ' done' : isLinenStage ? ' linen-stage' : '');
+        (status === 'DOING' ? ' doing' : status === 'DONE' ? ' done' :
+         status === 'ARRIVED' ? ' arrived' : status === 'ALMOST' ? ' almost' :
+         isLinenStage ? ' linen-stage' : '');
 
       var staffText = item.staff || '';
       var staffCls  = staffText ? 'prog-tile-staff' : 'prog-tile-staff unset';
@@ -3894,6 +3900,8 @@
       var rowCls = 'prog-row' +
         (status === 'DONE' ? ' prog-row-done' :
          status === 'DOING' ? ' prog-row-doing' :
+         status === 'ARRIVED' ? ' prog-row-arrived' :
+         status === 'ALMOST' ? ' prog-row-almost' :
          (status === 'TODO' && pd.linen === 'DONE') ? ' prog-row-linen-stage' : '');
 
       var numHtml = (typeof num !== 'undefined')
