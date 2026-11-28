@@ -183,6 +183,30 @@
       cursor: pointer; white-space: nowrap;
     }
     .action-cell  { display: flex; gap: 0.3rem; flex-wrap: nowrap; }
+
+    /* ── トースト通知 ── */
+    .toast {
+      position: fixed; top: 1rem; left: 50%; transform: translateX(-50%);
+      background: #155724; color: #fff; padding: 0.5rem 1.1rem;
+      border-radius: 8px; font-size: 0.88rem; z-index: 200;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18); pointer-events: none;
+      white-space: nowrap;
+    }
+
+    /* ── 再ログインオーバーレイ ── */
+    .relogin-btn {
+      margin-top: 0.75rem; padding: 0.5rem 1.3rem;
+      background: var(--green); color: #fff; border: none; border-radius: 8px;
+      font-size: 0.9rem; font-family: inherit; cursor: pointer; font-weight: bold;
+    }
+
+    /* ── プライマリボタン追加スタイル ── */
+    .btn-primary:hover:not(:disabled) { background: #008a3f; }
+
+    /* ── 備品集計ラベル ── */
+    .supply-prop-label {
+      font-size: 0.8rem; color: var(--muted); align-self: center; white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -201,7 +225,12 @@
 
   <!-- 権限なし -->
   <div id="no-access" class="fill" hidden>
-    管理者のみアクセスできます
+    <p style="font-weight:bold;color:#c00;font-size:1.1rem">管理者のみアクセスできます</p>
+    <p style="font-size:0.88rem;color:#666;margin-top:0.5rem">LINE からログインし直してください。</p>
+    <a id="no-access-link" href="#" target="_blank"
+       style="margin-top:0.75rem;display:inline-block;padding:0.5rem 1.2rem;
+              background:#00a84f;color:#fff;border-radius:8px;text-decoration:none;
+              font-size:0.9rem;font-weight:bold">LINE から入り直す</a>
   </div>
 
   <!-- アプリ本体（ADMIN のみ表示） -->
@@ -301,6 +330,17 @@
     <div class="panel" id="panel-sheets" hidden></div>
   </div>
 
+  <!-- トースト通知 -->
+  <div id="toast" class="toast" hidden></div>
+
+  <!-- セッション期限切れオーバーレイ -->
+  <div id="relogin-overlay" class="fill" hidden
+       style="position:fixed;inset:0;background:rgba(255,255,255,0.97);z-index:150">
+    <p style="font-size:1rem;font-weight:bold">セッションが切れました</p>
+    <p style="font-size:0.88rem;color:#666;margin-top:0.25rem">idToken の有効期限が切れています</p>
+    <button class="relogin-btn" onclick="liff.login()">再ログイン</button>
+  </div>
+
   <!-- 代理入力モーダル -->
   <div id="supply-modal" class="modal-overlay" hidden>
     <div class="modal-box">
@@ -334,11 +374,12 @@
   <script>
     var CFG = window.DISPATCH_CONFIG || {};
     var S = {
-      idToken:     null,
-      today:       null,
-      summaryRows: [],
-      supplyRows:  [],
-      currentTab:  'summary'
+      idToken:      null,
+      today:        null,
+      summaryRows:  [],
+      supplyRows:   [],
+      currentTab:   'summary',
+      supplyLoaded: false
     };
     var supplyActionTarget = null; // { idx, action }
 
@@ -366,6 +407,26 @@
         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    function showToast(msg) {
+      var el = document.getElementById('toast');
+      el.textContent = msg;
+      el.hidden = false;
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(function() { el.hidden = true; }, 2500);
+    }
+
+    function showReloginPrompt() {
+      document.getElementById('relogin-overlay').hidden = false;
+    }
+
+    function handleApiError(r) {
+      if (r.error === 'unauthorized' && !document.getElementById('app').hidden) {
+        showReloginPrompt();
+        return true;
+      }
+      return false;
+    }
+
     function statusBadge(s) {
       if (s === 'DONE')  return '<span class="badge badge-done">✓ 完了</span>';
       if (s === 'DOING') return '<span class="badge badge-doing">🧹 作業中</span>';
@@ -389,6 +450,10 @@
       document.getElementById('panel-supply').hidden  = (tab !== 'supply');
       document.getElementById('panel-master').hidden  = (tab !== 'master');
       document.getElementById('panel-sheets').hidden  = (tab !== 'sheets');
+      if (tab === 'supply' && !S.supplyLoaded) {
+        S.supplyLoaded = true;
+        loadSupply();
+      }
       if (tab === 'master' && !masterMounted && window.PcMaster) {
         masterMounted = true;
         window.PcMaster.mount(document.getElementById('panel-master'), callApi);
@@ -493,6 +558,7 @@
 
         if (r.error === 'unauthorized') {
           document.getElementById('no-access').hidden = false;
+          document.getElementById('no-access-link').href = 'https://liff.line.me/' + (CFG.ADMIN_LIFF_ID || '');
           return;
         }
         if (!r.ok) {
@@ -520,6 +586,7 @@
         document.getElementById('btn-reload').disabled = false;
 
         if (!r.ok) {
+          if (handleApiError(r)) return;
           var el = document.getElementById('summary-err');
           el.textContent = 'データの取得に失敗しました（' + (r.error || '不明') + '）';
           el.hidden = false;
@@ -555,7 +622,7 @@
         document.getElementById('supply-prop-summary').innerHTML = '';
         return;
       }
-      var html = '';
+      var html = '<span class="supply-prop-label">物件別:</span>';
       props.forEach(function(p) {
         html += '<span class="summary-prop-item"><span class="sp-n">' +
           esc(summaryByProperty[p]) + '</span> ' + esc(p) + '</span>';
@@ -623,6 +690,7 @@
           document.getElementById('btn-supply-reload').disabled = false;
 
           if (!r.ok) {
+            if (handleApiError(r)) return;
             var el = document.getElementById('supply-err');
             el.textContent = 'データの取得に失敗しました（' + (r.error || '不明') + '）';
             el.hidden = false;
@@ -709,6 +777,7 @@
       callApi(body).then(function(res) {
         if (!res.ok) {
           submitBtn.disabled = false;
+          if (handleApiError(res)) { closeSupplyModal(); return; }
           var el = document.getElementById('sm-err');
           el.textContent = '送信に失敗しました（' + esc(res.error || '不明') + '）';
           el.hidden = false;
@@ -716,6 +785,7 @@
         }
         closeSupplyModal();
         loadSupply();
+        showToast('記録しました');
       }).catch(function(e) {
         submitBtn.disabled = false;
         var el = document.getElementById('sm-err');
@@ -731,6 +801,9 @@
     // ── LIFF 初期化 ──────────────────────────────────────────────────
     liff.init({ liffId: CFG.ADMIN_LIFF_ID }).then(function() {
       if (!liff.isLoggedIn()) { liff.login(); return; }
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+      }
       S.idToken = liff.getIDToken();
       S.today   = todayJst();
       document.getElementById('header-date').textContent = S.today;
