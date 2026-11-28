@@ -138,7 +138,8 @@
 
   var state = {
     date:            null,
-    items:           [],    // dateData.items（キャンセル除外済み）
+    allItems:        [],    // dateData.items の全件（cancelled 含む）— buildAssignRows_ に渡す
+    items:           [],    // 表示用（cancelled 除外済み）
     cleaners:        [],    // cleaner name の配列
     latestUpdatedAt: null,
     selections:      {},    // { [propertyName]: staff } — 未保存の選択（競合後も保持）
@@ -301,8 +302,10 @@
       }
 
       var dateData = (sr.byDate || {})[date] || { items: [], latestUpdatedAt: null };
-      // キャンセル済みは除外
-      state.items = (dateData.items || []).filter(function(i) { return !i.cancelled; });
+      // allItems: cancelled を含む全件（saveAssignments の全行送信に使う）
+      state.allItems = dateData.items || [];
+      // items: 表示用（cancelled 除外）
+      state.items = state.allItems.filter(function(i) { return !i.cancelled; });
       state.latestUpdatedAt = dateData.latestUpdatedAt || null;
       state.cleaners = (cr.cleaners || []).map(function(c) {
         return typeof c === 'object' ? (c.name || '') : String(c || '');
@@ -345,7 +348,7 @@
     $('pa-save-info').hidden = true;
     $('pa-err').hidden       = true;
 
-    var rows            = buildAssignRows_(state.items, state.selections);
+    var rows            = buildAssignRows_(state.allItems, state.selections);
     var oldUpdatedAt    = state.latestUpdatedAt;
     var oldSelections   = JSON.parse(JSON.stringify(state.selections));
 
@@ -361,13 +364,13 @@
 
       if (r.ok) {
         if (r.latestUpdatedAt) state.latestUpdatedAt = r.latestUpdatedAt;
-        // 保存成功: selections をクリアして items の staff を更新
+        // 保存成功: selections をクリアして allItems の staff を更新
         state.selections    = {};
         state.conflictProps = {};
         for (var ri = 0; ri < rows.length; ri++) {
-          for (var ii = 0; ii < state.items.length; ii++) {
-            if (state.items[ii].propertyName === rows[ri].propertyName) {
-              state.items[ii].staff = rows[ri].staff;
+          for (var ii = 0; ii < state.allItems.length; ii++) {
+            if (state.allItems[ii].propertyName === rows[ri].propertyName) {
+              state.allItems[ii].staff = rows[ri].staff;
               break;
             }
           }
@@ -425,6 +428,7 @@
 
     var tomorrow = tomorrowJst();
     state.date        = tomorrow;
+    state.allItems    = [];
     state.items       = [];
     state.cleaners    = [];
     state.selections  = {};
