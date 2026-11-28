@@ -295,7 +295,9 @@
     <div class="modal-box">
       <p id="sm-title" class="modal-title"></p>
       <div id="sm-deliver-section">
-        <p class="modal-label">数量（省略可）</p>
+        <p class="modal-label">納品日（省略時は今日）</p>
+        <input type="date" id="sm-delivered-date" class="modal-input">
+        <p class="modal-label" style="margin-top:0.6rem;">数量（省略可）</p>
         <input type="number" id="sm-qty" min="1" max="999" class="modal-input" placeholder="入力しなければ元の数量のまま">
       </div>
       <div id="sm-skip-section" hidden>
@@ -626,6 +628,10 @@
       document.getElementById('sm-title').textContent = label + '：' + itemLabel;
       document.getElementById('sm-deliver-section').hidden = (action !== 'DELIVERED');
       document.getElementById('sm-skip-section').hidden    = (action !== 'SKIP');
+      var todayVal = S.today || todayJst();
+      var dateEl = document.getElementById('sm-delivered-date');
+      dateEl.value = todayVal;
+      dateEl.max   = todayVal;
       document.getElementById('sm-qty').value    = '';
       document.getElementById('sm-reason').value = '';
       document.getElementById('sm-err').hidden   = true;
@@ -649,6 +655,8 @@
                    requestId: r.requestId, result: action };
 
       if (action === 'DELIVERED') {
+        var deliveredDateVal = document.getElementById('sm-delivered-date').value;
+        if (deliveredDateVal) body.deliveredDate = deliveredDateVal;
         var qtyStr = document.getElementById('sm-qty').value.trim();
         if (qtyStr !== '') {
           var n = parseInt(qtyStr, 10);
