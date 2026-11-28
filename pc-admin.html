@@ -429,6 +429,16 @@
       liff.login();
     }
 
+    function showLoginFailed() {
+      document.getElementById('loading').hidden = true;
+      var el = document.getElementById('no-access');
+      var ps = el.querySelectorAll('p');
+      if (ps[0]) ps[0].textContent = 'ログインできませんでした。';
+      if (ps[1]) ps[1].textContent = '時間をおいて、LINE から開き直してください。';
+      document.getElementById('no-access-link').hidden = true;
+      el.hidden = false;
+    }
+
     function handleApiError(r) {
       if (r.error === 'unauthorized' && !document.getElementById('app').hidden) {
         showReloginPrompt();
@@ -829,7 +839,14 @@
       var decoded = liff.getDecodedIDToken();
       var nowSec = Math.floor(Date.now() / 1000);
       if (!decoded || decoded.exp <= nowSec + 60) {
-        doRelogin();
+        try {
+          if (!sessionStorage.getItem('pc_admin_relogin_tried')) {
+            sessionStorage.setItem('pc_admin_relogin_tried', '1');
+            doRelogin();
+            return;
+          }
+        } catch (_) {}
+        showLoginFailed();
         return;
       }
 
