@@ -6,6 +6,7 @@
   <title>PC 管理画面</title>
   <script src="config.js"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="pc-master.js"></script>
   <style>
     [hidden] { display: none !important; }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -178,6 +179,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="summary" onclick="switchTab('summary')">今日の一覧</button>
       <button class="tab-btn" data-tab="supply" onclick="switchTab('supply')">備品</button>
+      <button class="tab-btn" data-tab="master" onclick="switchTab('master')">物件</button>
     </div>
 
     <!-- 今日の一覧パネル -->
@@ -254,6 +256,9 @@
       </div>
       <div id="supply-empty" class="msg" hidden>該当する備品リクエストがありません</div>
     </div>
+
+    <!-- 物件マスターパネル -->
+    <div class="panel" id="panel-master" hidden></div>
   </div>
 
   <script>
@@ -301,6 +306,7 @@
     }
 
     // ── タブ切り替え ──────────────────────────────────────────────────
+    var masterMounted = false;
     function switchTab(tab) {
       S.currentTab = tab;
       document.querySelectorAll('.tab-btn').forEach(function(btn) {
@@ -308,6 +314,11 @@
       });
       document.getElementById('panel-summary').hidden = (tab !== 'summary');
       document.getElementById('panel-supply').hidden  = (tab !== 'supply');
+      document.getElementById('panel-master').hidden  = (tab !== 'master');
+      if (tab === 'master' && !masterMounted && window.PcMaster) {
+        masterMounted = true;
+        window.PcMaster.mount(document.getElementById('panel-master'), callApi);
+      }
     }
 
     function callApi(body) {
