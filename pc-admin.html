@@ -8,6 +8,7 @@
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script src="pc-master.js"></script>
   <script src="pc-master-sheets.js"></script>
+  <script src="pc-assign.js"></script>
   <style>
     [hidden] { display: none !important; }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -245,6 +246,7 @@
       <button class="tab-btn" data-tab="supply" onclick="switchTab('supply')">備品</button>
       <button class="tab-btn" data-tab="master" onclick="switchTab('master')">物件</button>
       <button class="tab-btn" data-tab="sheets" onclick="switchTab('sheets')">マスター</button>
+      <button class="tab-btn" data-tab="assign" onclick="switchTab('assign')">アサイン</button>
     </div>
 
     <!-- 今日の一覧パネル -->
@@ -328,6 +330,9 @@
 
     <!-- 周辺マスターパネル -->
     <div class="panel" id="panel-sheets" hidden></div>
+
+    <!-- 翌日アサイン決めパネル -->
+    <div class="panel" id="panel-assign" hidden></div>
   </div>
 
   <!-- トースト通知 -->
@@ -441,6 +446,7 @@
     // ── タブ切り替え ──────────────────────────────────────────────────
     var masterMounted = false;
     var sheetsMounted = false;
+    var assignMounted = false;
     function switchTab(tab) {
       S.currentTab = tab;
       document.querySelectorAll('.tab-btn').forEach(function(btn) {
@@ -450,6 +456,7 @@
       document.getElementById('panel-supply').hidden  = (tab !== 'supply');
       document.getElementById('panel-master').hidden  = (tab !== 'master');
       document.getElementById('panel-sheets').hidden  = (tab !== 'sheets');
+      document.getElementById('panel-assign').hidden  = (tab !== 'assign');
       if (tab === 'supply' && !S.supplyLoaded) {
         S.supplyLoaded = true;
         loadSupply();
@@ -461,6 +468,10 @@
       if (tab === 'sheets' && !sheetsMounted && window.PcMasterSheets) {
         sheetsMounted = true;
         window.PcMasterSheets.mount(document.getElementById('panel-sheets'), callApi);
+      }
+      if (tab === 'assign' && !assignMounted && window.PcAssign) {
+        assignMounted = true;
+        window.PcAssign.mount(document.getElementById('panel-assign'), callApi);
       }
     }
 
