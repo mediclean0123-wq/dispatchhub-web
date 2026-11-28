@@ -1031,6 +1031,55 @@
     .busy-summary-row td { font-weight: bold; background: #e8eaf6 !important; }
     .busy-summary-row .busy-date-cell { background: #e8eaf6 !important; cursor: default; }
 
+    /* ── PC レイアウト（1024px 以上） ───────────────────────────────── */
+    @media (min-width: 1024px) {
+
+      /* アプリ全体をカード化して中央寄せ */
+      #app {
+        max-width: 1280px;
+        margin-left: auto;
+        margin-right: auto;
+        box-shadow: 0 0 0 1px var(--border);
+      }
+
+      /* パネルの内側余白を広げる */
+      .panel { padding: 1rem 1.5rem; }
+
+      /* 清掃スケジュール一覧を2列グリッドに */
+      .sched-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.4rem;
+        align-items: start;
+      }
+      /* ヘッダー・メッセージ類は2列をまたいで全幅 */
+      .sched-list > .area-label,
+      .sched-list > .sched-staff-label,
+      .sched-list > .sched-date-label,
+      .sched-list > .msg,
+      .sched-list > .sched-search-more { grid-column: 1 / -1; }
+
+      /* 進捗リストを2列グリッドに（スタッフ別・エリア別 両方） */
+      .prog-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.25rem;
+        align-items: start;
+      }
+
+      /* 順番決めモードのタイルを2列に */
+      .prog-tiles-staff { grid-template-columns: repeat(2, 1fr); }
+
+      /* ドロワーをアプリ幅に合わせて中央寄せ */
+      .drawer-box {
+        max-width: 1280px;
+        left: 50%;
+        right: auto;
+        width: 100%;
+        transform: translateX(-50%);
+      }
+    }
+
   </style>
 </head>
 
