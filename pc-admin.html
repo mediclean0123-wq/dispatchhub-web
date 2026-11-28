@@ -127,6 +127,26 @@
     .msg { color: var(--muted); text-align: center; padding: 2rem; font-size: 0.9rem; }
     .err-msg { color: #c00; text-align: center; padding: 1rem; font-size: 0.88rem; }
     .loading-inline { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.9rem; }
+
+    /* ── 備品タブ固有 ── */
+    .filter-row input[type="date"] {
+      padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.88rem; font-family: inherit; background: var(--card);
+    }
+    .filter-row input[type="text"] {
+      padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.88rem; font-family: inherit; background: var(--card); min-width: 110px;
+    }
+    .badge-pending   { background: #fff3cd; color: #856404; }
+    .badge-delivered { background: #d4edda; color: #155724; }
+    .summary-prop-list {
+      display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem;
+    }
+    .summary-prop-item {
+      background: var(--card); border-radius: 6px; padding: 0.3rem 0.6rem;
+      font-size: 0.8rem; box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+    }
+    .summary-prop-item .sp-n { font-weight: bold; color: #856404; }
   </style>
 </head>
 <body>
@@ -156,7 +176,8 @@
     </div>
 
     <div class="tabs">
-      <button class="tab-btn active" data-tab="summary">今日の一覧</button>
+      <button class="tab-btn active" data-tab="summary" onclick="switchTab('summary')">今日の一覧</button>
+      <button class="tab-btn" data-tab="supply" onclick="switchTab('supply')">備品</button>
     </div>
 
     <!-- 今日の一覧パネル -->
@@ -195,6 +216,44 @@
       </div>
       <div id="summary-empty" class="msg" hidden>該当する物件がありません</div>
     </div>
+
+    <!-- 備品パネル -->
+    <div class="panel" id="panel-supply" hidden>
+      <div class="filter-row">
+        <label>状態</label>
+        <select id="supply-filter-status">
+          <option value="PENDING">未確認</option>
+          <option value="DELIVERED">納品済み</option>
+          <option value="ALL">すべて</option>
+        </select>
+        <label>開始</label>
+        <input type="date" id="supply-filter-from">
+        <label>終了</label>
+        <input type="date" id="supply-filter-to">
+        <label>物件</label>
+        <input type="text" id="supply-filter-prop" placeholder="部分一致">
+        <button class="btn-reload" id="btn-supply-reload" onclick="loadSupply()">更新</button>
+      </div>
+      <div id="supply-prop-summary" class="summary-prop-list"></div>
+      <div id="supply-loading" class="loading-inline" hidden>読み込み中...</div>
+      <div id="supply-err" class="err-msg" hidden></div>
+      <div class="tbl-wrap">
+        <table id="supply-table" hidden>
+          <thead>
+            <tr>
+              <th>物件</th>
+              <th>予定日</th>
+              <th>品目</th>
+              <th>状態</th>
+              <th>持ち越し</th>
+              <th>理由</th>
+            </tr>
+          </thead>
+          <tbody id="supply-tbody"></tbody>
+        </table>
+      </div>
+      <div id="supply-empty" class="msg" hidden>該当する備品リクエストがありません</div>
+    </div>
   </div>
 
   <script>
@@ -202,7 +261,8 @@
     var S = {
       idToken:     null,
       today:       null,
-      summaryRows: []
+      summaryRows: [],
+      currentTab:  'summary'
     };
 
     function todayJst() {
@@ -233,6 +293,21 @@
       if (s === 'DONE')  return '<span class="badge badge-done">✓ 完了</span>';
       if (s === 'DOING') return '<span class="badge badge-doing">🧹 作業中</span>';
       return '<span class="badge badge-todo">⬜ 未着手</span>';
+    }
+
+    function supplyBadge(s) {
+      if (s === 'DELIVERED') return '<span class="badge badge-delivered">✓ 納品済み</span>';
+      return '<span class="badge badge-pending">⬜ 未確認</span>';
+    }
+
+    // ── タブ切り替え ──────────────────────────────────────────────────
+    function switchTab(tab) {
+      S.currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+      });
+      document.getElementById('panel-summary').hidden = (tab !== 'summary');
+      document.getElementById('panel-supply').hidden  = (tab !== 'supply');
     }
 
     function callApi(body) {
@@ -371,6 +446,99 @@
       });
     }
 
+    // ── 備品パネル ───────────────────────────────────────────────────
+
+    function offsetDate(ymd, days) {
+      var d = new Date(ymd + 'T12:00:00Z');
+      d.setUTCDate(d.getUTCDate() + days);
+      return d.toISOString().slice(0, 10);
+    }
+
+    function initSupplyFilters() {
+      var today = S.today;
+      document.getElementById('supply-filter-from').value = offsetDate(today, -14);
+      document.getElementById('supply-filter-to').value   = offsetDate(today,  14);
+    }
+
+    function renderSupplyPropSummary(summaryByProperty) {
+      var props = Object.keys(summaryByProperty).sort();
+      if (!props.length) {
+        document.getElementById('supply-prop-summary').innerHTML = '';
+        return;
+      }
+      var html = '';
+      props.forEach(function(p) {
+        html += '<span class="summary-prop-item"><span class="sp-n">' +
+          esc(summaryByProperty[p]) + '</span> ' + esc(p) + '</span>';
+      });
+      document.getElementById('supply-prop-summary').innerHTML = html;
+    }
+
+    function renderSupply(rows, summaryByProperty) {
+      renderSupplyPropSummary(summaryByProperty || {});
+
+      if (!rows || !rows.length) {
+        document.getElementById('supply-table').hidden = true;
+        document.getElementById('supply-empty').hidden = false;
+        return;
+      }
+
+      document.getElementById('supply-empty').hidden = true;
+      document.getElementById('supply-table').hidden = false;
+
+      var tbody = document.getElementById('supply-tbody');
+      tbody.innerHTML = '';
+      rows.forEach(function(r) {
+        var itemCell = r.qty != null
+          ? esc(r.item) + ' &times; ' + esc(r.qty) + (r.unit ? ' ' + esc(r.unit) : '')
+          : esc(r.item);
+        var skipCell = r.skipCount > 0 ? esc(r.skipCount) + '回' : '—';
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + esc(r.propertyName) + '</td>' +
+          '<td>' + esc(r.requestedForDate) + '</td>' +
+          '<td>' + itemCell + '</td>' +
+          '<td>' + supplyBadge(r.status) + '</td>' +
+          '<td>' + skipCell + '</td>' +
+          '<td>' + esc(r.skippedReason || '—') + '</td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    function loadSupply() {
+      var status   = document.getElementById('supply-filter-status').value;
+      var fromDate = document.getElementById('supply-filter-from').value;
+      var toDate   = document.getElementById('supply-filter-to').value;
+      var property = document.getElementById('supply-filter-prop').value.trim();
+
+      document.getElementById('btn-supply-reload').disabled = true;
+      document.getElementById('supply-loading').hidden = false;
+      document.getElementById('supply-err').hidden     = true;
+      document.getElementById('supply-table').hidden   = true;
+      document.getElementById('supply-empty').hidden   = true;
+
+      callApi({ action: 'getAdminSupplyList', status: status,
+                fromDate: fromDate, toDate: toDate, property: property })
+        .then(function(r) {
+          document.getElementById('supply-loading').hidden = true;
+          document.getElementById('btn-supply-reload').disabled = false;
+
+          if (!r.ok) {
+            var el = document.getElementById('supply-err');
+            el.textContent = 'データの取得に失敗しました（' + (r.error || '不明') + '）';
+            el.hidden = false;
+            return;
+          }
+          renderSupply(r.rows, r.summaryByProperty);
+        }).catch(function(e) {
+          document.getElementById('supply-loading').hidden = true;
+          document.getElementById('btn-supply-reload').disabled = false;
+          var el = document.getElementById('supply-err');
+          el.textContent = '通信エラー: ' + (e.message || '不明');
+          el.hidden = false;
+        });
+    }
+
     // ── フィルタ変更 ─────────────────────────────────────────────────
     document.getElementById('filter-staff').addEventListener('change',  renderSummary);
     document.getElementById('filter-status').addEventListener('change', renderSummary);
@@ -381,6 +549,7 @@
       S.idToken = liff.getIDToken();
       S.today   = todayJst();
       document.getElementById('header-date').textContent = S.today;
+      initSupplyFilters();
 
       // getAdminSummary が ADMIN チェックを兼ねる。
       // unauthorized なら no-access を表示、ok なら app を表示して一覧を描画する。
